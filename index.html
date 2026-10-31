@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#12081f">
+<meta name="description" content="Vào Tù Thăm Idol — phòng thăm nuôi online parody giải trí hư cấu. Không phải thăm thật, không cổ súy vi phạm pháp luật.">
+<title>Vào Tù Thăm Idol — Phòng thăm nuôi online (Parody)</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo" aria-hidden="true">🏛️</span>
+    <div>
+      <strong>VÀO TÙ THĂM IDOL</strong>
+      <small>Phòng thăm nuôi online • Parody giải trí</small>
+    </div>
+  </div>
+  <div class="chips">
+    <span class="chip" id="onlineChip">🟢 <b id="onlineCount">1.278</b> người ở sảnh <em>(minh họa)</em></span>
+    <span class="chip gold">⭐ Đã thăm <b id="visitedCount">0/4</b> idol</span>
+    <span class="chip">🔥 Streak <b id="streakCount">0</b> ngày</span>
+    <span class="chip">🎖️ <b id="rankName">Tân binh thăm nuôi</b></span>
+  </div>
+</header>
+
+<div class="disclaimer">
+  ⚠️ <strong>PARODY GIẢI TRÍ HƯ CẤU</strong> — Đây không phải buổi thăm thật, các nhân vật là avatar hoạt hình vẽ bằng CSS/emoji, không dùng ảnh thật.
+  Không cổ súy vi phạm pháp luật. Mọi con số “đang online / lượt thăm hôm nay” trên trang đều là <strong>số liệu minh họa / mô phỏng</strong>.
+</div>
+
+<main>
+  <!-- ============ SẢNH ============ -->
+  <section id="lobbyScreen" class="screen active">
+    <div class="hero">
+      <h1>Vào tù thăm idol <span class="neon">không cần xếp hàng thật</span></h1>
+      <p>Lấy số, đi dạo sảnh, vẫy tay chào người khác rồi chọn 1 trong 4 idol để vào phòng thăm qua vách kính.</p>
+      <div class="hero-stats">
+        <div><b id="visitsToday">48.216</b><span>lượt thăm hôm nay <em>(minh họa)</em></span></div>
+        <div><b id="noodlesToday">312.540</b><span>gói mì đã tiếp tế <em>(minh họa)</em></span></div>
+        <div><b id="pointsTotal">0</b><span>điểm thăm nuôi của bạn</span></div>
+      </div>
+    </div>
+
+    <div class="lobby-grid">
+      <div class="panel hall-panel">
+        <h2>🚶 Sảnh thăm nuôi — điều khiển nhân vật của bạn</h2>
+        <p class="hint">Máy tính: phím <kbd>W A S D</kbd> / mũi tên để đi. Điện thoại: <b>chạm vào sàn</b> để nhân vật chạy tới đó. Bấm nút <b>Vẫy tay 👋</b> hoặc <b>Chắp tay 🙏</b>, người gần đó sẽ phản hồi.</p>
+        <div id="hall" class="hall" tabindex="0" aria-label="Sảnh thăm nuôi">
+          <div class="hall-floor"></div>
+          <div id="bots"></div>
+          <div id="player" class="avatar-player" title="Bạn">🧑<span class="name-tag" id="playerName">Bạn</span></div>
+          <div id="hallToast" class="hall-toast" hidden></div>
+        </div>
+        <div class="hall-actions">
+          <button class="btn" id="waveBtn">👋 Vẫy tay</button>
+          <button class="btn" id="bowBtn">🙏 Chắp tay chào</button>
+          <button class="btn" id="sitBtn">🪑 Ngồi chờ</button>
+          <span class="queue-info">Hàng chờ hiện tại: <b id="queueNow">12</b> người <em>(minh họa)</em></span>
+        </div>
+        <div class="queue-box">
+          <div>
+            <strong>Số thứ tự của bạn:</strong>
+            <span id="ticketNumber" class="ticket">— chưa lấy số —</span>
+          </div>
+          <button class="btn primary" id="takeTicketBtn">🎟️ Lấy số xếp hàng</button>
+          <button class="btn" id="nextNumberBtn">⏭️ Gọi số tiếp theo <em>(minh họa)</em></button>
+        </div>
+        <p class="queue-note">Số đang được gọi: <b id="callingNumber">A-014</b> • Khi tới lượt bạn, sảnh sẽ rung + báo “Tới lượt bạn rồi!”</p>
+      </div>
+
+      <div class="panel">
+        <h2>📋 Nhiệm vụ hằng ngày</h2>
+        <ul class="missions" id="missionsList"></ul>
+        <h2>🏆 Bảng vàng thăm nuôi <em>(mô phỏng)</em></h2>
+        <ol class="leaderboard" id="leaderboardList"></ol>
+        <p class="fine">Bảng trên là dữ liệu mô phỏng để tạo không khí, không phải người thật.</p>
+        <h2>🎁 Chia sẻ thẻ thăm</h2>
+        <p class="fine">Chia sẻ thành tích thăm nuôi của bạn (chỉ số liệu trên máy bạn).</p>
+        <div class="share-row">
+          <button class="btn" id="shareBtn">📣 Sao chép thẻ thăm</button>
+          <button class="btn" id="copyLinkBtn">🔗 Sao chép link web</button>
+        </div>
+        <p id="shareFeedback" class="feedback" hidden>Đã sao chép!</p>
+      </div>
+    </div>
+
+    <h2 class="section-title">Chọn idol để thăm <span class="sub">— bấm vào thẻ để vào phòng thăm</span></h2>
+    <div class="idol-grid" id="idolGrid"></div>
+
+    <div class="cells-panel panel">
+      <h2>🪟 Sảnh có 24 ô kính thăm <em>(minh họa)</em></h2>
+      <div class="cells" id="cellsGrid"></div>
+    </div>
+  </section>
+
+  <!-- ============ PHÒNG THĂM ============ -->
+  <section id="visitScreen" class="screen">
+    <button class="btn back" id="backToLobbyBtn">← Về sảnh</button>
+    <div class="visit-layout">
+      <div class="panel visit-room">
+        <div class="visit-head">
+          <div>
+            <h2 id="visitTitle">Phòng thăm</h2>
+            <p id="visitStatus" class="fine"></p>
+          </div>
+          <div class="timer-box">
+            <span>⏱️ Giờ thăm còn lại</span>
+            <b id="visitTimer">03:00</b>
+            <button class="btn small" id="endVisitBtn">Kết thúc buổi thăm</button>
+          </div>
+        </div>
+
+        <div class="glass-room">
+          <div class="glass-label">VÁCH KÍNH • NÓI QUA ĐIỆN THOẠI ☎️</div>
+          <div class="idol-stage">
+            <div id="idolAvatar" class="idol-avatar" role="button" tabindex="0" title="Bấm vào idol để chọc idol">🕺</div>
+            <div id="speechBubble" class="speech">Bấm vào idol để chào idol một cái!</div>
+            <div class="phone-line" aria-hidden="true">📞 ~~~~~ 📞</div>
+          </div>
+          <div class="visitor-side">
+            <div class="visitor-avatar">🧑<span class="name-tag">Bạn</span></div>
+            <p class="hint">Bấm vào idol ở trên để idol phản ứng. Gõ câu hỏi ở ô chat bên dưới.</p>
+          </div>
+        </div>
+
+        <h3>🎁 Gửi đồ thăm nuôi — bấm để gửi (mỗi món cộng điểm + cộng giờ)</h3>
+        <div class="gifts" id="giftsRow"></div>
+        <p class="fine">Đã gửi trong buổi thăm này: <b id="sentCount">0</b> món • Điểm buổi thăm: <b id="visitPoints">0</b></p>
+
+        <h3>💬 Chat hỏi đáp với idol</h3>
+        <div class="chat-log" id="chatLog"></div>
+        <div class="chat-row">
+          <input id="chatInput" type="text" maxlength="120" placeholder="Hỏi idol: làm, ăn, tiền, ra tù, nhớ nhà...">
+          <button class="btn primary" id="chatSendBtn">Gửi</button>
+        </div>
+        <div class="quick-ask" id="quickAsk"></div>
+      </div>
+
+      <div class="panel game-panel">
+        <h2 id="gameTitle">🎮 Mini-game</h2>
+        <p id="gameDesc" class="fine"></p>
+        <div id="gameArea" class="game-area"></div>
+        <div class="game-controls">
+          <button class="btn primary" id="gameStartBtn">▶️ Chơi mini-game</button>
+          <span>Điểm game: <b id="gameScore">0</b> • Còn: <b id="gameTime">—</b></span>
+        </div>
+        <p id="gameResult" class="feedback" hidden></p>
+
+        <h2>📜 Giấy chứng nhận thăm nuôi</h2>
+        <p class="fine">Kết thúc buổi thăm sẽ cấp giấy chứng nhận, ngày lấy theo ngày hiện tại, tải về dạng ảnh PNG.</p>
+        <canvas id="certCanvas" width="640" height="400"></canvas>
+        <button class="btn" id="downloadCertBtn">⬇️ Tải giấy chứng nhận (PNG)</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <p><strong>Vào Tù Thăm Idol</strong> — web parody giải trí hư cấu, chạy hoàn toàn trên trình duyệt, không thu thập dữ liệu, không phải thăm thật.</p>
+  <p class="fine">Tình trạng pháp lý ghi theo báo chí đã công bố: Trường Con 20 năm tù (2020, mua bán ma túy); Khá Bảnh 10 năm 6 tháng (2019, đánh bạc/tổ chức đánh bạc);
+  Huấn Hoa Hồng và Khánh Sky bị khởi tố / tạm giam tháng 8/2026, đang chờ xử lý, chưa có bản án tuyên. Nội dung thoại của idol là lời parody hư cấu, không phải phát ngôn thật.</p>
+  <p class="fine">Số liệu “đang online / lượt thăm / bảng vàng” trên trang đều là số liệu minh họa / mô phỏng.</p>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
