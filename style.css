@@ -109,12 +109,23 @@ main{max-width:1180px;margin:0 auto;padding:16px}
    (overflow-y:auto) + padding dưới 28px để vé không dính sát mép. */
 .start-screen{position:absolute;inset:0;z-index:var(--z-modal);display:grid;grid-template-rows:auto minmax(280px,1fr) auto auto;padding:14px 24px 28px;overflow-y:auto;background:#16211F;border-bottom:3px solid var(--gold-dark)}
 .champ-head{text-align:center;margin-bottom:6px;flex:none}
+/* v5.5: đầu màn hồ sơ gọn lại — h1 mặc định 2em × 2 dòng (~130px) làm lưới
+   nhân vật thiếu chỗ, hàng Shaun bị cắt nửa ở khung game thấp (test v5.4).
+   Title 1.55rem + kicker/sub nhỏ lại → đầu màn ~86px, lưới có thêm ~45px. */
+.champ-head .rpg-kicker{font-size:.8rem;letter-spacing:2px;margin:0 0 2px}
+.champ-head .rpg-title{font-size:1.55rem;line-height:1.08;margin:0 0 2px}
+.champ-head .rpg-sub{font-size:.8rem;margin:0}
+.champ-footnote{margin:6px 0 0}
 .champ-grid{display:grid;grid-template-columns:220px 1fr 300px;gap:20px;min-height:0;overflow:hidden;align-items:stretch}
-.champ-list{display:flex;flex-direction:column;gap:10px;overflow-y:auto;min-height:0;position:relative;z-index:1}
-.champion-option{display:flex;align-items:center;gap:12px;background:rgba(42,69,63,.95);border:2px solid var(--line);border-radius:8px;padding:10px;color:var(--ink);text-align:left;transition:transform .1s ease,border-color .1s ease,box-shadow .1s ease;min-width:0}
+.champ-list{display:flex;flex-direction:column;gap:8px;overflow-y:auto;min-height:0;position:relative;z-index:1}
+.champion-option{display:flex;align-items:center;gap:12px;background:rgba(42,69,63,.95);border:2px solid var(--line);border-radius:8px;padding:8px;color:var(--ink);text-align:left;transition:transform .1s ease,border-color .1s ease,box-shadow .1s ease;min-width:0}
 .champion-option:hover{transform:translateY(-3px);border-color:var(--gold2);box-shadow:0 8px 18px rgba(0,0,0,.5)}
 .champion-option.selected{border-color:var(--gold2);background:#3D5C50;box-shadow:0 0 0 1px var(--gold2)}
-.champ-portrait{position:relative;width:64px;height:80px;flex:none;border:2px solid var(--gold);border-radius:6px;background:#16211F;overflow:hidden;display:flex;align-items:center;justify-content:center}
+/* v5.5: ảnh đại diện 56×68 (trước 64×80) — mỗi hàng còn 88px thay vì 104px,
+   cả 3 hàng + 2 khoảng gap = 280px thay vì 332px, vừa khung lưới ở khung game
+   640px (hàng ~388px sau khi gọn đầu màn) và 576px (hàng ~324px); khung thấp
+   hơn vẫn cuộn trong danh sách như cũ. */
+.champ-portrait{position:relative;width:56px;height:68px;flex:none;border:2px solid var(--gold);border-radius:6px;background:#16211F;overflow:hidden;display:flex;align-items:center;justify-content:center}
 .champ-portrait img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .champ-mono{font-family:var(--font-title);font-weight:700;font-size:2.4rem;color:var(--gold2);line-height:1}
 .champ-mono.big{font-size:5rem}
@@ -280,7 +291,8 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 .visit-summary{margin:0 12px 12px;max-height:64%;overflow-y:auto;text-align:center}
 .summary-list{list-style:none;padding:0;margin:12px 0;text-align:left}
 .summary-list li{display:flex;justify-content:space-between;gap:12px;padding:8px 4px;border-bottom:1px dashed var(--line);font-size:.95rem}
-.summary-list li b{white-space:nowrap}
+.summary-list li span{flex:none}
+.summary-list li b{white-space:nowrap;text-align:right}
 .summary-cert{margin:8px 0}
 #summaryCertBtn{width:100%;font-size:1.15rem;padding:14px 20px}
 .summary-actions{margin-top:12px}
@@ -380,6 +392,7 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 40px;color:var(--muted);
   .ticket-card{top:8px;left:8px;width:auto;max-width:52vw;padding:6px 8px}
   .ticket-card-no{font-size:.9rem}
   .ticket-card-meta{display:none}
+  .ticket-card .ticket-card-title{font-size:.85rem;letter-spacing:1px;white-space:nowrap}
   .ticket-card .stamp.mini{font-size:.6rem;padding:1px 4px}
   .player-avatar{width:30px;height:30px;font-size:1.2rem}
   .player-line{font-size:.78rem}
