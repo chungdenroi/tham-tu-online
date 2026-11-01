@@ -1,9 +1,10 @@
-/* Vào Tù Thăm Idol — GAME 3D thật (Three.js 0.160.0, ES module + importmap).
-   Nhân vật low-poly dựng bằng code, không dùng ảnh thật, không tải GLB ngoài.
+/* Vào Tù Thăm Idol — GAME 3D v3: nhân vật RIGGED THẬT (GLB) + Three.js bundle local.
+   - Three.js 0.160.0 bundle trong ./vendor/ (không phụ thuộc CDN).
+   - Nhân vật là file GLB rigged có skeleton + clip animation thật (Quaternius CC0,
+     Mixamo XBot/Soldier), KHÔNG còn nhân vật ghép hộp/sphere.
+   - Nếu WebGL/Three/model tải lỗi: KHÔNG chặn UI — hiện banner lỗi nhỏ ở đầu khung
+     game (không che nút), vẫn chơi được ở bản chữ (chọn idol, thăm, chat, quà, game).
    Parody giải trí hư cấu. Mọi số liệu online/bảng vàng đều là mô phỏng, đã ghi rõ. */
-import * as THREE from 'three';
-
-window.__thamtuStarted = false;
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerpAngle = (a, b, t) => {
@@ -12,7 +13,7 @@ const lerpAngle = (a, b, t) => {
   if (d < -Math.PI) d += Math.PI * 2;
   return a + d * t;
 };
-const damp = (a, b, lambda, dt) => THREE.MathUtils.lerp(a, b, 1 - Math.exp(-lambda * dt));
+const damp = (a, b, lambda, dt) => a + (b - a) * (1 - Math.exp(-lambda * dt));
 
 const store = {
   get(k, d) { try { const v = localStorage.getItem('thamtu_' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
@@ -25,7 +26,7 @@ const IDOLS = [
     status: 'Đang chấp hành án 10 năm 6 tháng (2019) — tội đánh bạc / tổ chức đánh bạc.',
     desc: 'Idol múa quạt. Vào thăm là được xem múa quạt theo nhịp, nhớ đừng rủ đánh lô đề.',
     game: 'Múa quạt theo nhịp', gameDesc: 'Nhẫn vàng sáng lên thì bấm “MÚA!” đúng nhịp. Bấm đúng +10 điểm, bấm trượt +1.',
-    color: 0xff8a3d, pants: 0x2b2b3d, hair: 0x111111, acc: 'fan',
+    color: 0xff8a3d, pants: 0x2b2b3d, hair: 0x111111, acc: 'fan', model: 'matt', height: 1.78,
     lines: ['Múa quạt nè! Quạt này quạt cho mát, không quạt cho ai nóng!', 'Con đi không sao đâu, rồi con sẽ về!', 'Ở đây anh em đều ngoan, chỉ thiếu mỗi quạt thôi!', 'Nhớ nhà thì múa một bài cho đỡ nhớ!'],
     chat: [
       { keys: ['làm', 'an', 'ăn'], reply: 'Chỉ có làm thì mới có ăn… à nhầm, câu đó của anh Huấn. Anh thì chỉ có múa thì mới có quạt!' },
@@ -38,7 +39,7 @@ const IDOLS = [
     status: 'Bị khởi tố + tạm giam tháng 8/2026 — ĐANG CHỜ XỬ LÝ, chưa có bản án tuyên.',
     desc: 'Thầy đạo lý. Vào thăm là được nghe giảng, nhưng nhớ: làm thì mới có ăn.',
     game: 'Trắc nghiệm đạo lý', gameDesc: 'Chọn câu đạo lý đúng phong cách thầy Huấn. Đúng +20 điểm, sai thì thầy lắc đầu.',
-    color: 0xf5f5f5, pants: 0x1f2a44, hair: 0x222222, acc: 'rose',
+    color: 0xf5f5f5, pants: 0x1f2a44, hair: 0x222222, acc: 'rose', model: 'shaun', height: 1.8,
     lines: ['Chỉ có làm thì mới có ăn, không làm mà đòi có ăn thì… thôi, tự hiểu nhé!', 'Các em vào đây thăm thầy là thầy vui rồi!', 'Đạo lý thì nhiều, nhưng quan trọng là phải làm!', 'Thầy ở đây vẫn ổn, các em ở ngoài nhớ làm ăn chân chính nhé!'],
     chat: [
       { keys: ['làm', 'an', 'ăn'], reply: 'Chỉ có làm thì mới có ăn! Không làm mà đòi có ăn thì chỉ có ăn… đòn thôi!' },
@@ -51,7 +52,7 @@ const IDOLS = [
     status: 'Đang chấp hành án 20 năm tù (xử 2020) — tội mua bán trái phép chất ma túy.',
     desc: 'Thánh ăn chực. Vào thăm nhớ mang đồ ăn, idol này chỉ cần đồ ăn là vui.',
     game: 'Hứng đồ ăn rơi', gameDesc: 'Kéo rổ / bấm ← → để hứng đồ ăn rơi. Hứng được +10 điểm, để rơi thì tiếc lắm!',
-    color: 0x8a6d3b, pants: 0x333333, hair: 0x111111, acc: 'bowl',
+    color: 0x8a6d3b, pants: 0x333333, hair: 0x111111, acc: 'bowl', model: 'soldierMale', height: 1.82, tint: 'Main',
     lines: ['Có đồ ăn không em? Cho anh xin một miếng!', 'Anh ở đây vẫn khỏe, chỉ thèm bát mì tôm thôi!', 'Ngày xưa anh hay đi ăn chực, giờ thì… vẫn thèm ăn!', 'Cảm ơn em đã vào thăm, nhớ mang theo xúc xích nhé!'],
     chat: [
       { keys: ['làm', 'an', 'ăn'], reply: 'Ăn thì anh rành lắm! Nhưng mà ăn chực hoài cũng không tốt, các em đừng học anh!' },
@@ -64,7 +65,7 @@ const IDOLS = [
     status: 'Bị bắt khẩn cấp + khởi tố tháng 8/2026 — ĐANG CHỜ XỬ LÝ, chưa có bản án tuyên.',
     desc: 'Thiên tử livestream. Vào thăm là được xem livestream trong tù, view tăng vù vù.',
     game: 'Livestream tăng view', gameDesc: 'Bấm liên tục để tăng view livestream trong 15 giây. Né nút “BỊ REPORT” — bấm nhầm là mất 200 view!',
-    color: 0xffd34d, pants: 0x4a2d78, hair: 0x3a2a00, acc: 'crown',
+    color: 0xffd34d, pants: 0x4a2d78, hair: 0x3a2a00, acc: 'crown', model: 'knight', height: 1.86,
     lines: ['Livestream của anh lúc nào cũng đông, giờ trong này cũng đông!', 'Các em bấm follow cho anh nhé, dù anh đang… nghỉ livestream dài hạn!', 'Anh xin lỗi mọi người, giờ anh chỉ muốn sống yên ổn thôi!', 'View tăng nhanh thế, các em bấm nhiệt tình quá!'],
     chat: [
       { keys: ['làm', 'an', 'ăn'], reply: 'Làm livestream thì phải có trách nhiệm với lời nói của mình, em ạ. Anh giờ mới hiểu.' },
@@ -85,6 +86,12 @@ const QUIZ = [
   { q: 'Câu nào đúng phong cách thầy Huấn nhất?', opts: ['Không làm mà đòi có ăn', 'Làm ăn chân chính, đừng ham tiền nhanh', 'Tiền nhanh là tiền bền', 'Cứ liều là được'], a: 1 },
   { q: 'Thầy Huấn dặn giới trẻ điều gì?', opts: ['Học theo thầy đoạn sai', 'Sống tốt, làm ăn chân chính', 'Chửi bới cho nổi tiếng', 'Không cần làm gì cả'], a: 1 }
 ];
+/* Model GLB rigged (đã tải về repo, không tải runtime từ URL ngoài trừ file local) */
+const MODEL_URLS = {
+  sam: 'models/sam.glb', matt: 'models/matt.glb', shaun: 'models/shaun.glb',
+  soldierMale: 'models/soldier-male.glb', knight: 'models/knight-golden-male.glb',
+  lis: 'models/lis.glb', casualF: 'models/casual-female.glb', soldierF: 'models/soldier-female.glb'
+};
 
 const state = {
   points: store.get('points', 0),
@@ -96,7 +103,7 @@ const state = {
   currentIdol: null, visitSeconds: 180, visitPoints: 0, sentCount: 0,
   timerId: null, gameTimerId: null, gameActive: false, gameScore: 0,
   ticket: null, queueNum: 14, started: false, visitMode: false,
-  autoWalkTo: null
+  autoWalkTo: null, no3d: false, threeReady: false
 };
 function save() {
   store.set('points', state.points);
@@ -124,41 +131,251 @@ function updateHeader() {
   $('streakCount').textContent = state.streak;
   $('rankName').textContent = rankFor(state.points);
   $('pointsTotal').textContent = state.points.toLocaleString('vi-VN');
+  updateHudBars();
 }
 let toastTimer = null;
 function toast(msg) {
-  const t = $('gameToast'); t.textContent = msg; t.hidden = false;
+  const t = $('gameToast'); if (!t) return; t.textContent = msg; t.hidden = false;
   clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 3000);
 }
 function showSpeech3d(text, ms) {
-  const el = $('speech3d'); el.textContent = text; el.hidden = false;
+  const el = $('speech3d'); if (!el) return; el.textContent = text; el.hidden = false;
   clearTimeout(el._h); el._h = setTimeout(() => { el.hidden = true; }, ms || 3500);
 }
 function addPoints(n) { state.points += n; state.visitPoints += n; updateHeader(); const vp = $('visitPoints'); if (vp) vp.textContent = state.visitPoints; save(); }
 
-/* ================= THREE.JS — SCENE ================= */
-const HALL = { x: 13, z: 9 }; // nửa kích thước sảnh (người chơi bị chặn trong này)
-let renderer, scene, camera, clock;
+/* ================= LỖI 3D: banner nhỏ, KHÔNG che nút, vẫn chơi bản chữ ================= */
+function enterNo3D(stage, message) {
+  state.no3d = true;
+  window.__thamtuStarted = true; // logic phi-3D vẫn chạy -> không hiện lỗi toàn màn hình nữa
+  window.__thamtu3DError = { stage, message: String(message || '') };
+  console.error('[thamtu 3D]', stage, message);
+  const el = $('webglError');
+  if (el) {
+    el.hidden = false;
+    const reason = stage === 'webgl'
+      ? 'Trình duyệt/thiết bị này chưa bật WebGL nên không vẽ được cảnh 3D.'
+      : stage === 'model-load'
+        ? 'Không tải được file nhân vật 3D trong repo (' + message + ').'
+        : 'Không tải được thư viện Three.js trong repo (' + message + ').';
+    el.querySelector('b').textContent = '⚠️ 3D tạm thời không mở được — vẫn chơi được bản chữ bên dưới.';
+    el.querySelector('span').textContent = reason + ' Bạn vẫn vào thăm idol, chat, tặng quà, chơi mini-game bình thường. Bấm “Thử lại 3D” để tải lại trang.';
+  }
+  const gc = $('gameContainer'); if (gc) gc.classList.add('no3d');
+  toast('⚠️ 3D không mở được — vẫn chơi bản chữ: chọn idol ở dưới để vào thăm.');
+}
+
+/* ================= THREE.JS — KHỞI ĐỘNG CÓ KIỂM TRA ================= */
+let THREE = null, GLTFLoaderClass = null, cloneSkinned = null;
+let renderer, scene, camera, clock, loader;
+const HALL = { x: 13, z: 9 };
 let player, playerRig;
-const npcs = [];        // {rig, target, wait}
-const idolRigs = {};    // id -> {rig, boothX, group}
-const booths = [];      // {x, z, idolId|null, label}
-const obstacles = [];   // {x, z, r} vòng tròn va chạm
-const flyItems = [];    // đồ thăm nuôi đang bay
-const raycaster = new THREE.Raycaster();
-const pointerNDC = new THREE.Vector2();
+const npcs = [];
+const idolRigs = {};
+const booths = [];
+const obstacles = [];
+const flyItems = [];
+const allRigs = [];
+let raycaster = null, pointerNDC = null;
 const keys = {};
-const cam = { yaw: 0, pitch: 0.32, dist: 7.5, targetYaw: 0 };
+const cam = { yaw: 0, pitch: 0.32, dist: 7.5 };
 const joy = { active: false, x: 0, y: 0, id: null };
 let fpsFrames = 0, fpsTime = 0;
+let jumpV = 0, playerJumpY = 0;
+
+function webglAvailable() {
+  try {
+    const c = document.createElement('canvas');
+    return !!(c.getContext('webgl2') || c.getContext('webgl'));
+  } catch (e) { return false; }
+}
+
+async function boot() {
+  if (document.readyState === 'loading') {
+    await new Promise((r) => document.addEventListener('DOMContentLoaded', r, { once: true }));
+  }
+  // 1) Kiểm tra WebGL TRƯỚC khi tạo renderer — phân biệt rõ nguyên nhân lỗi
+  if (!webglAvailable()) {
+    enterNo3D('webgl', 'getContext(webgl2/webgl) trả về null');
+    bindInput(); updateHeader(); renderIdols(); renderMissions(); renderLeaderboard();
+    return;
+  }
+  // 2) Tải Three.js LOCAL trong repo (./vendor/), không phụ thuộc CDN
+  try {
+    const threeMod = await import('./vendor/three.module.js');
+    THREE = threeMod;
+    const loaderMod = await import('./vendor/addons/loaders/GLTFLoader.js');
+    GLTFLoaderClass = loaderMod.GLTFLoader;
+    const skelMod = await import('./vendor/addons/utils/SkeletonUtils.js');
+    cloneSkinned = skelMod.clone;
+  } catch (err) {
+    enterNo3D('three-load', err && err.message ? err.message : String(err));
+    bindInput(); updateHeader(); renderIdols(); renderMissions(); renderLeaderboard();
+    return;
+  }
+  try {
+    initThree();
+  } catch (err) {
+    enterNo3D('webgl', err && err.message ? err.message : String(err));
+    bindInput(); updateHeader(); renderIdols(); renderMissions(); renderLeaderboard();
+    return;
+  }
+  state.threeReady = true;
+  window.__thamtuStarted = true;
+  bindInput();
+  bumpStreak();
+  updateHeader(); renderIdols(); renderMissions(); renderLeaderboard();
+  // 3) Tải nhân vật GLB — từng file độc lập, file nào lỗi thì dùng model khác thay thế
+  const ok = await loadAllModels();
+  if (!ok) {
+    enterNo3D('model-load', 'không tải được nhân vật 3D nào trong models/');
+    // vẫn giữ scene sảnh (đã vẽ) + logic bản chữ; chỉ không có nhân vật
+  }
+  tick();
+}
+
+/* ================= RIG NHÂN VẬT GLB — AnimationMixer + crossfade thật ================= */
+const modelCache = {};
+const normCache = {};
+async function loadModel(key) {
+  if (modelCache[key]) return modelCache[key];
+  const gltf = await loader.loadAsync(MODEL_URLS[key]);
+  modelCache[key] = gltf;
+  return gltf;
+}
+function findBone(group, names) {
+  let found = null;
+  group.traverse((o) => { if (!found && names.includes(o.name)) found = o; });
+  return found;
+}
+function pickClip(rig, pats) {
+  const names = Object.keys(rig.clips);
+  for (const p of pats) {
+    const k = names.find((n) => p.test(n));
+    if (k) return rig.clips[k];
+  }
+  return null;
+}
+/* clip đích cho từng trạng thái (thử theo thứ tự ưu tiên) */
+const CLIP_PATS = {
+  idle: [/^Idle$/i, /idle/i],
+  walk: [/^Walk$/i, /walk(?!_)/i, /walk/i],
+  run: [/^Run$/i, /run(?!_)/i, /run/i],
+  wave: [/wave/i, /^Yes$/i, /yes/i],
+  sit: [/sitdown/i, /^Duck$/i, /duck/i, /sit/i],
+  fan: [/dance/i, /victory/i, /wave/i, /punch/i],
+  bow: [/^Yes$/i, /yes/i, /wave/i],
+  jump: [/jump/i],
+  dance: [/dance/i, /victory/i, /wave/i]
+};
+function makeRigFromGLTF(key, gltf, opts) {
+  const o = Object.assign({ height: 1.78, name: key }, opts || {});
+  const group = new THREE.Group();
+  const inner = cloneSkinned(gltf.scene);
+  group.add(inner);
+  // Chuẩn hoá: đo Box3 ở tư thế tải về, scale để cao đúng target, chân chạm đất (y=0)
+  let norm = normCache[key];
+  if (!norm) {
+    const box = new THREE.Box3().setFromObject(group);
+    const size = new THREE.Vector3(); box.getSize(size);
+    const center = new THREE.Vector3(); box.getCenter(center);
+    norm = { scale: o.height / Math.max(size.y, 0.01), minY: box.min.y, cx: center.x, cz: center.z };
+    normCache[key] = norm;
+  }
+  group.scale.setScalar(norm.scale);
+  inner.position.set(-norm.cx, -norm.minY, -norm.cz);
+  group.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = false; } });
+  const mixer = new THREE.AnimationMixer(group);
+  const clips = {};
+  (gltf.animations || []).forEach((a) => { clips[a.name] = a; });
+  const rig = { group, inner, mixer, clips, anim: null, action: null, oneShotTimer: null,
+    speed: 0, targetYaw: 0, height: o.height, key };
+  group.userData.rig = rig;
+  allRigs.push(rig);
+  return rig;
+}
+function setAnim(rig, name, opts) {
+  if (!rig || !rig.mixer) return false;
+  const o = Object.assign({ fade: 0.25, once: false }, opts || {});
+  if (rig.anim === name && rig.action && rig.action.isRunning()) return true;
+  const clip = pickClip(rig, CLIP_PATS[name] || [new RegExp('^' + name + '$', 'i')]);
+  if (!clip) { console.warn('[thamtu] rig', rig.key, 'không có clip cho', name, '— có:', Object.keys(rig.clips)); return false; }
+  if (rig.oneShotTimer) { clearTimeout(rig.oneShotTimer); rig.oneShotTimer = null; }
+  const next = rig.mixer.clipAction(clip, rig.group);
+  const isSit = name === 'sit';
+  next.setLoop(o.once || isSit ? THREE.LoopOnce : THREE.LoopRepeat, o.once || isSit ? 1 : Infinity);
+  next.clampWhenFinished = !!(o.once || isSit);
+  next.reset();
+  if (rig.action && rig.action !== next) rig.action.fadeOut(o.fade);
+  next.fadeIn(o.fade).play();
+  rig.action = next; rig.anim = name;
+  if (o.once) {
+    const durMs = Math.max(600, clip.duration * 1000);
+    rig.oneShotTimer = setTimeout(() => {
+      if (rig.anim === name) setAnim(rig, 'idle', { fade: 0.3 });
+    }, durMs);
+  }
+  return true;
+}
+function tintMaterial(rig, matName, hex) {
+  // Chỉ tô màu vật liệu KHÔNG có texture (Main/Shirt của Quaternius).
+  // Model dùng texture atlas (Sam/Matt/Shaun/Lis) KHÔNG tô — tô sẽ làm da cũng cam theo.
+  rig.group.traverse((m) => {
+    if (!m.isMesh) return;
+    const mats = Array.isArray(m.material) ? m.material : [m.material];
+    mats.forEach((mt) => {
+      if (mt && mt.name === matName && !mt.map) { mt.color.setHex(hex); mt.needsUpdate = true; }
+    });
+  });
+}
+function attachAccessory(rig, kind) {
+  const head = findBone(rig.group, ['Head']);
+  const armR = findBone(rig.group, ['LowerArmR', 'FistR']);
+  const armL = findBone(rig.group, ['LowerArmL', 'FistL']);
+  const torso = findBone(rig.group, ['Torso', 'Spine', 'Spine1']);
+  const gold = new THREE.MeshStandardMaterial({ color: 0xffd34d, metalness: 0.6, roughness: 0.3 });
+  if (kind === 'crown' && head) {
+    const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.17, 0.14, 8), gold);
+    crown.position.y = 0.16; head.add(crown);
+  } else if (kind === 'fan' && armR) {
+    const fan = new THREE.Group();
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.22, 0.02), new THREE.MeshStandardMaterial({ color: 0xffd34d, roughness: 0.6 }));
+    blade.position.set(0, -0.32, 0.04);
+    const stick = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.16, 0.04), new THREE.MeshStandardMaterial({ color: 0x7a4a1f }));
+    stick.position.set(0, -0.44, 0.04);
+    fan.add(blade, stick); armR.add(fan);
+  } else if (kind === 'rose' && torso) {
+    const rose = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), new THREE.MeshStandardMaterial({ color: 0xe6396b, roughness: 0.5 }));
+    rose.position.set(-0.14, 0.18, 0.2); torso.add(rose);
+  } else if (kind === 'bowl' && armL) {
+    const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.08, 0.08, 12), new THREE.MeshStandardMaterial({ color: 0xf5f5f5, roughness: 0.4 }));
+    bowl.position.set(0, -0.3, 0.06); armL.add(bowl);
+  } else if (kind === 'cap' && head) {
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.07, 16), new THREE.MeshStandardMaterial({ color: 0x2f6fd0, roughness: 0.7 }));
+    cap.position.y = 0.15; head.add(cap);
+  }
+}
+function addNameTag(rig, text, y) {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 128;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = 'rgba(8,4,18,0.85)';
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(6, 18, 500, 92, 24); else ctx.rect(6, 18, 500, 92);
+  ctx.fill();
+  ctx.strokeStyle = '#ffcf3f'; ctx.lineWidth = 5; ctx.stroke();
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 46px system-ui, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, 256, 66);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+  sp.scale.set(2.2, 0.55, 1);
+  sp.position.y = y || (rig.height + 0.45);
+  rig.group.add(sp);
+  return sp;
+}
 
 function mat(color, opts) {
   return new THREE.MeshStandardMaterial(Object.assign({ color, roughness: 0.85, metalness: 0.05 }, opts || {}));
-}
-function box(w, h, d, color, x, y, z, parent) {
-  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(color));
-  m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true;
-  (parent || scene).add(m); return m;
 }
 function textSprite(text, scale) {
   const c = document.createElement('canvas'); c.width = 512; c.height = 128;
@@ -177,119 +394,7 @@ function textSprite(text, scale) {
   return sp;
 }
 
-/* --- Nhân vật low-poly dựng bằng code: đầu, thân áo, tay, chân, phụ kiện --- */
-function makeHuman(opts) {
-  const o = Object.assign({ shirt: 0x3f7fd0, pants: 0x2b2b3d, skin: 0xe8b98a, hair: 0x1a1a1a, scale: 1, acc: null }, opts || {});
-  const g = new THREE.Group();
-  const skin = mat(o.skin), shirt = mat(o.shirt), pants = mat(o.pants), hairM = mat(o.hair);
-  // chân (pivot ở hông để đung đưa khi đi)
-  const legL = new THREE.Group(); legL.position.set(-0.14, 0.78, 0);
-  const legR = new THREE.Group(); legR.position.set(0.14, 0.78, 0);
-  const lm = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.78, 0.22), pants);
-  lm.position.y = -0.39; lm.castShadow = true;
-  const lm2 = lm.clone(); legL.add(lm); legR.add(lm2);
-  // thân
-  const body = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.72, 0.36), shirt);
-  body.position.y = 1.14; body.castShadow = true;
-  // tay (pivot ở vai)
-  const armL = new THREE.Group(); armL.position.set(-0.4, 1.44, 0);
-  const armR = new THREE.Group(); armR.position.set(0.4, 1.44, 0);
-  const am = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.62, 0.18), shirt);
-  am.position.y = -0.31; am.castShadow = true;
-  const handL = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), skin); handL.position.y = -0.66;
-  const handR = handL.clone();
-  armL.add(am, handL); armR.add(am.clone(), handR);
-  // đầu + tóc + mắt
-  const head = new THREE.Group(); head.position.y = 1.72;
-  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.27, 18, 14), skin); skull.castShadow = true;
-  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.285, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.55), hairM);
-  hair.position.y = 0.04;
-  const eyeM = mat(0x111111, { roughness: 0.4 });
-  const eL = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 8), eyeM); eL.position.set(-0.1, 0.02, 0.24);
-  const eR = eL.clone(); eR.position.x = 0.1;
-  head.add(skull, hair, eL, eR);
-  g.add(legL, legR, body, armL, armR, head);
-  // phụ kiện riêng từng idol
-  let accessory = null;
-  if (o.acc === 'fan') {
-    accessory = new THREE.Group();
-    const fan = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.26, 0.03), mat(0xffd34d));
-    fan.position.set(0, -0.72, 0.05);
-    const stick = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.2, 0.05), mat(0x7a4a1f));
-    stick.position.set(0, -0.88, 0.05);
-    accessory.add(fan, stick); armR.add(accessory);
-  } else if (o.acc === 'rose') {
-    accessory = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), mat(0xe6396b));
-    accessory.position.set(-0.18, 1.32, 0.2); g.add(accessory);
-  } else if (o.acc === 'bowl') {
-    accessory = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.1, 0.09, 12), mat(0xf5f5f5));
-    accessory.position.set(0, -0.7, 0.08); armL.add(accessory);
-  } else if (o.acc === 'crown') {
-    accessory = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.19, 0.16, 8), mat(0xffd34d, { metalness: 0.6, roughness: 0.3 }));
-    accessory.position.y = 0.3; head.add(accessory);
-  } else if (o.acc === 'cap') {
-    accessory = new THREE.Mesh(new THREE.CylinderGeometry(0.29, 0.29, 0.09, 16), mat(0x2f6fd0));
-    accessory.position.y = 0.24; head.add(accessory);
-  }
-  g.scale.setScalar(o.scale || 1);
-  g.traverse((m) => { if (m.isMesh) m.userData.rootGroup = g; });
-  const rig = { group: g, head, body, armL, armR, legL, legR, accessory,
-    anim: 'idle', animTime: 0, phase: Math.random() * 6, speed: 0, targetYaw: 0 };
-  return rig;
-}
-
-/* --- Chuyển animation mượt: đặt anim mới, rig tự lerp khớp về tư thế đích --- */
-function setAnim(rig, anim, dur) {
-  if (!rig) return;
-  rig.anim = anim; rig.animTime = 0;
-  if (dur) { rig.animDur = dur; } else { rig.animDur = 0; }
-}
-function updateRig(rig, dt) {
-  rig.animTime += dt;
-  const t = rig.animTime;
-  let legSwing = 0, armSwing = 0, bob = 0, armRaiseR = 0, armRaiseL = 0, bodyPitch = 0, bodyY = 0, legBend = 0;
-  if (rig.anim === 'walk') {
-    const ph = t * (rig.speed > 4.5 ? 11 : 8);
-    legSwing = Math.sin(ph) * 0.65;
-    armSwing = Math.sin(ph) * 0.5;
-    bob = Math.abs(Math.sin(ph)) * 0.07;
-  } else if (rig.anim === 'wave') {
-    armRaiseR = -2.3; // tay phải giơ cao
-    rig.armR.rotation.x = damp(rig.armR.rotation.x, -0.4, 14, dt);
-    rig.armR.rotation.z = damp(rig.armR.rotation.z, -0.5 + Math.sin(t * 9) * 0.35, 14, dt);
-    legSwing = 0; bob = Math.sin(t * 2) * 0.015;
-  } else if (rig.anim === 'bow') {
-    bodyPitch = 0.55; armRaiseL = 0.3; armRaiseR = 0.3;
-  } else if (rig.anim === 'fan') {
-    armRaiseR = -1.1;
-    rig.armR.rotation.x = damp(rig.armR.rotation.x, -0.9 + Math.sin(t * 7) * 0.55, 12, dt);
-    rig.armR.rotation.z = damp(rig.armR.rotation.z, -0.4 + Math.cos(t * 7) * 0.25, 12, dt);
-    bodyPitch = 0.06; bob = Math.sin(t * 3) * 0.02;
-  } else if (rig.anim === 'sit') {
-    legBend = -1.35; bodyY = -0.42; bodyPitch = 0.12;
-  } else { // idle: thở
-    bob = Math.sin(t * 1.8 + rig.phase) * 0.02;
-    armSwing = Math.sin(t * 1.8 + rig.phase) * 0.05;
-    rig.head.rotation.y = damp(rig.head.rotation.y, Math.sin(t * 0.5 + rig.phase) * 0.25, 4, dt);
-  }
-  if (rig.anim !== 'wave' && rig.anim !== 'fan') {
-    rig.armR.rotation.x = damp(rig.armR.rotation.x, -armSwing + (armRaiseR ? -1.2 : 0), 12, dt);
-    rig.armR.rotation.z = damp(rig.armR.rotation.z, armRaiseR ? -0.35 : 0.08, 12, dt);
-  }
-  if (rig.anim !== 'fan') {
-    rig.armL.rotation.x = damp(rig.armL.rotation.x, armSwing + (armRaiseL ? -0.4 : 0), 12, dt);
-    rig.armL.rotation.z = damp(rig.armL.rotation.z, armRaiseL ? 0.35 : -0.08, 12, dt);
-  }
-  rig.legL.rotation.x = damp(rig.legL.rotation.x, legSwing + legBend, 14, dt);
-  rig.legR.rotation.x = damp(rig.legR.rotation.x, -legSwing + legBend, 14, dt);
-  rig.body.rotation.x = damp(rig.body.rotation.x, bodyPitch, 10, dt);
-  rig.body.position.y = damp(rig.body.position.y, 1.14 + bob + bodyY, 12, dt);
-  rig.head.position.y = damp(rig.head.position.y, 1.72 + bob + bodyY, 12, dt);
-  if (rig.animDur && t > rig.animDur) { rig.animDur = 0; setAnim(rig, rig.anim === 'sit' ? 'sit' : 'idle'); }
-}
-
 function buildHall() {
-  // sàn caro
   const floorMat = new THREE.MeshStandardMaterial({ color: 0x2a1b4d, roughness: 0.9 });
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(HALL.x * 2 + 6, HALL.z * 2 + 6), floorMat);
   floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
@@ -299,16 +404,13 @@ function buildHall() {
     const tile = new THREE.Mesh(tileGeo, new THREE.MeshStandardMaterial({ color: 0x352260, roughness: 0.9 }));
     tile.rotation.x = -Math.PI / 2; tile.position.set(ix * 2 + 1, 0.01, iz * 2 + 1); tile.receiveShadow = true; scene.add(tile);
   }
-  // tường
   const wallM = mat(0x3a2a5e);
   const mkWall = (w, h, d, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), wallM); m.position.set(x, y, z); m.receiveShadow = true; scene.add(m); return m; };
   mkWall(HALL.x * 2 + 6, 4.5, 0.4, 0, 2.25, -HALL.z - 3);
   mkWall(HALL.x * 2 + 6, 4.5, 0.4, 0, 2.25, HALL.z + 3);
   mkWall(0.4, 4.5, HALL.z * 2 + 6, -HALL.x - 3, 2.25, 0);
   mkWall(0.4, 4.5, HALL.z * 2 + 6, HALL.x + 3, 2.25, 0);
-  // biển tên sảnh
   const sign = textSprite('SẢNH THĂM NUÔI 3D', 1.4); sign.position.set(0, 4.1, -HALL.z - 2.7); scene.add(sign);
-  // cột + đèn trần
   for (const [x, z] of [[-8, -4], [8, -4], [-8, 4], [8, 4]]) {
     const col = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.4, 4.2, 10), mat(0x6b5a9e));
     col.position.set(x, 2.1, z); col.castShadow = true; scene.add(col);
@@ -316,7 +418,6 @@ function buildHall() {
     const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 10), new THREE.MeshStandardMaterial({ color: 0xffe9a8, emissive: 0xffc93f, emissiveIntensity: 1.4 }));
     lamp.position.set(x, 3.9, z); scene.add(lamp);
   }
-  // 24 ô kính: 8 bắc (4 idol + 4 thường), 8 nam, 4 đông, 4 tây
   const boothDefs = [];
   IDOLS.forEach((d, i) => boothDefs.push({ x: -10.5 + i * 7, z: -HALL.z - 1.2, idol: d }));
   for (let i = 0; i < 4; i++) boothDefs.push({ x: -13.5 + i * 9, z: -HALL.z - 1.2, idol: null });
@@ -327,7 +428,6 @@ function buildHall() {
     const grp = new THREE.Group();
     grp.position.set(b.x, 0, b.z);
     if (b.rotY) grp.rotation.y = b.rotY;
-    // khung + kính trong suốt + bàn + ghế
     const frame = new THREE.Mesh(new THREE.BoxGeometry(3.2, 2.6, 0.18), mat(0x1c1032));
     frame.position.y = 1.3; frame.castShadow = true; grp.add(frame);
     const glass = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 2.1),
@@ -340,46 +440,75 @@ function buildHall() {
     const num = textSprite(b.idol ? b.idol.name : ('Ô ' + String(idx + 1).padStart(2, '0')), b.idol ? 1 : 0.8);
     num.position.set(0, 3.05, 0.2); grp.add(num);
     scene.add(grp);
-    booths.push({ x: b.x, z: b.z, idolId: b.idol ? b.idol.id : null, frontX: b.x, frontZ: b.rotY ? b.z : (b.z > 0 ? HALL.z - 0.6 : -HALL.z + 1.6) });
-    if (b.idol) {
-      const rig = makeHuman({ shirt: b.idol.color, pants: b.idol.pants, hair: b.idol.hair, acc: b.idol.acc });
-      rig.group.position.set(b.x, 0, b.z - 1.1);
-      rig.group.rotation.y = 0; // quay mặt ra sảnh (hướng +z)
-      rig.targetYaw = 0;
-      const tag = textSprite(b.idol.name, 1);
-      tag.position.set(0, 2.35, 0); rig.group.add(tag);
-      scene.add(rig.group);
-      idolRigs[b.idol.id] = { rig, boothX: b.x, boothZ: b.z };
-      setAnim(rig, 'idle');
-    } else {
-      // bóng người thường ngồi sau kính, quay mặt về phía sảnh
-      const rig = makeHuman({ shirt: 0x5a6b8a, pants: 0x333333, hair: 0x222222, scale: 0.96 });
-      // đứng sau vách kính: tường bắc/nam lùi theo z, tường đông/tây lùi theo x
-      const px = b.rotY ? b.x + (b.x < 0 ? -1.1 : 1.1) : b.x;
-      const pz = b.rotY ? b.z : b.z + (b.z > 0 ? 1.1 : -1.1);
-      rig.group.position.set(px, 0, pz);
-      rig.group.rotation.y = b.z > 0 ? Math.PI : (b.x < 0 ? Math.PI / 2 : (b.x > 0 ? -Math.PI / 2 : 0));
-      scene.add(rig.group);
-      setAnim(rig, 'sit');
-    }
+    booths.push({ x: b.x, z: b.z, idolId: b.idol ? b.idol.id : null, frontX: b.x, frontZ: b.rotY ? b.z : (b.z > 0 ? HALL.z - 0.6 : -HALL.z + 1.6), rotY: b.rotY || 0 });
   });
 }
 
-function buildNPCs() {
-  const defs = [
-    { name: 'Bà Tư', shirt: 0xc96b9e, hair: 0xdddddd }, { name: 'Anh Ba', shirt: 0x3f7fd0, hair: 0x111111 },
-    { name: 'Chị Lan', shirt: 0x4ade80, hair: 0x2a1a00 }, { name: 'Sinh viên', shirt: 0xffd34d, hair: 0x111111 },
-    { name: 'Ông Sáu', shirt: 0x8a6d3b, hair: 0xeeeeee }, { name: 'Bé An', shirt: 0xff5da2, hair: 0x111111 }
+/* Tải tất cả model cần dùng; file nào lỗi thì thay bằng model đã tải được */
+async function loadAllModels() {
+  loader = new GLTFLoaderClass();
+  const keys = ['sam', 'matt', 'shaun', 'soldierMale', 'knight', 'lis', 'casualF', 'soldierF'];
+  const results = await Promise.allSettled(keys.map((k) => loadModel(k)));
+  const failed = [];
+  results.forEach((r, i) => { if (r.status === 'rejected') failed.push(keys[i] + ': ' + (r.reason && r.reason.message ? r.reason.message : r.reason)); });
+  if (failed.length) console.warn('[thamtu] model tải lỗi:', failed);
+  const loaded = keys.filter((k) => modelCache[k]);
+  if (!loaded.length) return false;
+  const fallbackKey = loaded[0];
+  const pick = (k) => (modelCache[k] ? k : fallbackKey);
+  // Người chơi: model đã chọn ở màn hình RPG (mặc định Sam)
+  playerRig = makeRigFromGLTF(pick(state.playerModel || 'sam'), modelCache[pick(state.playerModel || 'sam')], { height: 1.76, name: 'player' });
+  playerRig.group.position.set(0, 0, 5);
+  attachAccessory(playerRig, 'cap');
+  addNameTag(playerRig, 'Bạn');
+  scene.add(playerRig.group);
+  player = playerRig.group;
+  setAnim(playerRig, 'idle');
+  // 4 idol sau vách kính
+  IDOLS.forEach((d) => {
+    const key = pick(d.model);
+    const rig = makeRigFromGLTF(key, modelCache[key], { height: d.height, name: d.id });
+    const b = booths.find((x) => x.idolId === d.id);
+    rig.group.position.set(b.x, 0, b.z - 1.1);
+    rig.group.rotation.y = 0;
+    if (d.tint) tintMaterial(rig, d.tint, 0xff8a3d); // áo tù cam (chỉ vật liệu không texture)
+    attachAccessory(rig, d.acc);
+    addNameTag(rig, d.name);
+    scene.add(rig.group);
+    idolRigs[d.id] = { rig, boothX: b.x, boothZ: b.z };
+    setAnim(rig, 'idle');
+  });
+  // Người thường ngồi sau kính ở ô không có idol
+  const occKeys = ['lis', 'casualF', 'soldierF'];
+  let oi = 0;
+  booths.filter((b) => !b.idolId).forEach((b) => {
+    const key = pick(occKeys[oi % occKeys.length]); oi++;
+    const rig = makeRigFromGLTF(key, modelCache[key], { height: 1.72, name: 'occ' });
+    const px = b.rotY ? b.x + (b.x < 0 ? -1.1 : 1.1) : b.x;
+    const pz = b.rotY ? b.z : b.z + (b.z > 0 ? 1.1 : -1.1);
+    rig.group.position.set(px, 0, pz);
+    rig.group.rotation.y = b.z > 0 ? Math.PI : (b.x < 0 ? Math.PI / 2 : (b.x > 0 ? -Math.PI / 2 : 0));
+    scene.add(rig.group);
+    setAnim(rig, 'sit');
+  });
+  // 6 NPC đi lại trong sảnh
+  const npcDefs = [
+    { name: 'Bà Tư', model: 'lis', height: 1.68 }, { name: 'Anh Ba', model: 'matt', height: 1.78 },
+    { name: 'Chị Lan', model: 'casualF', height: 1.7 }, { name: 'Sinh viên', model: 'sam', height: 1.76 },
+    { name: 'Ông Sáu', model: 'shaun', height: 1.8 }, { name: 'Bé An', model: 'soldierF', height: 1.66 }
   ];
-  defs.forEach((d, i) => {
-    const rig = makeHuman({ shirt: d.shirt, hair: d.hair, scale: 0.95 });
+  npcDefs.forEach((d, i) => {
+    const key = pick(d.model);
+    const rig = makeRigFromGLTF(key, modelCache[key], { height: d.height, name: 'npc' + i });
     const x = -9 + i * 3.6, z = -2 + (i % 3) * 3;
     rig.group.position.set(x, 0, z);
-    const tag = textSprite(d.name, 0.85); tag.position.set(0, 2.3, 0); rig.group.add(tag);
+    addNameTag(rig, d.name, rig.height + 0.4);
     scene.add(rig.group);
     npcs.push({ rig, name: d.name, target: new THREE.Vector3(x, 0, z), wait: Math.random() * 2 });
     setAnim(rig, 'idle');
   });
+  if (failed.length) toast('⚠️ Một số nhân vật tải lỗi, đã thay bằng nhân vật khác: ' + failed.map((f) => f.split(':')[0]).join(', '));
+  return true;
 }
 
 function initThree() {
@@ -395,6 +524,8 @@ function initThree() {
   camera = new THREE.PerspectiveCamera(58, 1, 0.1, 100);
   camera.position.set(0, 4, 10);
   clock = new THREE.Clock();
+  raycaster = new THREE.Raycaster();
+  pointerNDC = new THREE.Vector2();
   scene.add(new THREE.HemisphereLight(0xcdb8ff, 0x1a0f2e, 0.9));
   const sun = new THREE.DirectionalLight(0xffe9a8, 1.6);
   sun.position.set(8, 12, 6); sun.castShadow = true;
@@ -403,583 +534,935 @@ function initThree() {
   sun.shadow.camera.top = 18; sun.shadow.camera.bottom = -18;
   scene.add(sun);
   const warm = new THREE.PointLight(0xff8a3d, 25, 18, 1.8); warm.position.set(0, 3.6, -6); scene.add(warm);
-  buildHall(); buildNPCs();
-  // người chơi
-  playerRig = makeHuman({ shirt: 0x3f7fd0, pants: 0x2b2b3d, hair: 0x1a1a1a, acc: 'cap' });
-  playerRig.group.position.set(0, 0, 5);
-  const ptag = textSprite('Bạn', 0.9); ptag.position.set(0, 2.35, 0); playerRig.group.add(ptag);
-  scene.add(playerRig.group);
-  player = playerRig.group;
-  setAnim(playerRig, 'idle');
+  buildHall();
   resize();
   window.addEventListener('resize', resize);
-  window.__thamtuStarted = true;
+  // ResizeObserver: canvas luôn có kích thước thật khi khung game đổi cỡ
+  if (window.ResizeObserver) {
+    new ResizeObserver(() => { if (renderer) resize(); }).observe($('gameContainer'));
+  }
 }
 function resize() {
+  if (!renderer || !camera) return;
   const box = $('gameContainer').getBoundingClientRect();
   const w = Math.max(320, box.width), h = Math.max(320, box.height);
   renderer.setSize(w, h, false);
   camera.aspect = w / h; camera.updateProjectionMatrix();
 }
 
-/* ================= ĐIỀU KHIỂN THIRD-PERSON ================= */
+/* ================= DI CHUYỂN — third-person controller ================= */
+function movePlayerTo(x, z, dt) {
+  const dx = x - player.position.x, dz = z - player.position.z;
+  const len = Math.hypot(dx, dz);
+  if (len < 0.05) return;
+  const sp = 3.2 * dt;
+  player.position.x += (dx / len) * Math.min(sp, len);
+  player.position.z += (dz / len) * Math.min(sp, len);
+}
 function updatePlayer(dt) {
-  if (!state.started || state.visitMode) {
-    const want = state.visitMode ? 'sit' : 'idle';
-    if (playerRig.anim !== want) setAnim(playerRig, want);
+  if (!player || !playerRig) return;
+  if (state.visitMode) {
+    if (playerRig.anim !== 'sit') setAnim(playerRig, 'sit');
     return;
   }
-  let ix = 0, iz = 0;
-  if (keys['KeyW'] || keys['ArrowUp']) iz -= 1;
-  if (keys['KeyS'] || keys['ArrowDown']) iz += 1;
-  if (keys['KeyA'] || keys['ArrowLeft']) ix -= 1;
-  if (keys['KeyD'] || keys['ArrowRight']) ix += 1;
-  ix += joy.x; iz += joy.y;
-  // tự chạy tới ô kính khi bấm thẻ idol
+  // Nhảy (Space) — rig có clip Jump thật, vật lý nhảy đơn giản
+  if (keys['Space'] && playerJumpY <= 0 && !state.autoWalkTo) {
+    jumpV = 5.2;
+    setAnim(playerRig, 'jump', { once: true });
+  }
+  if (jumpV !== 0 || playerJumpY > 0) {
+    jumpV -= 14 * dt;
+    playerJumpY = Math.max(0, playerJumpY + jumpV * dt);
+    if (playerJumpY === 0) jumpV = 0;
+    player.position.y = playerJumpY;
+  }
   if (state.autoWalkTo) {
-    const dx = state.autoWalkTo.x - player.position.x;
-    const dz = state.autoWalkTo.z - player.position.z;
-    const d = Math.hypot(dx, dz);
-    if (d < 0.6) { state.autoWalkTo = null; }
-    else { ix = dx / d; iz = dz / d; }
-  }
-  const len = Math.hypot(ix, iz);
-  const running = keys['ShiftLeft'] || keys['ShiftRight'];
-  const speed = running ? 6.2 : 3.4;
-  if (len > 0.01) {
-    ix /= Math.max(1, len); iz /= Math.max(1, len);
-    // hướng di chuyển theo góc camera (yaw)
-    const sin = Math.sin(cam.yaw), cos = Math.cos(cam.yaw);
-    const wx = ix * cos - iz * sin;
-    const wz = ix * sin + iz * cos;
-    player.position.x += wx * speed * dt;
-    player.position.z += wz * speed * dt;
-    const targetYaw = Math.atan2(wx, wz);
-    player.rotation.y = lerpAngle(player.rotation.y, targetYaw, 1 - Math.exp(-12 * dt));
-    playerRig.speed = speed;
-    if (playerRig.anim === 'idle' || playerRig.anim === 'walk') setAnim(playerRig, 'walk');
+    const t = state.autoWalkTo;
+    const dx = t.x - player.position.x, dz = t.z - player.position.z;
+    if (Math.hypot(dx, dz) < 0.25) { state.autoWalkTo = null; if (playerRig.anim !== 'idle') setAnim(playerRig, 'idle'); }
+    else {
+      movePlayerTo(t.x, t.z, dt);
+      playerRig.targetYaw = Math.atan2(dx, dz);
+      if (playerRig.anim !== 'walk') setAnim(playerRig, 'walk');
+    }
   } else {
-    playerRig.speed = 0;
-    if (playerRig.anim === 'walk') setAnim(playerRig, 'idle');
+    let ix = 0, iz = 0;
+    if (keys['KeyW'] || keys['ArrowUp']) iz -= 1;
+    if (keys['KeyS'] || keys['ArrowDown']) iz += 1;
+    if (keys['KeyA'] || keys['ArrowLeft']) ix -= 1;
+    if (keys['KeyD'] || keys['ArrowRight']) ix += 1;
+    if (joy.active) { ix += joy.x; iz += joy.y; }
+    const len = Math.hypot(ix, iz);
+    const running = !!(keys['ShiftLeft'] || keys['ShiftRight']);
+    if (len > 0.08) {
+      ix /= Math.max(1, len); iz /= Math.max(1, len);
+      const sin = Math.sin(cam.yaw), cos = Math.cos(cam.yaw);
+      const mx = ix * cos - iz * sin, mz = ix * sin + iz * cos;
+      const speed = running ? 5.6 : 3.0;
+      player.position.x += mx * speed * dt;
+      player.position.z += mz * speed * dt;
+      playerRig.targetYaw = Math.atan2(mx, mz);
+      const want = running ? 'run' : 'walk';
+      if (playerRig.anim !== want) setAnim(playerRig, want);
+    } else if (playerRig.anim !== 'idle') {
+      setAnim(playerRig, 'idle');
+    }
   }
-  // va chạm: biên sảnh + cột + bàn ô kính
-  player.position.x = clamp(player.position.x, -HALL.x + 0.8, HALL.x - 0.8);
-  player.position.z = clamp(player.position.z, -HALL.z + 1.8, HALL.z - 0.8);
+  player.rotation.y = lerpAngle(player.rotation.y, playerRig.targetYaw, 1 - Math.exp(-12 * dt));
+  player.position.x = clamp(player.position.x, -HALL.x - 2.4, HALL.x + 2.4);
+  player.position.z = clamp(player.position.z, -HALL.z - 2.4, HALL.z + 2.4);
   for (const o of obstacles) {
     const dx = player.position.x - o.x, dz = player.position.z - o.z;
     const d = Math.hypot(dx, dz);
-    if (d < o.r + 0.45 && d > 0.001) {
-      player.position.x = o.x + (dx / d) * (o.r + 0.45);
-      player.position.z = o.z + (dz / d) * (o.r + 0.45);
-    }
+    if (d < o.r && d > 0.001) { player.position.x = o.x + (dx / d) * o.r; player.position.z = o.z + (dz / d) * o.r; }
   }
 }
 function updateCamera(dt) {
-  let targetPos, lookAt;
+  if (!player || !camera) return;
   if (state.visitMode && state.currentIdol) {
-    const info = idolRigs[state.currentIdol.id];
+    const info = idolRigs[state.currentIdol];
     const bx = info ? info.boothX : 0;
-    targetPos = new THREE.Vector3(bx, 2.1, -3.4);
-    lookAt = new THREE.Vector3(bx, 1.4, -HALL.z - 1);
-  } else {
-    const dist = cam.dist;
-    const cx = player.position.x - Math.sin(cam.yaw) * Math.sin(cam.pitch) * 0 + Math.sin(cam.yaw) * dist * Math.cos(cam.pitch);
-    const cz = player.position.z + Math.cos(cam.yaw) * dist * Math.cos(cam.pitch);
-    const cy = 1.6 + Math.sin(cam.pitch) * dist + 1.2;
-    targetPos = new THREE.Vector3(cx, cy, cz);
-    lookAt = new THREE.Vector3(player.position.x, 1.5, player.position.z);
+    const target = new THREE.Vector3(bx + 0.6, 1.7, -HALL.z + 5.2);
+    camera.position.x = damp(camera.position.x, target.x, 4, dt);
+    camera.position.y = damp(camera.position.y, target.y, 4, dt);
+    camera.position.z = damp(camera.position.z, target.z, 4, dt);
+    const look = new THREE.Vector3(bx, 1.5, -HALL.z - 1);
+    camera.lookAt(look);
+    return;
   }
-  camera.position.x = damp(camera.position.x, targetPos.x, 6, dt);
-  camera.position.y = damp(camera.position.y, targetPos.y, 6, dt);
-  camera.position.z = damp(camera.position.z, targetPos.z, 6, dt);
-  camera.lookAt(lookAt);
+  const cd = cam.dist;
+  const tx = player.position.x - Math.sin(cam.yaw) * cd;
+  const tz = player.position.z - Math.cos(cam.yaw) * cd;
+  const ty = 2.2 + Math.sin(cam.pitch) * cd;
+  camera.position.x = damp(camera.position.x, tx, 8, dt);
+  camera.position.y = damp(camera.position.y, ty, 8, dt);
+  camera.position.z = damp(camera.position.z, tz, 8, dt);
+  camera.lookAt(player.position.x, 1.5, player.position.z);
 }
 function updateNPCs(dt) {
   for (const n of npcs) {
-    if (n.wait > 0) { n.wait -= dt; setAnim(n.rig, 'idle'); continue; }
-    const p = n.rig.group.position;
-    const dx = n.target.x - p.x, dz = n.target.z - p.z;
+    if (!n.rig) continue;
+    if (n.wait > 0) { n.wait -= dt; if (n.rig.anim !== 'idle') setAnim(n.rig, 'idle'); continue; }
+    const dx = n.target.x - n.rig.group.position.x, dz = n.target.z - n.rig.group.position.z;
     const d = Math.hypot(dx, dz);
-    if (d < 0.4) {
-      n.wait = 1 + Math.random() * 3;
-      n.target.set((Math.random() * 2 - 1) * 11, 0, (Math.random() * 2 - 1) * 7);
-      if (n.rig.anim === 'walk') setAnim(n.rig, 'idle');
+    if (d < 0.3) {
+      n.wait = 1 + Math.random() * 4;
+      n.target.set((Math.random() * 2 - 1) * (HALL.x - 2), 0, (Math.random() * 2 - 1) * (HALL.z - 2));
+      if (n.rig.anim !== 'idle') setAnim(n.rig, 'idle');
     } else {
-      n.rig.speed = 2;
-      if (n.rig.anim === 'idle' || n.rig.anim === 'walk') setAnim(n.rig, 'walk');
-      p.x += (dx / d) * 1.8 * dt; p.z += (dz / d) * 1.8 * dt;
-      n.rig.group.rotation.y = lerpAngle(n.rig.group.rotation.y, Math.atan2(dx, dz), 1 - Math.exp(-8 * dt));
+      n.rig.group.position.x += (dx / d) * 1.2 * dt;
+      n.rig.group.position.z += (dz / d) * 1.2 * dt;
+      n.rig.targetYaw = Math.atan2(dx, dz);
+      n.rig.group.rotation.y = lerpAngle(n.rig.group.rotation.y, n.rig.targetYaw, 1 - Math.exp(-8 * dt));
+      if (n.rig.anim !== 'walk') setAnim(n.rig, 'walk');
     }
-    updateRig(n.rig, dt);
   }
 }
 function nearestBooth() {
-  let best = null, bd = 1e9;
+  if (!player) return null;
+  let best = null, bestD = 2.6;
   for (const b of booths) {
-    if (!b.idolId) continue;
-    const fx = b.frontX, fz = b.frontZ;
-    const d = Math.hypot(player.position.x - fx, player.position.z - fz);
-    if (d < bd) { bd = d; best = b; }
+    const d = Math.hypot(player.position.x - b.x, player.position.z - b.frontZ);
+    if (d < bestD) { bestD = d; best = b; }
   }
-  return bd < 2.6 ? { booth: best, dist: bd } : null;
+  return best;
 }
-function nearestNPC() {
-  let best = null, bd = 1e9;
-  for (const n of npcs) {
-    const p = n.rig.group.position;
-    const d = Math.hypot(p.x - player.position.x, p.z - player.position.z);
-    if (d < bd) { bd = d; best = n; }
-  }
-  return bd < 5 ? best : null;
+function updateNearPrompt() {
+  const el = $('nearPrompt');
+  if (!state.started || !player) { el.hidden = true; return; }
+  if (state.visitMode) { el.hidden = true; return; }
+  const b = nearestBooth();
+  if (!b) { el.hidden = true; return; }
+  el.hidden = false;
+  $('nearPromptText').textContent = b.idolId
+    ? ('Ô ' + IDOLS.find((d) => d.id === b.idolId).name + ' — bấm E để vào thăm')
+    : 'Ô này đang trống — bấm E để ngồi chờ';
+  el.dataset.boothId = b.idolId || '';
 }
-
-/* ================= VÒNG LẶP GAME ================= */
-let lastNear = null;
-function tick() {
-  requestAnimationFrame(tick);
-  const dt = Math.min(clock.getDelta(), 0.05);
-  fpsFrames++; fpsTime += dt;
-  if (fpsTime >= 1) { $('fpsChip').textContent = Math.round(fpsFrames / fpsTime) + ' FPS'; fpsFrames = 0; fpsTime = 0; }
-  updatePlayer(dt);
-  updateCamera(dt);
-  updateNPCs(dt);
-  updateRig(playerRig, dt);
-  for (const id in idolRigs) updateRig(idolRigs[id].rig, dt);
-  // đồ bay tới idol
-  for (let i = flyItems.length - 1; i >= 0; i--) {
-    const f = flyItems[i]; f.t += dt / 0.9;
-    if (f.t >= 1) { scene.remove(f.mesh); flyItems.splice(i, 1); continue; }
-    f.mesh.position.lerpVectors(f.from, f.to, f.t);
-    f.mesh.position.y += Math.sin(f.t * Math.PI) * 1.2;
-    f.mesh.rotation.y += dt * 6;
+function enterGame() {
+  const name = ($('playerNameInput').value || '').trim();
+  if (name) state.playerName = name;
+  $('startScreen').hidden = true;
+  state.started = true;
+  if (playerRig) swapPlayerModel(state.playerModel || 'sam');
+  if (state.no3d) {
+    toast('🎮 Đang chơi bản chữ — kéo xuống dưới chọn idol để vào thăm.');
+    return;
   }
-  // nhắc vào thăm khi tới gần ô kính
-  if (state.started && !state.visitMode) {
-    const near = nearestBooth();
-    lastNear = near;
-    if (near) {
-      const d = IDOLS.find(x => x.id === near.booth.idolId);
-      $('nearPromptText').textContent = 'Tới gần ô kính ' + d.name + ' ' + d.emoji + ' — bấm E để vào thăm';
-      $('nearPrompt').hidden = false;
-    } else $('nearPrompt').hidden = true;
-  } else $('nearPrompt').hidden = true;
-  renderer.render(scene, camera);
+  if (!playerRig) { toast('⏳ Đang tải nhân vật 3D… chờ một chút rồi di chuyển nhé!'); }
+  toast('🎮 Vào sảnh! WASD di chuyển • kéo chuột xoay camera • tới gần ô kính bấm E để vào thăm.');
 }
 
-/* ================= PHÒNG THĂM 3D ================= */
-function fmt(s) { return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); }
-function openVisit(id) {
-  const d = IDOLS.find(x => x.id === id); if (!d) return;
-  state.currentIdol = d; state.visitMode = true; state.visitSeconds = 180; state.visitPoints = 0; state.sentCount = 0;
-  const info = idolRigs[id];
-  if (info) { // người chơi ngồi trước ô kính, idol quay mặt lại
-    player.position.set(info.boothX, 0, -HALL.z + 2.6);
+/* ================= THĂM NUÔI ================= */
+function openVisit(idolId) {
+  const idol = IDOLS.find((d) => d.id === idolId);
+  if (!idol) return;
+  if (!state.started) { enterGame(); }
+  state.currentIdol = idolId;
+  state.visitMode = true;
+  state.visitSeconds = 180;
+  state.visitPoints = 0;
+  state.sentCount = 0;
+  bumpStreak();
+  if (!state.visited.has(idolId)) {
+    state.visited.add(idolId);
+    addPoints(20);
+    toast('🎉 Lần đầu thăm ' + idol.name + '! +20 điểm.');
+  }
+  if (state.no3d || !idolRigs[idolId]) {
+    // Bản chữ: không cần camera 3D, vẫn mở phòng thăm đầy đủ
+  } else if (player && playerRig) {
+    const info = idolRigs[idolId];
+    const b = booths.find((x) => x.idolId === idolId);
+    player.position.set(b.x, 0, b.frontZ);
     player.rotation.y = Math.PI;
+    playerRig.targetYaw = Math.PI;
     setAnim(playerRig, 'sit');
-    setAnim(info.rig, 'wave', 2.5);
-    info.rig.group.rotation.y = 0;
+    if (info.rig) setAnim(info.rig, 'wave', { once: true });
   }
-  $('visitTitle').textContent = 'Phòng thăm — ' + d.name + ' ' + d.emoji;
-  $('visitStatus').textContent = d.real + ' • ' + d.status + ' (Parody hư cấu)';
-  $('speechBubble').textContent = d.name + ': ' + d.lines[0];
-  showSpeech3d(d.name + ': ' + d.lines[0], 4000);
-  $('visitTimer').textContent = fmt(state.visitSeconds);
-  $('visitPoints').textContent = '0'; $('sentCount').textContent = '0';
-  $('chatLog').innerHTML = '<div class="chat-msg idol"><b>' + d.name + ':</b> Chào em! Vào thăm anh/chị là vui rồi. Bấm vào idol 3D hoặc gõ câu hỏi nhé!</div>';
-  $('gameTitle').textContent = '🎮 Mini-game: ' + d.game;
-  $('gameDesc').textContent = d.gameDesc;
-  $('gameArea').innerHTML = '<p class="fine">Bấm “Chơi mini-game” để bắt đầu. Chơi xong được cộng điểm thăm nuôi.</p>';
-  $('gameScore').textContent = '0'; $('gameTime').textContent = '—'; $('gameResult').hidden = true;
-  $('quickAsk').innerHTML = ['Hôm nay idol khỏe không?', 'Idol có nhớ nhà không?', 'Khi nào idol ra tù?', 'Idol thích ăn gì nhất?'].map(q => '<button type="button">' + q + '</button>').join('');
-  document.querySelectorAll('#quickAsk button').forEach(b => b.addEventListener('click', () => { $('chatInput').value = b.textContent; sendChat(); }));
-  renderGifts();
+  document.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
   $('visitScreen').classList.add('active');
-  $('visitScreen').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  $('visitTitle').textContent = idol.emoji + ' Thăm ' + idol.name;
+  $('visitStatus').textContent = idol.status;
+  $('sentCount').textContent = '0';
+  $('visitPoints').textContent = state.visitPoints;
+  $('speechBubble').textContent = '"' + idol.lines[0] + '"';
+  $('chatLog').innerHTML = '';
+  $('gameResult').textContent = '';
+  $('gameScore').textContent = '0';
+  $('gameTime').textContent = '0:00';
+  $('gameTitle').textContent = '🎮 ' + idol.game;
+  $('gameDesc').textContent = idol.gameDesc;
+  $('gameArea').innerHTML = '<p class="hint">Bấm “Bắt đầu chơi” để chơi mini-game của ' + idol.name + '.</p>';
+  renderGifts();
+  $('visitScreen').scrollIntoView({ behavior: 'smooth' });
+  const greetBtn = $('greetIdolBtn');
+  if (greetBtn) greetBtn.textContent = '👋 Chào ' + idol.name;
   clearInterval(state.timerId);
   state.timerId = setInterval(() => {
-    state.visitSeconds -= 1;
-    if (state.visitSeconds <= 0) { endVisit('Hết giờ thăm!'); return; }
-    $('visitTimer').textContent = fmt(state.visitSeconds);
+    state.visitSeconds--;
+    const t = $('visitTimer');
+    if (t) t.textContent = String(Math.floor(state.visitSeconds / 60)).padStart(2, '0') + ':' + String(state.visitSeconds % 60).padStart(2, '0');
+    if (state.visitSeconds <= 0) { endVisit('⏰ Hết 3 phút thăm nuôi! Cảm ơn bạn đã vào thăm ' + idol.name + '.'); }
   }, 1000);
-  bumpStreak(); updateHeader();
-  toast('🚪 Bạn đã vào phòng thăm ' + d.name + ' — bấm vào idol 3D để chào!');
+  checkMission('visit');
 }
-function closeVisit() {
-  state.visitMode = false; state.currentIdol = null;
-  clearInterval(state.timerId); stopGame();
-  setAnim(playerRig, 'idle');
-  $('visitScreen').classList.remove('active');
-  $('gameContainer').scrollIntoView({ behavior: 'smooth', block: 'center' });
+function endVisit(msg) {
+  clearInterval(state.timerId);
+  if (msg) toast(msg);
+  state.visitMode = false;
+  state.currentIdol = null;
+  stopGame();
+  if (playerRig && playerRig.anim !== 'idle') setAnim(playerRig, 'idle');
+  document.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
+  const lb = $('lobbyScreen');
+  if (lb) { lb.classList.add('active'); lb.scrollIntoView({ behavior: 'smooth' }); }
+  else { const gc = $('gameContainer'); if (gc) gc.scrollIntoView({ behavior: 'smooth' }); }
 }
-function endVisit(reason) {
-  clearInterval(state.timerId); stopGame();
-  const d = state.currentIdol; if (!d) return;
-  state.visited.add(d.id); state.missions.visit1 = true; save();
-  updateHeader(); renderIdols(); renderMissions(); renderLeaderboard();
-  drawCertificate(d);
-  $('speechBubble').textContent = reason + ' ' + d.name + ': Cảm ơn em đã vào thăm! Hẹn em lần sau nhé!';
-  showSpeech3d(d.name + ': Cảm ơn em đã vào thăm!', 3500);
-  toast('📜 ' + reason + ' Đã cấp giấy chứng nhận thăm nuôi cho ' + d.name + '!');
+function greetIdol() {
+  const idol = IDOLS.find((d) => d.id === state.currentIdol);
+  if (!idol) return;
+  const info = idolRigs[idol.id];
+  if (info && info.rig) setAnim(info.rig, 'wave', { once: true });
+  const line = idol.lines[Math.floor(Math.random() * idol.lines.length)];
+  $('speechBubble').textContent = '"' + line + '"';
+  if (playerRig) setAnim(playerRig, 'bow', { once: true });
+  showSpeech3d(line, 3500);
+  addPoints(5);
+  toast('👋 Bạn chào ' + idol.name + ' (+5 điểm).');
+  checkMission('greet');
 }
 function renderGifts() {
-  $('giftsRow').innerHTML = GIFTS.map((g, i) => '<button class="gift-btn" data-i="' + i + '">' + g.emoji + ' ' + g.name + '<br><small>+' + g.pts + 'đ • +' + g.secs + 's</small></button>').join('');
-  document.querySelectorAll('.gift-btn').forEach(b => b.addEventListener('click', () => sendGift(+b.dataset.i)));
+  const row = $('giftsRow');
+  row.innerHTML = '';
+  GIFTS.forEach((g, i) => {
+    const b = document.createElement('button');
+    b.className = 'gift-btn';
+    const count = (state.inventory[INV_KEYS[i]] || 0);
+    b.textContent = g.emoji + ' ' + g.name + ' (+' + g.pts + 'đ) ×' + count;
+    if (count <= 0) b.disabled = true;
+    b.addEventListener('click', () => sendGift(g));
+    row.appendChild(b);
+  });
 }
-function sendGift(i) {
-  const g = GIFTS[i]; const d = state.currentIdol; if (!d) return;
-  state.sentCount += 1; state.giftsSentToday += 1;
-  $('sentCount').textContent = state.sentCount;
-  state.visitSeconds = Math.min(300, state.visitSeconds + g.secs);
-  $('visitTimer').textContent = fmt(state.visitSeconds);
-  addPoints(g.pts);
-  // đồ bay trong cảnh 3D từ người chơi tới idol
-  const info = idolRigs[d.id];
-  if (info) {
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), mat(g.color));
-    mesh.position.copy(player.position).add(new THREE.Vector3(0, 1.4, 0));
-    scene.add(mesh);
-    flyItems.push({ mesh, from: mesh.position.clone(), to: new THREE.Vector3(info.boothX, 1.4, -HALL.z - 0.6), t: 0 });
-    setAnim(info.rig, 'wave', 2);
-    showSpeech3d(d.name + ': Cảm ơn em đã gửi ' + g.name + ' ' + g.emoji + '! Ngon lắm!', 3000);
+function sendGift(g) {
+  const idol = IDOLS.find((d) => d.id === state.currentIdol);
+  if (!idol) return;
+  // Trừ đồ trong túi (RPG inventory)
+  const gi = GIFTS.indexOf(g);
+  const key = INV_KEYS[gi];
+  if ((state.inventory[key] || 0) <= 0) {
+    toast('🎒 Hết ' + g.name + ' rồi! Bấm “Nhận thêm đồ tiếp tế” ở túi đồ nhé!');
+    return;
   }
-  $('speechBubble').textContent = d.name + ': Cảm ơn em đã gửi ' + g.name + ' ' + g.emoji + '! Ngon lắm!';
-  if (state.giftsSentToday >= 3) { state.missions.gift3 = true; save(); renderMissions(); }
-  renderLeaderboard();
+  state.inventory[key]--;
+  store.set('inventory', state.inventory);
+  renderInventory(); renderGifts();
+  state.giftsSentToday++;
+  state.sentCount++;
+  $('sentCount').textContent = String(state.sentCount);
+  addPoints(g.pts);
+  const line = idol.name + ' nhận được ' + g.emoji + ' ' + g.name + '! Cảm ơn bạn nhiều nhé!';
+  $('speechBubble').textContent = '"' + line + '"';
+  showSpeech3d(line, 3000);
+  if (state.threeReady && !state.no3d && idolRigs[idol.id]) flyGift(g, idolRigs[idol.id].rig);
+  toast(g.emoji + ' Đã gửi ' + g.name + ' cho ' + idol.name + ' (+' + g.pts + ' điểm, còn ' + g.secs + 's thăm nuôi thêm — tính gộp vào lượt này).');
+  checkMission('gift');
 }
-let lineIdx = 0;
-function tapIdol() {
-  const d = state.currentIdol; if (!d) return;
-  const info = idolRigs[d.id];
-  lineIdx = (lineIdx + 1) % d.lines.length;
-  const line = d.name + ': ' + d.lines[lineIdx];
-  $('speechBubble').textContent = line;
-  showSpeech3d(line, 3500);
-  if (info) setAnim(info.rig, d.id === 'kha' ? 'fan' : 'wave', 2.5);
-  addPoints(1);
-}
-function idolReply(text) {
-  const d = state.currentIdol; if (!d) return '…';
-  const t = text.toLowerCase();
-  for (const c of d.chat) if (c.keys.some(k => t.includes(k))) return c.reply;
-  const generic = ['Câu này hay đó! Nhưng ở đây anh/chị chỉ trả lời được mấy chuyện đời thường thôi.', 'Em hỏi khó quá! Hỏi anh/chị về ăn, làm, tiền, nhớ nhà đi!', 'Ừ, anh/chị nghe rồi. Em thăm anh/chị thế này là quý lắm!'];
-  return generic[Math.floor(Math.random() * generic.length)];
-}
-function sendChat() {
-  const inp = $('chatInput'); const text = inp.value.trim(); if (!text || !state.currentIdol) return;
-  $('chatLog').innerHTML += '<div class="chat-msg you"><b>Bạn:</b> ' + text.replace(/</g, '&lt;') + '</div>';
-  inp.value = ''; state.chatCount += 1;
-  if (state.chatCount >= 3) { state.missions.chat3 = true; save(); renderMissions(); }
-  $('chatLog').innerHTML += '<div class="chat-msg idol" id="typingMsg"><b>' + state.currentIdol.name + ':</b> <i>đang gõ…</i></div>';
-  $('chatLog').scrollTop = $('chatLog').scrollHeight;
-  setTimeout(() => {
-    const tm = $('typingMsg'); if (tm) tm.outerHTML = '<div class="chat-msg idol"><b>' + state.currentIdol.name + ':</b> ' + idolReply(text) + '</div>';
-    $('chatLog').scrollTop = $('chatLog').scrollHeight;
-  }, 700);
+function flyGift(g, rig) {
+  if (!rig || !scene) return;
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.22, 0.22), new THREE.MeshStandardMaterial({ color: g.color, emissive: g.color, emissiveIntensity: 0.35 }));
+  const start = player ? player.position.clone().add(new THREE.Vector3(0, 1.4, 0)) : new THREE.Vector3(0, 1.4, 0);
+  mesh.position.copy(start);
+  scene.add(mesh);
+  const target = rig.group.position.clone().add(new THREE.Vector3(0, 1.2, 0));
+  const startTime = performance.now();
+  flyItems.push({ mesh, start, target, startTime });
 }
 
-/* ================= GIẤY CHỨNG NHẬN ================= */
-function drawCertificate(d) {
-  const c = $('certCanvas'), ctx = c.getContext('2d');
-  ctx.fillStyle = '#fff8e6'; ctx.fillRect(0, 0, 640, 400);
-  ctx.strokeStyle = '#b8860b'; ctx.lineWidth = 6; ctx.strokeRect(10, 10, 620, 380);
-  ctx.fillStyle = '#7a1f1f'; ctx.font = 'bold 30px serif'; ctx.textAlign = 'center';
-  ctx.fillText('GIẤY CHỨNG NHẬN THĂM NUÔI', 320, 70);
-  ctx.fillStyle = '#333'; ctx.font = '20px sans-serif';
-  ctx.fillText('Người thăm đã vào thăm idol parody:', 320, 120);
-  ctx.font = 'bold 34px sans-serif'; ctx.fillStyle = '#1a0d33';
-  ctx.fillText(d.name + ' ' + d.emoji, 320, 170);
-  ctx.font = '19px sans-serif'; ctx.fillStyle = '#333';
-  ctx.fillText('Điểm buổi thăm: ' + state.visitPoints + ' điểm  •  Đã thăm ' + state.visited.size + '/4 idol', 320, 215);
-  ctx.fillText('Ngày: ' + new Date().toLocaleDateString('vi-VN'), 320, 250);
-  ctx.font = 'italic 16px sans-serif'; ctx.fillStyle = '#666';
-  ctx.fillText('(Parody giải trí hư cấu — không phải giấy tờ thật)', 320, 285);
-  ctx.beginPath(); ctx.arc(520, 320, 42, 0, Math.PI * 2); ctx.fillStyle = 'rgba(200,30,30,.85)'; ctx.fill();
-  ctx.fillStyle = '#fff'; ctx.font = 'bold 13px sans-serif';
-  ctx.fillText('ĐÃ THĂM', 520, 316); ctx.fillText('PARODY', 520, 334);
-}
-function screenshot() {
-  renderer.render(scene, camera);
-  const a = document.createElement('a');
-  a.download = 'tham-tu-3d-' + Date.now() + '.png';
-  a.href = renderer.domElement.toDataURL('image/png');
-  a.click();
-  toast('📸 Đã chụp ảnh kỷ niệm 3D!');
-}
-
-/* ================= MINI-GAME (giữ từ bản cũ, gắn vào phòng thăm 3D) ================= */
-function stopGame() { state.gameActive = false; clearInterval(state.gameTimerId); }
-function startGame() {
-  const d = state.currentIdol; if (!d) return;
-  stopGame(); state.gameActive = true; state.gameScore = 0; $('gameScore').textContent = '0';
-  $('gameResult').hidden = true; state.gamesPlayed += 1; state.missions.game1 = true; save(); renderMissions();
-  if (d.id === 'kha') startRhythm();
-  else if (d.id === 'huan') startQuiz();
-  else if (d.id === 'truong') startCatch();
-  else startLivestream();
-}
-function finishGame(msg) {
-  stopGame(); addPoints(state.gameScore);
-  const r = $('gameResult'); r.hidden = false; r.textContent = msg + ' Cộng ' + state.gameScore + ' điểm thăm nuôi!';
-  renderLeaderboard();
-}
-function startRhythm() {
-  let left = 20, canHit = false;
-  $('gameArea').innerHTML = '<p>Bấm <b>MÚA!</b> đúng lúc vòng vàng sáng lên!</p><div class="rhythm-ring" id="ring">🪭</div><button class="btn primary" id="rhythmBtn">💃 MÚA!</button>';
-  $('gameTime').textContent = left + 's';
-  const info = idolRigs.kha;
-  const beat = setInterval(() => {
-    if (!state.gameActive) { clearInterval(beat); return; }
-    canHit = true; const ring = $('ring'); if (ring) ring.classList.add('hit');
-    if (info) setAnim(info.rig, 'fan', 0.6);
-    setTimeout(() => { canHit = false; const r2 = $('ring'); if (r2) r2.classList.remove('hit'); }, 320);
-  }, 900);
-  $('rhythmBtn').addEventListener('click', () => {
-    if (!state.gameActive) return;
-    if (canHit) { state.gameScore += 10; $('speechBubble').textContent = 'Khá Bảnh: Đúng nhịp rồi! Múa đẹp quá!'; }
-    else state.gameScore += 1;
-    $('gameScore').textContent = state.gameScore;
-  });
-  state.gameTimerId = setInterval(() => { left -= 1; $('gameTime').textContent = left + 's'; if (left <= 0) { clearInterval(beat); finishGame('Hết giờ múa quạt! Bạn được ' + state.gameScore + ' điểm.'); } }, 1000);
-}
-function startQuiz() {
-  let qi = 0, left = 30;
-  const showQ = () => {
-    if (qi >= QUIZ.length) { finishGame('Hết 3 câu đạo lý! Bạn được ' + state.gameScore + ' điểm.'); return; }
-    const q = QUIZ[qi];
-    $('gameArea').innerHTML = '<p><b>Câu ' + (qi + 1) + '/3:</b> ' + q.q + '</p>' + q.opts.map((o, i) => '<button class="quiz-opt" data-i="' + i + '">' + o + '</button>').join('');
-    document.querySelectorAll('.quiz-opt').forEach(b => b.addEventListener('click', () => {
-      if (+b.dataset.i === q.a) { state.gameScore += 20; $('speechBubble').textContent = 'Huấn Hoa Hồng: Đúng rồi! Em hiểu đạo lý đấy!'; }
-      else $('speechBubble').textContent = 'Huấn Hoa Hồng: Sai rồi em ơi, nghĩ lại đi!';
-      $('gameScore').textContent = state.gameScore; qi += 1; showQ();
-    }));
-  };
-  showQ(); $('gameTime').textContent = left + 's';
-  state.gameTimerId = setInterval(() => { left -= 1; $('gameTime').textContent = left + 's'; if (left <= 0) finishGame('Hết giờ trắc nghiệm! Bạn được ' + state.gameScore + ' điểm.'); }, 1000);
-}
-function startCatch() {
-  $('gameArea').innerHTML = '<canvas id="catchCanvas" width="420" height="220"></canvas><p>Dùng ← → hoặc kéo tay trên canvas để hứng đồ ăn!</p>';
-  const cv = $('catchCanvas'), ctx = cv.getContext('2d');
-  let bx = 190, left = 20; const items = [];
-  const foods = ['🍜', '🥚', '🌭', '🥤', '🍗'];
-  const move = (x) => { const r = cv.getBoundingClientRect(); bx = clamp((x - r.left) / r.width * 420 - 30, 0, 360); };
-  cv.addEventListener('pointermove', e => move(e.clientX));
-  cv.addEventListener('pointerdown', e => move(e.clientX));
-  const keyH = (e) => { if (e.key === 'ArrowLeft') bx = Math.max(0, bx - 24); if (e.key === 'ArrowRight') bx = Math.min(360, bx + 24); };
-  document.addEventListener('keydown', keyH);
-  const tick2 = setInterval(() => {
-    if (!state.gameActive) { clearInterval(tick2); document.removeEventListener('keydown', keyH); return; }
-    if (Math.random() < 0.35) items.push({ x: Math.random() * 380, y: 0, e: foods[Math.floor(Math.random() * foods.length)] });
-    ctx.clearRect(0, 0, 420, 220); ctx.font = '26px serif';
-    items.forEach(it => { it.y += 4; ctx.fillText(it.e, it.x, it.y); });
-    for (let i = items.length - 1; i >= 0; i--) {
-      const it = items[i];
-      if (it.y > 185 && it.x > bx - 10 && it.x < bx + 70) { state.gameScore += 10; $('gameScore').textContent = state.gameScore; items.splice(i, 1); }
-      else if (it.y > 220) items.splice(i, 1);
-    }
-    ctx.font = '34px serif'; ctx.fillText('🧺', bx, 215);
-  }, 50);
-  $('gameTime').textContent = left + 's';
-  state.gameTimerId = setInterval(() => { left -= 1; $('gameTime').textContent = left + 's'; if (left <= 0) { clearInterval(tick2); document.removeEventListener('keydown', keyH); finishGame('Hết giờ hứng đồ ăn! Bạn được ' + state.gameScore + ' điểm.'); } }, 1000);
-}
-function startLivestream() {
-  let left = 15, views = 0;
-  $('gameArea').innerHTML = '<p>👀 <b id="liveViews">0</b> người đang xem <em>(minh họa)</em></p><button class="tap-big" id="liveTap">🔴 BẤM ĐỂ TĂNG VIEW</button><p class="fine">Né nút “BỊ REPORT” màu đỏ — bấm nhầm mất 200 view!</p>';
-  const spawnReport = () => {
-    if (!state.gameActive) return;
-    const old = document.querySelector('.report-btn'); if (old) old.remove();
-    const b = document.createElement('button'); b.className = 'report-btn'; b.textContent = '⚠️ BỊ REPORT';
-    b.style.left = (10 + Math.random() * 70) + '%'; b.style.top = (10 + Math.random() * 60) + '%';
-    b.addEventListener('click', (e) => { e.stopPropagation(); views = Math.max(0, views - 200); $('liveViews').textContent = views.toLocaleString('vi-VN'); b.remove(); });
-    $('gameArea').appendChild(b);
-    setTimeout(() => b.remove(), 1100);
-    setTimeout(spawnReport, 1800 + Math.random() * 800);
-  };
-  setTimeout(spawnReport, 1200);
-  $('liveTap').addEventListener('click', () => {
-    if (!state.gameActive) return;
-    views += 50 + Math.floor(Math.random() * 100); state.gameScore = Math.floor(views / 50);
-    $('liveViews').textContent = views.toLocaleString('vi-VN'); $('gameScore').textContent = state.gameScore;
-  });
-  $('gameTime').textContent = left + 's';
-  state.gameTimerId = setInterval(() => { left -= 1; $('gameTime').textContent = left + 's'; if (left <= 0) finishGame('Livestream kết thúc! Bạn kéo được ' + views.toLocaleString('vi-VN') + ' view (minh họa).'); }, 1000);
-}
-
-/* ================= LOBBY UI (thẻ idol, nhiệm vụ, bảng vàng) ================= */
-function renderIdols() {
-  $('idolGrid').innerHTML = IDOLS.map(d => `
-    <article class="idol-card ${state.visited.has(d.id) ? 'visited' : ''}" data-id="${d.id}" tabindex="0" role="button" aria-label="Thăm ${d.name}">
-      <div class="idol-emoji">${d.emoji}</div>
-      <h3>${d.name}</h3>
-      <span class="tag">${d.tag}</span>
-      <p>${d.desc}</p>
-      <p class="fine">${d.status}</p>
-      <p class="fine">🎮 ${d.game} • ${state.visited.has(d.id) ? '✅ Đã thăm' : 'Chưa thăm'}</p>
-      <button class="btn primary visit-btn">🏃 Chạy tới ô kính →</button>
-    </article>`).join('');
-  document.querySelectorAll('.idol-card').forEach(c => {
-    const go = () => {
-      const info = idolRigs[c.dataset.id];
-      if (!info) return;
-      state.autoWalkTo = { x: info.boothX, z: -HALL.z + 2.6 };
-      $('gameContainer').scrollIntoView({ behavior: 'smooth', block: 'center' });
-      toast('🏃 Nhân vật của bạn đang chạy tới ô kính ' + IDOLS.find(x => x.id === c.dataset.id).name + '…');
-      if (!state.started) { state.started = true; $('startScreen').style.display = 'none'; }
-    };
-    c.addEventListener('click', go);
-    c.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
-  });
-}
+/* ================= RPG: túi đồ, nhiệm vụ, bảng vàng, hộp thoại, minimap ================= */
 const MISSIONS = [
-  { id: 'visit1', text: 'Thăm 1 idol hôm nay', check: () => state.visited.size > 0 },
-  { id: 'gift3', text: 'Gửi 3 món đồ thăm nuôi', check: () => state.giftsSentToday >= 3 },
-  { id: 'game1', text: 'Chơi 1 mini-game', check: () => state.gamesPlayed >= 1 },
-  { id: 'chat3', text: 'Chat với idol 3 câu', check: () => state.chatCount >= 3 }
+  { id: 'visit', text: 'Thăm 1 idol trong ngày', reward: 20 },
+  { id: 'greet', text: 'Chào 1 idol (nút 👋 hoặc bấm vào idol)', reward: 5 },
+  { id: 'gift', text: 'Tặng 1 món đồ thăm nuôi', reward: 10 },
+  { id: 'chat', text: 'Chat với idol 3 câu', reward: 15 },
+  { id: 'game', text: 'Chơi 1 mini-game', reward: 15 }
 ];
+state.inventory = store.get('inventory', { noodle: 3, egg: 2, sausage: 2, drink: 3 });
+state.playerModel = store.get('playerModel', 'sam');
+state.playerName = store.get('playerName', 'Bạn');
+state.dialogKey = null; state.dialogUntil = 0;
+const INV_KEYS = ['noodle', 'egg', 'sausage', 'drink'];
+const DIALOG_CHOICES = {
+  kha: [
+    { label: 'Anh múa quạt cho em xem đi!', reply: 'Được thôi! Nhìn đây — quạt này quạt cho mát, không quạt cho ai nóng!' },
+    { label: 'Anh có nhớ nhà không?', reply: 'Nhớ chứ. Nhưng múa một bài là thấy đỡ nhớ hơn một tí.' },
+    { label: 'Em chỉ ghé thăm thôi ạ.', reply: 'Vào thăm là anh vui rồi! Nhớ ghé lại nhé!' }
+  ],
+  huan: [
+    { label: 'Thầy giảng đạo lý cho em nghe đi!', reply: 'Chỉ có làm thì mới có ăn! Không làm mà đòi có ăn thì chỉ có ăn… đòn thôi!' },
+    { label: 'Thầy có hối hận không?', reply: 'Hối hận thì nhiều lắm em ạ. Giờ thầy chỉ mong các em đừng đi vào vết xe đổ của thầy.' },
+    { label: 'Em chúc thầy khỏe ạ.', reply: 'Cảm ơn em! Các em ở ngoài nhớ làm ăn chân chính nhé!' }
+  ],
+  truong: [
+    { label: 'Anh có đói không? Em mang mì nè!', reply: 'Có đồ ăn không em? Cho anh xin một miếng! Mì tôm là chân ái!' },
+    { label: 'Anh có nhớ nhà không?', reply: 'Anh nhớ Nam Định lắm. Nhớ cả những bữa cơm nhà nữa…' },
+    { label: 'Anh giữ sức khỏe nhé!', reply: 'Cảm ơn em đã vào thăm, nhớ mang theo xúc xích nhé!' }
+  ],
+  khanh: [
+    { label: 'Anh livestream tiếp đi!', reply: 'Livestream của anh lúc nào cũng đông, giờ trong này cũng đông! Các em bấm follow nhé!' },
+    { label: 'Anh có muốn nói gì với mọi người không?', reply: 'Anh xin lỗi mọi người. Giờ anh chỉ muốn sống yên ổn thôi.' },
+    { label: 'Em ủng hộ anh quay lại làm tốt!', reply: 'Cảm ơn em! View tăng nhanh thế, các em bấm nhiệt tình quá!' }
+  ]
+};
+const NPC_LINES = [
+  'Chào bạn! Sảnh hôm nay đông quá, tôi chờ mãi mới tới lượt.',
+  'Bạn thăm idol nào vậy? Tôi thì chờ thăm người thân.',
+  'Nhớ mang đủ đồ tiếp tế nhé, trong này mì tôm là quý nhất!',
+  'Đi dạo sảnh cho quen đường đi, tới gần ô kính thì bấm E để vào thăm.'
+];
+function checkMission(kind) {
+  const today = todayStr();
+  if (!state.missions.date || state.missions.date !== today) state.missions = { date: today, done: {} };
+  if (state.missions.done[kind]) return;
+  const m = MISSIONS.find((x) => x.id === kind);
+  if (!m) return;
+  state.missions.done[kind] = true;
+  addPoints(m.reward);
+  toast('✅ Nhiệm vụ xong: ' + m.text + ' (+' + m.reward + ' điểm thưởng).');
+  save(); renderMissions();
+}
 function renderMissions() {
-  $('missionsList').innerHTML = MISSIONS.map(m => {
-    const done = m.check() || !!state.missions[m.id];
-    return '<li class="' + (done ? 'done' : '') + '">' + (done ? '✅' : '⭕') + ' ' + m.text + '</li>';
-  }).join('');
+  const ul = $('missionsList');
+  if (!ul) return;
+  const today = todayStr();
+  if (!state.missions.date || state.missions.date !== today) state.missions = { date: today, done: {} };
+  ul.innerHTML = '';
+  MISSIONS.forEach((m) => {
+    const li = document.createElement('li');
+    const done = !!state.missions.done[m.id];
+    li.className = done ? 'done' : '';
+    li.innerHTML = (done ? '✅ ' : '🔲 ') + m.text + ' <span class="reward">+' + m.reward + 'đ</span>';
+    ul.appendChild(li);
+  });
+  const doneCount = MISSIONS.filter((m) => state.missions.done[m.id]).length;
+  const li = document.createElement('li');
+  li.innerHTML = '🎯 Đã thăm <b>' + state.visited.size + '/4</b> idol • Hoàn thành <b>' + doneCount + '/' + MISSIONS.length + '</b> nhiệm vụ • Reset 00:00';
+  ul.appendChild(li);
+}
+function renderIdols() {
+  const grid = $('idolGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  IDOLS.forEach((d) => {
+    const card = document.createElement('div');
+    card.className = 'idol-card' + (state.visited.has(d.id) ? ' visited' : '');
+    card.innerHTML = '<div class="idol-emoji">' + d.emoji + '</div><h3>' + d.name + '</h3>' +
+      '<span class="tag">' + d.tag + '</span><p>' + d.desc + '</p>' +
+      '<p class="fine">' + d.status + '</p>' +
+      '<button class="btn primary visit-btn">' + (state.visited.has(d.id) ? '✅ Đã thăm — Thăm lại' : '🚪 Vào thăm') + '</button>';
+    card.addEventListener('click', () => {
+      if (!state.started) enterGame();
+      if (state.no3d || !player) { openVisit(d.id); return; }
+      const b = booths.find((x) => x.idolId === d.id);
+      if (b) { state.autoWalkTo = { x: b.x, z: b.frontZ }; toast('🏃 Nhân vật đang chạy tới ô ' + d.name + '… tới gần thì bấm E để vào thăm.'); }
+    });
+    grid.appendChild(card);
+  });
 }
 function renderLeaderboard() {
-  const rows = [['FanCuong99', 1280], ['ThamNuoiMoiNgay', 940], ['MeKhaBanh', 720], ['SkyOi', 610], ['Bạn', state.points]];
-  $('leaderboardList').innerHTML = rows.map(r => '<li><b>' + r[0] + '</b> — ' + r[1].toLocaleString('vi-VN') + ' điểm</li>').join('');
+  const list = $('leaderboardList');
+  if (!list) return;
+  const rows = [
+    { name: 'Chị Lan', pts: 860, level: 12 }, { name: 'Ông Sáu', pts: 720, level: 11 },
+    { name: 'Bà Tư', pts: 640, level: 10 }, { name: 'Anh Ba', pts: 520, level: 9 },
+    { name: 'Bạn', pts: state.points, level: Math.floor(state.points / 100) + 1, you: true }
+  ].sort((a, b) => b.pts - a.pts).slice(0, 5);
+  list.innerHTML = '';
+  rows.forEach((r, i) => {
+    const li = document.createElement('li');
+    li.innerHTML = (i === 0 ? '🥇 ' : i === 1 ? '🥈 ' : i === 2 ? '🥉 ' : '🎖️ ') +
+      '<b>' + r.name + '</b> — Cấp ' + r.level + ' • ' + r.pts.toLocaleString('vi-VN') + ' điểm' + (r.you ? ' <span class="reward">← bạn</span>' : '');
+    list.appendChild(li);
+  });
+}
+function renderInventory() {
+  const grid = $('inventoryGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  GIFTS.forEach((g, i) => {
+    const key = INV_KEYS[i];
+    const count = state.inventory[key] || 0;
+    const slot = document.createElement('div');
+    slot.className = 'inv-slot' + (count <= 0 ? ' empty' : '');
+    slot.innerHTML = '<span class="inv-count">×' + count + '</span><div class="inv-emoji">' + g.emoji + '</div><b>' + g.name + '</b><small>+' + g.pts + 'đ • +' + g.secs + 's</small>';
+    slot.addEventListener('click', () => {
+      if (state.visitMode && state.currentIdol) sendGift(g);
+      else toast('🎒 Vào thăm idol rồi bấm món đồ để tặng nhé!');
+    });
+    grid.appendChild(slot);
+  });
+}
+function refillInventory() {
+  const now = Date.now();
+  const last = store.get('lastRefill', 0);
+  if (now - last < 60000) { toast('⏳ Đợi ' + Math.ceil((60000 - (now - last)) / 1000) + 's nữa mới nhận thêm được!'); return; }
+  INV_KEYS.forEach((k) => { state.inventory[k] = (state.inventory[k] || 0) + 1; });
+  store.set('lastRefill', now);
+  store.set('inventory', state.inventory);
+  renderInventory(); renderGifts();
+  toast('🛒 Đã nhận thêm đồ tiếp tế: +1 mỗi món!');
+}
+/* Hộp thoại RPG */
+function showRpgDialog(name, avatar, text, choices) {
+  $('rpgAvatar').textContent = avatar;
+  $('rpgName').textContent = name;
+  $('rpgText').textContent = text;
+  const box = $('rpgChoices');
+  box.innerHTML = '';
+  (choices || []).forEach((c) => {
+    const b = document.createElement('button');
+    b.textContent = '▶ ' + c.label;
+    b.addEventListener('click', () => {
+      $('rpgText').textContent = c.reply;
+      box.innerHTML = '';
+      addPoints(2);
+    });
+    box.appendChild(b);
+  });
+  $('rpgDialog').hidden = false;
+}
+function hideRpgDialog() {
+  $('rpgDialog').hidden = true;
+  state.dialogKey = null;
+  state.dialogUntil = Date.now() + 8000;
+}
+function checkProximityDialog() {
+  if (!state.started || state.visitMode || Date.now() < state.dialogUntil) return;
+  if (!$('rpgDialog').hidden) return;
+  const b = nearestBooth();
+  if (b && b.idolId) {
+    const d = IDOLS.find((x) => x.id === b.idolId);
+    const key = 'idol:' + d.id;
+    if (state.dialogKey !== key) {
+      showRpgDialog(d.name, d.emoji, d.lines[0], DIALOG_CHOICES[d.id]);
+      state.dialogKey = key;
+    }
+    return;
+  }
+  if (player) {
+    for (const n of npcs) {
+      const dd = Math.hypot(n.rig.group.position.x - player.position.x, n.rig.group.position.z - player.position.z);
+      if (dd < 2) {
+        const key = 'npc:' + n.name;
+        if (state.dialogKey !== key) {
+          showRpgDialog(n.name, '🧑', NPC_LINES[Math.floor(Math.random() * NPC_LINES.length)], [
+            { label: 'Chào bạn!', reply: 'Chào bạn! Chúc bạn thăm idol vui vẻ nhé!' },
+            { label: 'Bạn đang chờ ai vậy?', reply: 'Tôi chờ thăm người thân. Sảnh này đông lắm, lấy số rồi ngồi chờ thôi!' }
+          ]);
+          state.dialogKey = key;
+        }
+        return;
+      }
+    }
+  }
+  state.dialogKey = null;
+}
+/* Minimap sảnh */
+function drawMinimap() {
+  const cv = $('minimap');
+  if (!cv || !cv.getContext) return;
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  ctx.fillStyle = '#0f0820'; ctx.fillRect(0, 0, W, H);
+  const px = (x) => ((x + 17) / 34) * W;
+  const pz = (z) => ((z + 12.5) / 25) * H;
+  ctx.strokeStyle = '#4a2d78'; ctx.lineWidth = 2;
+  ctx.strokeRect(px(-HALL.x), pz(-HALL.z), px(HALL.x) - px(-HALL.x), pz(HALL.z) - pz(-HALL.z));
+  booths.forEach((b) => {
+    ctx.fillStyle = b.idolId ? '#ffcf3f' : '#6b5a9e';
+    ctx.fillRect(px(b.x) - 4, pz(b.z) - 3, 8, 6);
+  });
+  npcs.forEach((n) => {
+    ctx.fillStyle = '#3fe0d0';
+    ctx.beginPath(); ctx.arc(px(n.rig.group.position.x), pz(n.rig.group.position.z), 3, 0, 7); ctx.fill();
+  });
+  if (player) {
+    const x = px(player.position.x), y = pz(player.position.z);
+    const a = Math.atan2(Math.sin(player.rotation.y), Math.cos(player.rotation.y));
+    ctx.fillStyle = '#ff5da2';
+    ctx.beginPath();
+    ctx.moveTo(x + Math.sin(a) * 8, y + Math.cos(a) * 8);
+    ctx.lineTo(x + Math.sin(a + 2.5) * 6, y + Math.cos(a + 2.5) * 6);
+    ctx.lineTo(x + Math.sin(a - 2.5) * 6, y + Math.cos(a - 2.5) * 6);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.stroke();
+  }
+}
+/* Thanh máu/XP/vàng + đồng hồ nhiệm vụ */
+function updateHudBars() {
+  const energy = state.visitMode ? Math.max(0, Math.round((state.visitSeconds / 180) * 100)) : 100;
+  const ef = $('energyFill'), et = $('energyText');
+  if (ef) ef.style.width = energy + '%';
+  if (et) et.textContent = energy + '%';
+  const p = state.points;
+  const next = p >= 500 ? 1000 : p >= 200 ? 500 : p >= 80 ? 200 : 80;
+  const base = p >= 500 ? 500 : p >= 200 ? 200 : p >= 80 ? 80 : 0;
+  const pct = clamp(((p - base) / (next - base)) * 100, 0, 100);
+  const xf = $('xpFill'), xt = $('xpText'), gc = $('goldCount');
+  if (xf) xf.style.width = pct + '%';
+  if (xt) xt.textContent = p + '/' + next + ' XP';
+  if (gc) gc.textContent = '🪙 ' + p.toLocaleString('vi-VN') + ' vàng';
+  const qc = $('questClock');
+  if (qc) { const d = new Date(); qc.textContent = '🕐 ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ' • reset 00:00'; }
+}
+/* Đổi nhân vật người chơi (chọn ở màn hình RPG) */
+function swapPlayerModel(key) {
+  if (!playerRig || !scene || !modelCache[key] || playerRig.key === key) return;
+  const pos = playerRig.group.position.clone();
+  const yaw = playerRig.group.rotation.y;
+  scene.remove(playerRig.group);
+  const idx = allRigs.indexOf(playerRig);
+  if (idx >= 0) allRigs.splice(idx, 1);
+  playerRig = makeRigFromGLTF(key, modelCache[key], { height: 1.76, name: 'player' });
+  playerRig.group.position.copy(pos);
+  playerRig.group.rotation.y = yaw;
+  playerRig.targetYaw = yaw;
+  attachAccessory(playerRig, 'cap');
+  addNameTag(playerRig, state.playerName || 'Bạn');
+  scene.add(playerRig.group);
+  player = playerRig.group;
+  setAnim(playerRig, 'idle');
+  toast('🧑 Đã đổi nhân vật: ' + key.toUpperCase());
 }
 
-/* ================= INPUT: bàn phím, chuột, joystick, raycast ================= */
-function bindInput() {
-  document.addEventListener('keydown', (e) => {
-    keys[e.code] = true;
-    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
-    if (e.code === 'KeyE' && state.started && !state.visitMode && lastNear) openVisit(lastNear.booth.idolId);
-    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
+/* ================= CHAT ================= */
+function addChatMsg(who, text) {
+  const log = $('chatLog');
+  const d = document.createElement('div');
+  d.className = 'chat-msg ' + who;
+  d.textContent = text;
+  log.appendChild(d);
+  log.scrollTop = log.scrollHeight;
+}
+function sendChat(text) {
+  const idol = IDOLS.find((d) => d.id === state.currentIdol);
+  if (!idol || !text) return;
+  addChatMsg('you', text);
+  state.chatCount++;
+  const low = text.toLowerCase();
+  let reply = idol.lines[Math.floor(Math.random() * idol.lines.length)];
+  for (const c of idol.chat) {
+    if (c.keys.some((k) => low.includes(k))) { reply = c.reply; break; }
+  }
+  setTimeout(() => {
+    addChatMsg('idol', idol.name + ': ' + reply);
+    $('speechBubble').textContent = '"' + reply + '"';
+    const info = idolRigs[idol.id];
+    if (info && info.rig) setAnim(info.rig, 'wave', { once: true });
+  }, 400);
+  addPoints(2);
+  if (state.chatCount >= 3) checkMission('chat');
+}
+function renderQuickAsk() {
+  const box = $('quickAsk');
+  box.innerHTML = '';
+  ['Làm thế nào để có ăn?', 'Anh có nhớ nhà không?', 'Khi nào anh ra tù?'].forEach((q) => {
+    const b = document.createElement('button');
+    b.textContent = q;
+    b.addEventListener('click', () => sendChat(q));
+    box.appendChild(b);
   });
-  document.addEventListener('keyup', (e) => { keys[e.code] = false; });
+}
 
-  const canvas = $('gameCanvas');
-  let dragging = false, lastX = 0, lastY = 0, dragMoved = 0, downPos = null;
-  canvas.addEventListener('pointerdown', (e) => { dragging = true; lastX = e.clientX; lastY = e.clientY; dragMoved = 0; downPos = { x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); });
-  canvas.addEventListener('pointermove', (e) => {
-    if (!dragging) return;
-    const dx = e.clientX - lastX, dy = e.clientY - lastY;
-    lastX = e.clientX; lastY = e.clientY; dragMoved += Math.abs(dx) + Math.abs(dy);
-    cam.yaw -= dx * 0.005;
-    cam.pitch = clamp(cam.pitch + dy * 0.004, 0.08, 1.1);
+/* ================= MINI-GAME ================= */
+function stopGame() {
+  state.gameActive = false;
+  clearInterval(state.gameTimerId);
+  state.gameTimerId = null;
+}
+function startGame() {
+  const idol = IDOLS.find((d) => d.id === state.currentIdol);
+  if (!idol) { toast('Vào thăm idol rồi mới chơi mini-game nhé!'); return; }
+  stopGame();
+  state.gameActive = true;
+  state.gameScore = 0;
+  $('gameScore').textContent = '0';
+  $('gameResult').hidden = true;
+  const area = $('gameArea');
+  if (idol.id === 'kha') startRhythmGame(area);
+  else if (idol.id === 'huan') startQuizGame(area);
+  else if (idol.id === 'truong') startCatchGame(area);
+  else startTapGame(area);
+}
+function endGame(msg) {
+  if (!state.gameActive) return;
+  stopGame();
+  addPoints(state.gameScore);
+  $('gameScore').textContent = String(state.gameScore);
+  const r = $('gameResult');
+  r.textContent = msg + ' (+' + state.gameScore + ' điểm đã cộng vào túi vàng!)';
+  r.hidden = false;
+  checkMission('game');
+  const info = state.currentIdol ? idolRigs[state.currentIdol] : null;
+  if (info && info.rig) setAnim(info.rig, 'fan', { once: true });
+}
+function startRhythmGame(area) {
+  area.innerHTML = '<div class="rhythm-ring" id="rhythmRing">🪭</div><p>Bấm <b>MÚA!</b> ngay khi vòng vàng sáng lên!</p><button class="btn primary big" id="rhythmBtn">🪭 MÚA!</button>';
+  let lit = false, left = 20;
+  $('gameTime').textContent = '0:' + left;
+  const ring = $('rhythmRing');
+  const lightTimer = setInterval(() => {
+    if (!state.gameActive) { clearInterval(lightTimer); return; }
+    lit = true; ring.classList.add('hit');
+    setTimeout(() => { lit = false; ring.classList.remove('hit'); }, 450);
+  }, 950);
+  $('rhythmBtn').addEventListener('click', () => {
+    if (!state.gameActive) return;
+    if (lit) { state.gameScore += 10; toast('🎵 Đúng nhịp! +10'); }
+    else { state.gameScore += 1; toast('😅 Trượt nhịp, +1 an ủi'); }
+    $('gameScore').textContent = String(state.gameScore);
   });
-  canvas.addEventListener('pointerup', (e) => {
-    dragging = false;
-    // bấm (không kéo) vào idol 3D trong phòng thăm -> chào idol
-    if (downPos && Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y) < 8 && state.visitMode) {
-      const r = canvas.getBoundingClientRect();
-      pointerNDC.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
-      raycaster.setFromCamera(pointerNDC, camera);
-      const hits = raycaster.intersectObjects(Object.values(idolRigs).map(o => o.rig.group), true);
-      if (hits.length) tapIdol();
+  state.gameTimerId = setInterval(() => {
+    left--;
+    $('gameTime').textContent = '0:' + String(Math.max(0, left)).padStart(2, '0');
+    if (left <= 0) { clearInterval(lightTimer); endGame('🎵 Hết giờ múa quạt!'); }
+  }, 1000);
+}
+function startQuizGame(area) {
+  let qi = 0;
+  const showQ = () => {
+    if (qi >= QUIZ.length) { endGame('🎓 Trắc nghiệm đạo lý xong!'); return; }
+    const q = QUIZ[qi];
+    area.innerHTML = '<p><b>Câu ' + (qi + 1) + '/' + QUIZ.length + ':</b> ' + q.q + '</p>';
+    q.opts.forEach((opt, i) => {
+      const b = document.createElement('button');
+      b.className = 'quiz-opt';
+      b.textContent = opt;
+      b.addEventListener('click', () => {
+        if (!state.gameActive) return;
+        if (i === q.a) { state.gameScore += 20; toast('✅ Đúng đạo lý! +20'); }
+        else toast('❌ Thầy Huấn lắc đầu… đáp án đúng là: ' + q.opts[q.a]);
+        $('gameScore').textContent = String(state.gameScore);
+        qi++; showQ();
+      });
+      area.appendChild(b);
+    });
+  };
+  $('gameTime').textContent = '—';
+  showQ();
+}
+function startCatchGame(area) {
+  area.innerHTML = '<canvas id="catchCanvas" width="420" height="220"></canvas><p>Kéo chuột / bấm ← → để di chuyển rổ hứng đồ ăn rơi!</p>';
+  const cv = $('catchCanvas');
+  const ctx = cv.getContext('2d');
+  let basketX = 210, items = [], left = 20;
+  const spawn = () => items.push({ x: 20 + Math.random() * 380, y: -10, v: 2 + Math.random() * 2, e: ['🍜', '🥚', '🌭', '🥤'][Math.floor(Math.random() * 4)] });
+  const onMove = (e) => {
+    const r = cv.getBoundingClientRect();
+    const cx = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+    basketX = clamp(cx * (cv.width / r.width), 30, 390);
+  };
+  cv.addEventListener('pointermove', onMove);
+  cv.addEventListener('pointerdown', onMove);
+  const loop = setInterval(() => {
+    if (!state.gameActive) { clearInterval(loop); return; }
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    if (Math.random() < 0.12) spawn();
+    items.forEach((it) => { it.y += it.v; ctx.font = '22px sans-serif'; ctx.fillText(it.e, it.x, it.y); });
+    items = items.filter((it) => {
+      if (it.y > 200) {
+        if (Math.abs(it.x - basketX) < 45) { state.gameScore += 10; $('gameScore').textContent = String(state.gameScore); }
+        return false;
+      }
+      return true;
+    });
+    ctx.font = '30px sans-serif'; ctx.fillText('🧺', basketX - 15, 215);
+  }, 50);
+  $('gameTime').textContent = '0:' + left;
+  state.gameTimerId = setInterval(() => {
+    left--;
+    $('gameTime').textContent = '0:' + String(Math.max(0, left)).padStart(2, '0');
+    if (left <= 0) { clearInterval(loop); endGame('🍜 Hết giờ hứng đồ ăn!'); }
+  }, 1000);
+}
+function startTapGame(area) {
+  area.innerHTML = '<p>Bấm <b>LIVESTREAM</b> liên tục để tăng view! Né nút <b>BỊ REPORT</b> — bấm nhầm mất 200 view!</p><button class="tap-big" id="tapBtn">📺 LIVESTREAM! +1 view</button> <button class="btn" id="reportBtn" style="display:none">🚫 BỊ REPORT</button><p>View hiện tại: <b id="tapViews">0</b></p>';
+  let left = 15;
+  $('gameTime').textContent = '0:' + left;
+  $('tapBtn').addEventListener('click', () => {
+    if (!state.gameActive) return;
+    state.gameScore += 1;
+    $('tapViews').textContent = String(state.gameScore);
+    $('gameScore').textContent = String(state.gameScore);
+  });
+  const repTimer = setInterval(() => {
+    if (!state.gameActive) { clearInterval(repTimer); return; }
+    const rb = $('reportBtn');
+    if (rb) {
+      rb.style.display = 'inline-block';
+      setTimeout(() => { if (rb) rb.style.display = 'none'; }, 700);
     }
-    downPos = null;
+  }, 1800);
+  $('reportBtn').addEventListener('click', () => {
+    state.gameScore = Math.max(0, state.gameScore - 200);
+    $('tapViews').textContent = String(state.gameScore);
+    $('gameScore').textContent = String(state.gameScore);
+    toast('🚫 Bị report! Mất 200 view!');
   });
-  canvas.addEventListener('wheel', (e) => { e.preventDefault(); cam.dist = clamp(cam.dist + e.deltaY * 0.01, 4, 11); }, { passive: false });
+  state.gameTimerId = setInterval(() => {
+    left--;
+    $('gameTime').textContent = '0:' + String(Math.max(0, left)).padStart(2, '0');
+    if (left <= 0) { clearInterval(repTimer); endGame('📺 Livestream kết thúc! Tổng view: ' + state.gameScore); }
+  }, 1000);
+}
 
-  // Joystick ảo
-  const joyEl = $('joystick'), knob = $('joyKnob');
-  const setKnob = (dx, dy) => { knob.style.left = (35 + dx) + 'px'; knob.style.top = (35 + dy) + 'px'; };
-  joyEl.addEventListener('pointerdown', (e) => { joy.active = true; joy.id = e.pointerId; joyEl.setPointerCapture(e.pointerId); });
-  joyEl.addEventListener('pointermove', (e) => {
-    if (!joy.active || e.pointerId !== joy.id) return;
-    const r = joyEl.getBoundingClientRect();
-    let dx = (e.clientX - (r.left + r.width / 2)) / (r.width / 2);
-    let dy = (e.clientY - (r.top + r.height / 2)) / (r.height / 2);
-    const len = Math.hypot(dx, dy);
-    if (len > 1) { dx /= len; dy /= len; }
-    joy.x = dx; joy.y = dy; setKnob(dx * 35, dy * 35);
-  });
-  const endJoy = () => { joy.active = false; joy.x = 0; joy.y = 0; setKnob(0, 0); };
-  joyEl.addEventListener('pointerup', endJoy);
-  joyEl.addEventListener('pointercancel', endJoy);
+/* ================= GIẤY CHỨNG NHẬN + ẢNH ================= */
+function drawCert() {
+  const c = $('certCanvas');
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#fff8e1'; ctx.fillRect(0, 0, 640, 400);
+  ctx.strokeStyle = '#b8860b'; ctx.lineWidth = 8; ctx.strokeRect(10, 10, 620, 380);
+  ctx.strokeStyle = '#ffcf3f'; ctx.lineWidth = 2; ctx.strokeRect(22, 22, 596, 356);
+  ctx.fillStyle = '#7a2e1d'; ctx.font = 'bold 34px system-ui, sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('GIẤY CHỨNG NHẬN THĂM NUÔI', 320, 80);
+  ctx.fillStyle = '#333'; ctx.font = '22px system-ui, sans-serif';
+  const idol = IDOLS.find((d) => d.id === state.currentIdol);
+  ctx.fillText('Chứng nhận bạn ' + (state.playerName || 'Bạn') + ' đã vào thăm', 320, 140);
+  ctx.font = 'bold 30px system-ui, sans-serif'; ctx.fillStyle = '#b8860b';
+  ctx.fillText(idol ? idol.emoji + ' ' + idol.name : 'Idol', 320, 185);
+  ctx.font = '20px system-ui, sans-serif'; ctx.fillStyle = '#333';
+  ctx.fillText('Ngày ' + new Date().toLocaleDateString('vi-VN') + ' • Điểm buổi thăm: ' + state.visitPoints, 320, 235);
+  ctx.fillText('Parody giải trí hư cấu — không phải buổi thăm thật', 320, 280);
+  ctx.font = 'bold 20px system-ui, sans-serif'; ctx.fillStyle = '#7a2e1d';
+  ctx.fillText('★ VÀO TÙ THĂM IDOL — GAME NHẬP VAI 3D ★', 320, 340);
+}
+function downloadCert() {
+  drawCert();
+  const a = document.createElement('a');
+  a.href = $('certCanvas').toDataURL('image/png');
+  a.download = 'giay-chung-nhan-tham-nuoi.png';
+  a.click();
+  toast('📜 Đã tải giấy chứng nhận!');
+}
+function takePhoto() {
+  if (state.no3d || !renderer) {
+    toast('📸 Bản chữ không chụp được ảnh 3D — dùng giấy chứng nhận bên dưới nhé!');
+    return;
+  }
+  try {
+    const a = document.createElement('a');
+    a.href = renderer.domElement.toDataURL('image/png');
+    a.download = 'tham-tu-' + Date.now() + '.png';
+    a.click();
+    toast('📸 Đã chụp ảnh kỷ niệm!');
+  } catch (e) { toast('📸 Không chụp được ảnh: ' + e.message); }
+}
 
-  $('enterGameBtn').addEventListener('click', () => {
-    const name = ($('playerNameInput').value || 'Bạn').trim().slice(0, 20) || 'Bạn';
-    state.started = true;
-    $('startScreen').style.display = 'none';
-    toast('🎮 Chào ' + name + '! Dùng WASD để đi dạo sảnh 3D, tới gần ô kính rồi bấm E nhé!');
-    bumpStreak(); updateHeader();
+/* ================= INPUT + VÒNG LẶP ================= */
+function interactNear() {
+  if (!state.started) return;
+  const b = nearestBooth();
+  if (b && b.idolId) openVisit(b.idolId);
+  else if (b) toast('🪟 Ô này đang trống — chọn ô có idol để vào thăm nhé!');
+  else toast('🚶 Đi tới gần ô kính có tên idol rồi bấm E nhé!');
+}
+function bindInput() {
+  window.addEventListener('keydown', (e) => {
+    keys[e.code] = true;
+    if (e.code === 'Space' && e.target && e.target.tagName !== 'INPUT') e.preventDefault();
+    if (e.code === 'KeyE') interactNear();
+    if (e.code === 'Escape') hideRpgDialog();
   });
-  $('reloadBtn').addEventListener('click', () => location.reload());
-  $('helpBtn').addEventListener('click', () => { document.querySelector('.help-list').scrollIntoView({ behavior: 'smooth', block: 'center' }); });
-  $('takeTicketBtn').addEventListener('click', () => {
-    state.queueNum += 1;
-    state.ticket = 'A-' + String(state.queueNum).padStart(3, '0');
-    $('ticketNumber').textContent = state.ticket;
-    toast('🎟️ Bạn đã lấy số ' + state.ticket + '! Đi dạo sảnh chờ tới lượt nhé.');
+  window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+  $('enterGameBtn').addEventListener('click', enterGame);
+  $('playerNameInput').addEventListener('change', (e) => { state.playerName = e.target.value.trim() || 'Bạn'; store.set('playerName', state.playerName); });
+  document.querySelectorAll('.char-btn').forEach((b) => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.char-btn').forEach((x) => x.classList.remove('selected'));
+      b.classList.add('selected');
+      state.playerModel = b.dataset.model;
+      store.set('playerModel', state.playerModel);
+      if (playerRig) swapPlayerModel(state.playerModel);
+    });
   });
-  $('nearVisitBtn').addEventListener('click', () => { if (lastNear) openVisit(lastNear.booth.idolId); });
-  $('interactBtn').addEventListener('click', () => { if (lastNear && !state.visitMode) openVisit(lastNear.booth.idolId); else if (state.visitMode) tapIdol(); });
+  $('nearVisitBtn').addEventListener('click', interactNear);
+  $('interactBtn').addEventListener('click', interactNear);
   $('waveBtn').addEventListener('click', () => {
-    setAnim(playerRig, 'wave', 2);
-    const n = nearestNPC();
-    if (n) { setAnim(n.rig, 'wave', 2); toast('👋 Bạn vẫy tay chào ' + n.name + ' — ' + n.name + ' vẫy lại bạn!'); addPoints(1); }
-    else toast('👋 Bạn vẫy tay… chưa ai ở gần để chào lại!');
+    if (playerRig) setAnim(playerRig, 'wave', { once: true });
+    let best = null, bestD = 6;
+    if (player) for (const n of npcs) {
+      const d = Math.hypot(n.rig.group.position.x - player.position.x, n.rig.group.position.z - player.position.z);
+      if (d < bestD) { bestD = d; best = n; }
+    }
+    if (best) { setAnim(best.rig, 'wave', { once: true }); showSpeech3d(best.name + ' vẫy tay chào lại bạn! 👋', 2500); }
+    else toast('👋 Bạn vẫy tay… chưa ai ở gần để đáp lại.');
   });
-  $('bowBtn').addEventListener('click', () => {
-    setAnim(playerRig, 'bow', 2);
-    const n = nearestNPC();
-    toast(n ? '🙏 Bạn chắp tay chào ' + n.name + ' — ' + n.name + ' chắp tay đáp lễ!' : '🙏 Bạn chắp tay chào cả sảnh!');
-    if (n) addPoints(1);
-  });
+  $('bowBtn').addEventListener('click', () => { if (playerRig) setAnim(playerRig, 'bow', { once: true }); toast('🙏 Bạn chắp tay chào.'); });
   $('sitBtn').addEventListener('click', () => {
-    if (playerRig.anim === 'sit') { setAnim(playerRig, 'idle'); toast('🧍 Bạn đứng dậy, sẵn sàng vào thăm!'); }
-    else { setAnim(playerRig, 'sit'); toast('🪑 Bạn ngồi xuống ghế chờ, thở một hơi…'); }
+    if (!playerRig) return;
+    if (playerRig.anim === 'sit') setAnim(playerRig, 'idle');
+    else setAnim(playerRig, 'sit');
   });
-  $('photoBtn').addEventListener('click', screenshot);
-  $('greetIdolBtn').addEventListener('click', tapIdol);
-  $('idolFanBtn').addEventListener('click', () => {
-    const d = state.currentIdol; if (!d) return;
-    const info = idolRigs[d.id];
-    if (info) setAnim(info.rig, 'fan', 3);
-    const line = d.name + ': ' + (d.id === 'kha' ? 'Múa quạt nè! Xem cho kỹ nhé!' : 'Biểu diễn một điệu cho em xem nè!');
-    $('speechBubble').textContent = line; showSpeech3d(line, 3000);
-  });
-  $('backToLobbyBtn').addEventListener('click', () => { if (state.currentIdol) endVisit('Buổi thăm kết thúc.'); closeVisit(); });
-  $('endVisitBtn').addEventListener('click', () => { if (state.currentIdol) { endVisit('Buổi thăm kết thúc.'); closeVisit(); } });
-  $('chatSendBtn').addEventListener('click', sendChat);
-  $('chatInput').addEventListener('keydown', e => { if (e.key === 'Enter') sendChat(); });
-  $('gameStartBtn').addEventListener('click', startGame);
-  $('downloadCertBtn').addEventListener('click', () => {
-    if (!state.currentIdol) { toast('Vào thăm 1 idol rồi kết thúc buổi thăm để có giấy chứng nhận nhé!'); return; }
-    drawCertificate(state.currentIdol);
-    const a = document.createElement('a'); a.download = 'giay-chung-nhan-tham-nuoi.png'; a.href = $('certCanvas').toDataURL('image/png'); a.click();
-  });
-  $('photoVisitBtn').addEventListener('click', () => {
-    screenshot();
-    $('photoFeedback').hidden = false; setTimeout(() => { $('photoFeedback').hidden = true; }, 2500);
+  $('photoBtn').addEventListener('click', takePhoto);
+  $('helpBtn').addEventListener('click', () => { document.querySelector('.help-list').scrollIntoView({ behavior: 'smooth' }); });
+  $('takeTicketBtn').addEventListener('click', () => {
+    state.ticket = 'A-' + String(Math.floor(Math.random() * 900) + 100);
+    $('ticketNumber').textContent = state.ticket;
+    toast('🎟️ Bạn đã lấy số ' + state.ticket + ' — ngồi chờ tới lượt nhé!');
   });
   $('shareBtn').addEventListener('click', async () => {
-    const text = '🎟️ THẺ THĂM NUÔI (Parody)\nTôi đã thăm ' + state.visited.size + '/4 idol • ' + state.points + ' điểm • Streak ' + state.streak + ' ngày\nVào Tù Thăm Idol 3D — web parody giải trí hư cấu, không phải thăm thật.';
-    try { await navigator.clipboard.writeText(text); } catch (e) {
-      const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
-    }
-    $('shareFeedback').hidden = false; setTimeout(() => { $('shareFeedback').hidden = true; }, 2500);
+    const text = '🎮 Tôi vừa thăm idol trên Vào Tù Thăm Idol — ' + state.visited.size + '/4 idol, ' + state.points + ' điểm! Chơi thử tại ' + location.href;
+    try { await navigator.clipboard.writeText(text); $('shareFeedback').hidden = false; setTimeout(() => { $('shareFeedback').hidden = true; }, 2500); }
+    catch (e) { toast('Không sao chép được — copy tay link trên thanh địa chỉ nhé!'); }
   });
   $('copyLinkBtn').addEventListener('click', async () => {
-    try { await navigator.clipboard.writeText(location.href); } catch (e) {}
-    const f = $('shareFeedback'); f.hidden = false; f.textContent = 'Đã sao chép link web!';
-    setTimeout(() => { f.hidden = true; f.textContent = 'Đã sao chép!'; }, 2500);
+    try { await navigator.clipboard.writeText(location.href); $('shareFeedback').hidden = false; setTimeout(() => { $('shareFeedback').hidden = true; }, 2500); }
+    catch (e) { toast('Không sao chép được — copy tay link trên thanh địa chỉ nhé!'); }
   });
-  // số liệu mô phỏng, ghi rõ là minh họa
-  setInterval(() => {
-    $('onlineCount').textContent = (1200 + Math.floor(Math.random() * 180)).toLocaleString('vi-VN');
-  }, 5000);
+  $('greetIdolBtn').addEventListener('click', greetIdol);
+  $('idolFanBtn').addEventListener('click', () => {
+    const info = state.currentIdol ? idolRigs[state.currentIdol] : null;
+    if (info && info.rig) { setAnim(info.rig, 'fan', { once: true }); toast('🪭 Idol biểu diễn cho bạn xem!'); }
+  });
+  $('endVisitBtn').addEventListener('click', () => { drawCert(); endVisit('👋 Kết thúc buổi thăm. Giấy chứng nhận đã cấp bên dưới!'); });
+  $('backToLobbyBtn').addEventListener('click', () => { drawCert(); endVisit(); });
+  $('chatSendBtn').addEventListener('click', () => { const v = $('chatInput').value.trim(); if (v) { sendChat(v); $('chatInput').value = ''; } });
+  $('chatInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') { const v = e.target.value.trim(); if (v) { sendChat(v); e.target.value = ''; } } });
+  $('gameStartBtn').addEventListener('click', startGame);
+  $('downloadCertBtn').addEventListener('click', downloadCert);
+  $('photoVisitBtn').addEventListener('click', takePhoto);
+  $('refillInvBtn').addEventListener('click', refillInventory);
+  $('rpgContinue').addEventListener('click', hideRpgDialog);
+  $('reloadBtn').addEventListener('click', () => location.reload());
+  const retry = $('retry3dBtn');
+  if (retry) retry.addEventListener('click', () => location.reload());
+  const dismiss = $('dismiss3dBtn');
+  if (dismiss) dismiss.addEventListener('click', () => { $('webglError').hidden = true; toast('📜 Đang chơi bản chữ — chọn idol ở dưới để vào thăm.'); });
+  // Chuột: kéo orbit, lăn zoom, bấm vào idol để chào
+  const gc = $('gameContainer');
+  let dragging = false, lastX = 0, lastY = 0, downX = 0, downY = 0;
+  gc.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('button') || e.target.closest('input') || e.target.closest('.joystick') || e.target.closest('.rpg-dialog')) return;
+    dragging = true; lastX = e.clientX; lastY = e.clientY; downX = e.clientX; downY = e.clientY;
+    gc.setPointerCapture(e.pointerId);
+  });
+  gc.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    cam.yaw -= (e.clientX - lastX) * 0.005;
+    cam.pitch = clamp(cam.pitch + (e.clientY - lastY) * 0.003, 0.05, 1.1);
+    lastX = e.clientX; lastY = e.clientY;
+  });
+  gc.addEventListener('pointerup', (e) => {
+    const moved = Math.hypot(e.clientX - downX, e.clientY - downY);
+    dragging = false;
+    if (moved < 8 && state.threeReady && !state.no3d && state.visitMode && state.currentIdol) {
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointerNDC.set(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
+      raycaster.setFromCamera(pointerNDC, camera);
+      const info = idolRigs[state.currentIdol];
+      if (info && info.rig) {
+        const hits = raycaster.intersectObject(info.rig.group, true);
+        if (hits.length) greetIdol();
+      }
+    }
+  });
+  gc.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    cam.dist = clamp(cam.dist + e.deltaY * 0.01, 4, 12);
+  }, { passive: false });
+  // Joystick ảo
+  const joyEl = $('joystick'), knob = $('joyKnob');
+  const setJoy = (e) => {
+    const r = joyEl.getBoundingClientRect();
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    let dx = (e.clientX - cx) / 40, dy = (e.clientY - cy) / 40;
+    const len = Math.hypot(dx, dy);
+    if (len > 1) { dx /= len; dy /= len; }
+    joy.x = dx; joy.y = dy;
+    knob.style.transform = 'translate(' + (dx * 35) + 'px,' + (dy * 35) + 'px)';
+  };
+  joyEl.addEventListener('pointerdown', (e) => { joy.active = true; joy.id = e.pointerId; joyEl.setPointerCapture(e.pointerId); setJoy(e); });
+  joyEl.addEventListener('pointermove', (e) => { if (joy.active && e.pointerId === joy.id) setJoy(e); });
+  const endJoy = () => { joy.active = false; joy.x = 0; joy.y = 0; knob.style.transform = ''; };
+  joyEl.addEventListener('pointerup', endJoy);
+  joyEl.addEventListener('pointercancel', endJoy);
+  renderQuickAsk();
+  renderInventory();
+  drawCert();
+  drawMinimap();
+  updateHudBars();
+}
+function tick() {
+  requestAnimationFrame(tick);
+  const dt = clock ? Math.min(0.05, clock.getDelta()) : 0.016;
+  if (state.threeReady && !state.no3d) {
+    updatePlayer(dt);
+    updateCamera(dt);
+    updateNPCs(dt);
+    for (const r of allRigs) r.mixer.update(dt);
+    for (let i = flyItems.length - 1; i >= 0; i--) {
+      const f = flyItems[i];
+      const p = (performance.now() - f.startTime) / 900;
+      if (p >= 1) { scene.remove(f.mesh); flyItems.splice(i, 1); }
+      else {
+        f.mesh.position.lerpVectors(f.start, f.target, p);
+        f.mesh.position.y += Math.sin(p * Math.PI) * 1.2;
+        f.mesh.rotation.y += dt * 6;
+      }
+    }
+    updateNearPrompt();
+    checkProximityDialog();
+    renderer.render(scene, camera);
+    fpsFrames++; fpsTime += dt;
+    if (fpsTime >= 1) {
+      const fc = $('fpsChip');
+      if (fc) fc.textContent = Math.round(fpsFrames / fpsTime) + ' FPS';
+      fpsFrames = 0; fpsTime = 0;
+    }
+  }
+  drawMinimap();
+  updateHudBars();
 }
 
-/* ================= KHỞI ĐỘNG ================= */
-try {
-  initThree();
-  bindInput();
-  bumpStreak();
-  updateHeader(); renderIdols(); renderMissions(); renderLeaderboard();
-  tick();
-} catch (err) {
-  console.error(err);
-  const el = $('webglError'); if (el) el.hidden = false;
-  const ss = $('startScreen'); if (ss) ss.style.display = 'none';
-}
+boot();
