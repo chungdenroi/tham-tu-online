@@ -4,19 +4,22 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#12081f">
-<meta name="description" content="Vào Tù Thăm Idol — game 3D phòng thăm nuôi online parody giải trí hư cấu. Đi dạo sảnh 3D, thăm 4 idol qua vách kính. Không phải thăm thật, không cổ súy vi phạm pháp luật.">
-<title>Vào Tù Thăm Idol — Game 3D Phòng Thăm Nuôi (Parody)</title>
+<meta name="description" content="Vào Tù Thăm Idol — game nhập vai 3D phòng thăm nuôi online parody giải trí hư cấu. Nhân vật 3D rigged thật, đi dạo sảnh, thăm 4 idol qua vách kính. Không phải thăm thật, không cổ súy vi phạm pháp luật.">
+<title>Vào Tù Thăm Idol — Game Nhập Vai 3D (RPG Parody)</title>
 <link rel="stylesheet" href="style.css">
 <script type="importmap">
-{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+{ "imports": {
+  "three": "./vendor/three.module.js",
+  "three/addons/": "./vendor/addons/"
+} }
 </script>
 </head>
 <body>
-<header class="topbar">
+<header class="topbar rpg-topbar">
   <div class="brand">
     <span class="logo" aria-hidden="true">🏛️</span>
-    <div><strong>VÀO TÙ THĂM IDOL <span class="tag3d">3D</span></strong>
-    <small>Game phòng thăm nuôi online • Parody giải trí</small></div>
+    <div><strong>VÀO TÙ THĂM IDOL <span class="tag3d">RPG 3D</span></strong>
+    <small>Game nhập vai phòng thăm nuôi • Parody giải trí</small></div>
   </div>
   <div class="chips">
     <span class="chip" id="onlineChip">🟢 <b id="onlineCount">1.278</b> người ở sảnh <em>(minh họa)</em></span>
@@ -29,7 +32,7 @@
 </header>
 
 <div class="disclaimer">
-  ⚠️ <strong>PARODY GIẢI TRÍ HƯ CẤU — GAME 3D</strong> — Đây không phải buổi thăm thật, các nhân vật là người low-poly dựng bằng code 3D, không dùng ảnh thật.
+  ⚠️ <strong>PARODY GIẢI TRÍ HƯ CẤU — GAME NHẬP VAI 3D</strong> — Đây không phải buổi thăm thật, các nhân vật là nhân vật 3D rigged thật (file GLB có xương + animation), không dùng ảnh thật.
   Không cổ súy vi phạm pháp luật. Mọi con số “đang online / lượt thăm hôm nay” trên trang đều là <strong>số liệu minh họa / mô phỏng</strong>.
 </div>
 
@@ -40,22 +43,32 @@
       <canvas id="gameCanvas"></canvas>
       <div id="webglError" class="webgl-error" hidden>
         <b>Không mở được 3D trên trình duyệt này.</b>
-        <span>Hãy dùng Chrome/Safari bản mới, bật WebGL rồi tải lại trang. Web cần mạng để tải thư viện Three.js qua CDN.</span>
+        <span>Hãy dùng Chrome/Safari bản mới, bật WebGL rồi tải lại trang.</span>
         <button class="btn primary" id="reloadBtn">🔄 Tải lại trang</button>
+        <button class="btn" id="retry3dBtn">⚔️ Thử lại 3D</button>
+        <button class="btn" id="dismiss3dBtn">📜 Chơi bản chữ</button>
       </div>
 
-      <!-- Màn hình vào game -->
+      <!-- Màn hình vào game kiểu RPG -->
       <div id="startScreen" class="start-screen">
-        <div class="start-card">
-          <div class="start-emoji" aria-hidden="true">🎮🏛️</div>
-          <h1>Vào tù thăm idol <span class="neon">bản game 3D</span></h1>
+        <div class="start-card rpg-frame">
+          <div class="start-emoji" aria-hidden="true">⚔️🏛️</div>
+          <h1 class="rpg-title">VÀO TÙ<br><span class="neon">THĂM IDOL</span></h1>
+          <p class="rpg-sub">— GAME NHẬP VAI 3D —</p>
           <p>Đi dạo sảnh 3D như game thật, tới gần ô kính thì bấm <b>E</b> để vào thăm idol qua vách kính. Idol 3D sẽ quay lại, vẫy tay, nói chuyện và chơi mini-game với bạn.</p>
+          <h3 class="rpg-h3">🧑 CHỌN NHÂN VẬT CỦA BẠN</h3>
+          <div class="char-select" id="charSelect">
+            <button class="char-btn selected" data-model="sam" type="button"><span class="char-emoji">🧑‍🦱</span><b>Sam</b><small>Nhanh nhẹn</small></button>
+            <button class="char-btn" data-model="matt" type="button"><span class="char-emoji">🧑</span><b>Matt</b><small>Cân bằng</small></button>
+            <button class="char-btn" data-model="shaun" type="button"><span class="char-emoji">👨</span><b>Shaun</b><small>Bền bỉ</small></button>
+          </div>
           <label class="name-row">Tên hiển thị của bạn
             <input id="playerNameInput" type="text" maxlength="20" value="Bạn" placeholder="Nhập tên của bạn…">
           </label>
-          <button class="btn primary big" id="enterGameBtn">▶️ Vào sảnh 3D</button>
+          <button class="btn primary big rpg-btn" id="enterGameBtn">⚔️ BẮT ĐẦU PHIÊU LƯU</button>
           <p class="fine">WASD / mũi tên: đi • Shift: chạy • Kéo chuột: xoay camera • E: vào thăm khi tới gần ô kính • Điện thoại: joystick + chạm để xoay camera.</p>
           <p class="fine">4 idol: Trường Con • Huấn Hoa Hồng • Khánh Sky • Khá Bảnh — parody hư cấu, không dùng ảnh thật.</p>
+          <p class="fine rpg-leader-mini">🏆 Bảng vàng hôm nay: <b>Chị Lan 860đ</b> • <b>Ông Sáu 720đ</b> • <b>Bà Tư 640đ</b> <em>(mô phỏng)</em></p>
         </div>
       </div>
 
@@ -68,8 +81,14 @@
       <!-- Bong bóng thoại 3D -->
       <div id="speech3d" class="speech3d" hidden></div>
 
-      <!-- HUD trong game -->
+      <!-- HUD kiểu game: máu/năng lượng + XP + vàng -->
       <div class="hud-left">
+        <div class="hud-box rpg-hud">
+          <div class="bar-row"><span class="bar-label">❤️ Năng lượng thăm nuôi</span><b id="energyText">100%</b></div>
+          <div class="bar hp-bar"><div id="energyFill" class="bar-fill hp-fill" style="width:100%"></div></div>
+          <div class="bar-row"><span class="bar-label">✨ XP — <span id="xpText">0/80</span></span><b id="goldCount">🪙 0 vàng</b></div>
+          <div class="bar xp-bar"><div id="xpFill" class="bar-fill xp-fill" style="width:0%"></div></div>
+        </div>
         <div class="hud-box">🎟️ Số của bạn: <b id="ticketNumber">— chưa lấy số —</b>
           <button class="btn small" id="takeTicketBtn">🎟️ Lấy số</button>
         </div>
@@ -77,8 +96,24 @@
         <div class="hud-box">🪟 Ô kính: <b id="cellsInfo">24 ô • 9 đang thăm</b> <em>(minh họa)</em></div>
       </div>
       <div class="hud-right">
-        <div class="hud-box">📋 Nhiệm vụ hôm nay</div>
+        <div class="hud-box rpg-hud">
+          <div class="bar-row"><span class="bar-label">🗺️ BẢN ĐỒ SẢNH</span><span id="questClock" class="fine">🕐 --:--</span></div>
+          <canvas id="minimap" class="minimap" width="200" height="150"></canvas>
+          <div class="fine">🔺 Bạn • 🟡 Idol • 🔵 Người thăm</div>
+        </div>
+        <div class="hud-box">📋 NHẬT KÝ NHIỆM VỤ</div>
         <ul class="missions" id="missionsList"></ul>
+      </div>
+
+      <!-- Hộp thoại NPC kiểu RPG -->
+      <div id="rpgDialog" class="rpg-dialog" hidden>
+        <div class="rpg-avatar" id="rpgAvatar">🕺</div>
+        <div class="rpg-dialog-body">
+          <div class="rpg-name" id="rpgName">Khá Bảnh</div>
+          <div class="rpg-text" id="rpgText">Chào bạn!</div>
+          <div class="rpg-choices" id="rpgChoices"></div>
+          <button class="btn primary small rpg-btn" id="rpgContinue">Tiếp tục ▶</button>
+        </div>
       </div>
 
       <!-- Joystick + nút bấm trên mobile / desktop -->
@@ -94,32 +129,42 @@
       <div class="controls-hint">WASD đi • Shift chạy • Kéo chuột xoay camera • Lăn chuột zoom • E vào thăm • <button class="link-btn" id="helpBtn">Hướng dẫn</button></div>
     </div>
 
+    <!-- Túi đồ thăm nuôi kiểu game -->
+    <div class="panel rpg-panel">
+      <h2>🎒 TÚI ĐỒ THĂM NUÔI <em>— bấm vào món đồ để tặng idol khi đang thăm</em></h2>
+      <div class="inventory-grid" id="inventoryGrid"></div>
+      <div class="share-row">
+        <button class="btn" id="refillInvBtn">🛒 Nhận thêm đồ tiếp tế (miễn phí)</button>
+        <span class="fine" id="refillNote">Mỗi lần nhận thêm +1 mỗi món. Đồ trong túi lưu trên máy bạn.</span>
+      </div>
+    </div>
+
     <!-- Chọn idol nhanh: dịch chuyển tới ô kính -->
-    <div class="panel">
-      <h2>📍 Chọn idol để thăm — bấm là nhân vật 3D tự chạy tới ô kính</h2>
+    <div class="panel rpg-panel">
+      <h2>📍 CHỌN IDOL ĐỂ THĂM — bấm là nhân vật 3D tự chạy tới ô kính</h2>
       <div class="idol-grid" id="idolGrid"></div>
     </div>
 
     <div class="lobby-grid">
-      <div class="panel">
-        <h2>🏆 Bảng vàng thăm nuôi <em>(mô phỏng)</em></h2>
+      <div class="panel rpg-panel">
+        <h2>🏆 BẢNG VÀNG THĂM NUÔI <em>(mô phỏng)</em></h2>
         <ol class="leaderboard" id="leaderboardList"></ol>
         <p class="fine">Bảng trên là dữ liệu mô phỏng để tạo không khí, không phải người thật. Lượt thăm hôm nay <b id="visitsToday">48.216</b> <em>(minh họa)</em> • Gói mì đã tiếp tế <b id="noodlesToday">312.540</b> <em>(minh họa)</em>.</p>
         <h2>🎁 Chia sẻ thẻ thăm</h2>
         <div class="share-row">
-          <button class="btn" id="shareBtn">📣 Sao chép thẻ thăm</button>
-          <button class="btn" id="copyLinkBtn">🔗 Sao chép link web</button>
+          <button class="btn rpg-btn" id="shareBtn">📣 Sao chép thẻ thăm</button>
+          <button class="btn rpg-btn" id="copyLinkBtn">🔗 Sao chép link web</button>
         </div>
         <p id="shareFeedback" class="feedback" hidden>Đã sao chép!</p>
       </div>
-      <div class="panel">
+      <div class="panel rpg-panel">
         <h2>🕹️ Hướng dẫn chơi game 3D</h2>
         <ul class="help-list">
           <li><b>Đi dạo:</b> WASD / mũi tên, Shift để chạy. Điện thoại dùng joystick góc trái.</li>
           <li><b>Xoay camera:</b> kéo chuột trên màn 3D, hoặc kéo 1 ngón tay bên phải màn hình. Lăn chuột để zoom.</li>
-          <li><b>Vào thăm:</b> đi tới gần ô kính có tên idol, hiện nút “Vào thăm” thì bấm E / chạm nút đó.</li>
-          <li><b>Trong phòng thăm:</b> bấm vào idol 3D để idol phản ứng, chat hỏi đáp, tặng đồ, chơi mini-game, hết giờ thì nhận giấy chứng nhận.</li>
-          <li><b>Người khác trong sảnh:</b> bấm 👋 để vẫy tay, người gần nhất sẽ vẫy lại.</li>
+          <li><b>Vào thăm:</b> đi tới gần ô kính có tên idol, hiện nút “Vào thăm” thì bấm E / chạm nút đó. Tới gần idol sẽ hiện khung thoại kiểu RPG — chọn câu trả lời để idol đáp lại.</li>
+          <li><b>Trong phòng thăm:</b> bấm vào idol 3D để idol phản ứng, chat hỏi đáp, tặng đồ trong túi, chơi mini-game, hết giờ thì nhận giấy chứng nhận.</li>
+          <li><b>Người khác trong sảnh:</b> bấm 👋 để vẫy tay, người gần nhất sẽ vẫy lại. Xem minimap góc phải để biết vị trí các ô idol.</li>
         </ul>
         <p class="fine">Nếu thấy giật: tắt bớt tab khác, giảm độ phân giải màn hình. Game chạy hoàn toàn trên trình duyệt, không cần cài đặt.</p>
       </div>
@@ -128,7 +173,7 @@
 
   <!-- ===== PHÒNG THĂM (hiện khi vào thăm, vẫn thấy cảnh 3D phía sau) ===== -->
   <section id="visitScreen" class="screen">
-    <div class="panel visit-room">
+    <div class="panel visit-room rpg-panel">
       <div class="visit-head">
         <div>
           <h2 id="visitTitle">Phòng thăm</h2>
@@ -143,8 +188,8 @@
       </div>
       <p class="hint">👆 Bấm trực tiếp vào idol 3D trong cảnh để idol quay lại, vẫy tay và nói chuyện. Hoặc bấm nút <b>Chào idol</b> bên dưới.</p>
       <div class="visit-actions">
-        <button class="btn primary" id="greetIdolBtn">👋 Chào idol</button>
-        <button class="btn" id="idolFanBtn">🪭 Idol múa quạt / biểu diễn</button>
+        <button class="btn primary rpg-btn" id="greetIdolBtn">👋 Chào idol</button>
+        <button class="btn rpg-btn" id="idolFanBtn">🪭 Idol múa quạt / biểu diễn</button>
         <span class="fine">Đã gửi trong buổi thăm này: <b id="sentCount">0</b> món • Điểm buổi thăm: <b id="visitPoints">0</b></span>
       </div>
       <div id="speechBubble" class="speech">Bấm vào idol 3D để chào idol một cái!</div>
@@ -165,7 +210,7 @@
         <p id="gameDesc" class="fine"></p>
         <div id="gameArea" class="game-area"></div>
         <div class="game-controls">
-          <button class="btn primary" id="gameStartBtn">▶️ Chơi mini-game</button>
+          <button class="btn primary rpg-btn" id="gameStartBtn">▶️ Chơi mini-game</button>
           <span>Điểm game: <b id="gameScore">0</b> • Còn: <b id="gameTime">—</b></span>
         </div>
         <p id="gameResult" class="feedback" hidden></p>
@@ -174,29 +219,29 @@
       <h2>📜 Giấy chứng nhận thăm nuôi</h2>
       <p class="fine">Kết thúc buổi thăm sẽ cấp giấy chứng nhận, ngày lấy theo ngày hiện tại, tải về dạng ảnh PNG.</p>
       <canvas id="certCanvas" width="640" height="400"></canvas>
-      <button class="btn" id="downloadCertBtn">⬇️ Tải giấy chứng nhận (PNG)</button>
-      <button class="btn" id="photoVisitBtn">📸 Chụp ảnh phòng thăm</button>
+      <button class="btn rpg-btn" id="downloadCertBtn">⬇️ Tải giấy chứng nhận (PNG)</button>
+      <button class="btn rpg-btn" id="photoVisitBtn">📸 Chụp ảnh phòng thăm</button>
       <p id="photoFeedback" class="feedback" hidden>Đã chụp ảnh — ảnh đã tải về máy bạn!</p>
     </div>
   </section>
 </main>
 
 <footer>
-  <p><strong>Vào Tù Thăm Idol — Game 3D</strong> — web parody giải trí hư cấu, chạy hoàn toàn trên trình duyệt, không thu thập dữ liệu, không phải thăm thật. Nhân vật 3D low-poly dựng bằng code Three.js, không dùng ảnh thật.</p>
+  <p><strong>Vào Tù Thăm Idol — Game Nhập Vai 3D</strong> — web parody giải trí hư cấu, chạy hoàn toàn trên trình duyệt, không thu thập dữ liệu, không phải thăm thật. Nhân vật 3D rigged thật (file GLB có xương + animation), không dùng ảnh thật. Three.js bundle trong repo, không phụ thuộc CDN.</p>
   <p class="fine">Tình trạng pháp lý ghi theo báo chí đã công bố: Trường Con 20 năm tù (2020, mua bán ma túy); Khá Bảnh 10 năm 6 tháng (2019, đánh bạc/tổ chức đánh bạc);
   Huấn Hoa Hồng và Khánh Sky bị khởi tố / tạm giam tháng 8/2026, đang chờ xử lý, chưa có bản án tuyên. Nội dung thoại của idol là lời parody hư cấu, không phải phát ngôn thật.</p>
   <p class="fine">Số liệu “đang online / lượt thăm / bảng vàng” trên trang đều là số liệu minh họa / mô phỏng.</p>
+  <p class="fine">Nhân vật 3D: Quaternius CC0 qua Cinevva (Sam/Matt/Shaun/Lis/Soldier/Knight/Casual) — xem chi tiết nguồn + giấy phép trong README.md của repo.</p>
 </footer>
 
 <script type="module" src="app.js"></script>
 <script>
-  // Nếu module Three.js không tải được (mất mạng / CDN chặn), hiện lỗi sau 12 giây
+  // Nếu module app.js không chạy được (lỗi cú pháp / file thiếu), chỉ hiện banner lỗi nhỏ —
+  // TUYỆT ĐỐI không che màn hình vào game (đó là lỗi của bản v2).
   setTimeout(function () {
-    if (!window.__thamtuStarted) {
+    if (!window.__thamtuStarted && !window.__thamtu3DError) {
       var el = document.getElementById('webglError');
-      var ss = document.getElementById('startScreen');
       if (el) el.hidden = false;
-      if (ss) ss.style.display = 'none';
     }
   }, 12000);
 </script>
