@@ -195,7 +195,10 @@ main{max-width:1180px;margin:0 auto;padding:16px}
    nhiệm vụ + dòng tổng kết, KHÔNG cắt nửa dòng: dòng nhiệm vụ gọn (padding
    3px, line-height 1.35), chữ đồng hồ chỉ còn giờ:phút, dòng tổng kết ngắn
    lại (xem renderMissions). Panel vẫn cuộn được khi màn hình thấp. */
-.quest-tracker{position:absolute;left:12px;top:180px;z-index:var(--z-quest);max-width:300px;max-height:clamp(110px,calc(100% - 432px),224px);overflow-y:auto;pointer-events:auto;scrollbar-width:thin}
+/* v5.3: nhật ký dời lên (top 150) + cao hơn (tối đa 300px) để đủ 5 dòng
+   nhiệm vụ + dòng tổng kết không cuộn; mép dưới vẫn trên joystick
+   (ở khung 640px: 150 + 230 = 380 < 388 là mép trên joystick). */
+.quest-tracker{position:absolute;left:12px;top:150px;z-index:var(--z-quest);max-width:300px;max-height:clamp(96px,calc(100% - 410px),300px);overflow-y:auto;pointer-events:auto;scrollbar-width:thin}
 .quest-tracker.collapsed .missions{display:none}
 .quest-toggle{flex:none;padding:2px 9px;font-size:.9rem}
 .journal{background:var(--paper);color:var(--paper-ink);border-radius:4px;border-left:6px solid var(--red);box-shadow:0 6px 18px rgba(0,0,0,.45)}
@@ -203,7 +206,10 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 .journal .bar-label{color:var(--red);font-family:var(--font-title);letter-spacing:1px;font-size:1rem;white-space:normal}
 .journal .fine{color:var(--paper-muted)}
 .missions{list-style:none;padding:0;margin:6px 0 0}
-.missions li{background:rgba(35,59,55,.06);border:1px solid rgba(35,59,55,.25);border-left:4px solid var(--gold);border-radius:6px;padding:3px 8px;margin-bottom:3px;font-size:.85rem;line-height:1.35;color:var(--paper-ink)}
+/* v5.3: mỗi dòng nhiệm vụ gọn lại thành đúng 1 dòng (font nhỏ hơn, padding
+   2px, line-height 1.25, nowrap + ellipsis) — không quấn 2 dòng rồi bị
+   cắt nửa dòng ở mép dưới panel như v5.2. */
+.missions li{background:rgba(35,59,55,.06);border:1px solid rgba(35,59,55,.25);border-left:4px solid var(--gold);border-radius:6px;padding:2px 8px;margin-bottom:3px;font-size:.82rem;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--paper-ink)}
 .missions li.done{opacity:.65;text-decoration:line-through;border-left-color:var(--green)}
 .missions .reward{color:var(--red);font-weight:700}
 
