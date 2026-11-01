@@ -90,7 +90,13 @@ main{max-width:1180px;margin:0 auto;padding:16px}
    điểm tĩnh của ô). Mobile: tấm đáy che nửa dưới nên dời lên góc trên trái,
    dưới dòng boot-log. */
 .visit-debug{position:absolute;left:12px;bottom:12px;z-index:15;max-width:min(520px,54%);font-family:var(--font-mono);font-size:.72rem;line-height:1.5;color:#D8F0E0;background:rgba(10,18,16,.82);border:1px solid var(--line);border-radius:8px;padding:6px 10px;pointer-events:none;white-space:pre-wrap;word-break:break-word}
-.webgl-error{position:absolute;top:0;left:0;right:0;z-index:var(--z-toast);display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;text-align:center;padding:10px 14px;background:rgba(60,20,10,.96);border-bottom:2px solid var(--orange);font-size:.9rem;pointer-events:none}
+/* v5.8-fix: banner lỗi phải ở TRÊN start-screen (z-modal=100, nền đặc phủ
+   kín khung game). Trước đây z-index:var(--z-toast)=20 nên màn "HỒ SƠ NGƯỜI
+   THĂM" che kín banner → các nút "Tải lại trang / Thử lại 3D / Chơi bản chữ"
+   không thấy, không bấm được khi 3D lỗi (test v5.8). z 120 vẫn dưới
+   rpg-dialog? Không — dialog là 80, modal là 100: banner lỗi khôi phục phải
+   thắng tất cả, vì nó là lối thoát duy nhất khi game sập. */
+.webgl-error{position:absolute;top:0;left:0;right:0;z-index:120;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;text-align:center;padding:10px 14px;background:rgba(60,20,10,.96);border-bottom:2px solid var(--orange);font-size:.9rem;pointer-events:none}
 .webgl-error button{pointer-events:auto}
 .webgl-error b{color:#FFD34D}
 .webgl-error span{color:#FFE9D0}
