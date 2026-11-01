@@ -134,6 +134,9 @@ function updateChampPreview(key) {
     const url = snapshotPortrait(key, 1.78);
     if (url) { pimg.src = url; pimg.hidden = false; }
   }
+  // v5.3: chọn nhân vật cũng thử điền lại thumbnail danh sách (model vừa
+  // tải xong thì ảnh liệt kê trước đó còn thiếu sẽ được lấp ngay).
+  try { applyPortraits(); } catch (e) { /* portrait danh sách thử lại sau */ }
 }
 
 /* ================= PORTRAIT 3D THẬT (v5) =================
@@ -167,6 +170,7 @@ function snapshotPortrait(key, height) {
     grp.scale.setScalar(s);
     clone.position.set(-ctr.x, -box.min.y, -ctr.z);
     sc.add(grp);
+    fixDarkSkinMaterials(grp); // v5.3: da đen → da ấm (phòng khi chụp portrait trước lúc tạo rig)
     // Dáng đứng tự nhiên: phát clip Idle một lúc rồi mới chụp.
     try {
       const mixer = new THREE.AnimationMixer(grp);
@@ -185,12 +189,28 @@ function snapshotPortrait(key, height) {
     return null;
   }
 }
+let portraitRetryTimer = null;
+let portraitRetryTries = 0;
 function applyPortraits() {
+  let missing = 0, filled = 0;
   document.querySelectorAll('img[data-portrait]').forEach((img) => {
     const key = img.dataset.portrait;
+    if (img.src && !img.hidden) return;
     const url = snapshotPortrait(key, 1.78);
-    if (url) { img.src = url; img.hidden = false; }
+    if (url) { img.src = url; img.hidden = false; filled++; }
+    else missing++;
   });
+  if (filled > 0) portraitRetryTries = 0;
+  if (missing === 0) return;
+  // v5.3: chụp portrait 1 lần duy nhất thì nhân vật nào chưa tải xong lúc
+  // đó (vd Sam khi mở trang bằng model khác lưu trong localStorage) sẽ
+  // kẹt mãi ở monogram chữ cái — thử lại tối đa 4 lần, mỗi lần cách 1.5s.
+  if (portraitRetryTimer || portraitRetryTries >= 4) return;
+  portraitRetryTries++;
+  portraitRetryTimer = setTimeout(() => {
+    portraitRetryTimer = null;
+    try { applyPortraits(); } catch (e) { /* thử lại lần sau */ }
+  }, 1500);
 }
 /* Vé thăm: điền ngày/giờ hiện tại vào vé + bảng gọi số */
 function updateTicketTimes() {
@@ -414,7 +434,7 @@ let raycaster = null, pointerNDC = null;
 const keys = {};
 const cam = { yaw: 0, pitch: 0.26, dist: 7.5 }; // v5.2: lùi camera thêm 1.5 (v5.1: 6) + nâng lên (pitch 0.26, ty 2.6) — v5.1 đầu/tóc nhân vật che ~1/4 màn hình vì camera quá gần + thấp
 const joy = { active: false, x: 0, y: 0, id: null };
-let fpsFrames = 0, fpsTime = 0;
+let fpsFrames = 0, fpsLastT = 0; // v5.3: đo FPS bằng thời gian THẬT (performance.now), KHÔNG dùng dt đã kẹp — xem tick()
 let jumpV = 0, playerJumpY = 0;
 
 function webglAvailable() {
@@ -581,6 +601,30 @@ const CLIP_PATS = {
   jump: [/jump/i],
   dance: [/dance/i, /victory/i, /wave/i]
 };
+/* v5.3 — SỬA MẶT IDOL ĐEN (nguyên nhân gốc, đã kiểm chứng bằng cách đọc
+   trực tiếp file GLB): model soldier-male / soldier-female /
+   knight-golden-male / casual-female (không dùng texture atlas) có
+   material 'Skin' với baseColorFactor ≈ 0.0134 (gần như đen tuyệt đối —
+   lỗi export Quaternius/Cinevva) nên mặt + tay idol gần như đen, chỉ còn
+   2 chấm mắt trắng (material 'Face' = trắng [1,1,0.94]) — khớp đúng mô tả
+   test thật "mặt Trường Con gần như đen, chỉ thấy 2 chấm sáng mắt".
+   Tăng đèn không cứu được vì bản thân màu da đã đen. Sửa: material
+   'Skin' nào không có map mà tối gần như đen (độ sáng < 0.05) thì đổi về
+   tone da ấm (khớp atlas của Sam/Matt/Shaun). Material dùng chung cho
+   mọi clone của cùng model nên sửa 1 lần là áp dụng khắp nơi (idol,
+   NPC, người ngồi chờ, portrait). */
+function fixDarkSkinMaterials(root) {
+  root.traverse((m) => {
+    if (!m.isMesh) return;
+    const mats = Array.isArray(m.material) ? m.material : [m.material];
+    mats.forEach((mt) => {
+      if (!mt || mt.name !== 'Skin' || mt.map || !mt.color) return;
+      const lum = 0.2126 * mt.color.r + 0.7152 * mt.color.g + 0.0722 * mt.color.b;
+      if (lum < 0.05) { mt.color.setHex(0xDCA878); mt.needsUpdate = true; }
+    });
+  });
+}
+
 function makeRigFromGLTF(key, gltf, opts) {
   const o = Object.assign({ height: 1.78, name: key }, opts || {});
   const group = new THREE.Group();
@@ -599,6 +643,7 @@ function makeRigFromGLTF(key, gltf, opts) {
   inner.position.set(-norm.cx, -norm.minY, -norm.cz);
   // Chỉ player + idol chính đổ bóng (v4) — NPC/người ngồi chờ tắt castShadow để nhẹ máy.
   group.traverse((m) => { if (m.isMesh) { m.castShadow = !!o.shadow; m.receiveShadow = false; } });
+  fixDarkSkinMaterials(group); // v5.3: da đen → da ấm (xem hàm trên)
   const mixer = new THREE.AnimationMixer(group);
   const clips = {};
   (gltf.animations || []).forEach((a) => { clips[a.name] = a; });
@@ -797,9 +842,17 @@ function buildHall() {
   // nên mặt vẫn tối; đèn huỳnh quang emissive trên đầu chỉ sáng đỉnh đầu.
   booths.forEach((b) => {
     if (!b.idolId) return;
-    const face = new THREE.PointLight(0xffe9a8, 5, 5, 1.6);
+    // v5.3: fill mạnh hơn (12 thay vì 5, tầm 8 thay vì 5) + 1 SpotLight
+    // chiếu thẳng mặt idol (target = đầu idol, KHÔNG đổ bóng nên không
+    // thêm shadow pass). Lưu ý: đèn chỉ là phụ — nguyên nhân gốc mặt đen
+    // là material 'Skin' gần như đen (xem fixDarkSkinMaterials).
+    const face = new THREE.PointLight(0xffe9a8, 12, 8, 1.6);
     face.position.set(b.x, 1.7, b.z + 1.1);
     scene.add(face);
+    const spot = new THREE.SpotLight(0xffe9a8, 10, 6, 0.45, 0.6, 1.6);
+    spot.position.set(b.x, 2.6, b.z + 1.6);
+    spot.target.position.set(b.x, 1.85, b.z - 0.35);
+    scene.add(spot); scene.add(spot.target);
   });
 }
 
@@ -838,8 +891,11 @@ async function loadPriorityModels() {
   const fallbackKey = loaded0[0];
   const pick = (k) => (modelCache[k] ? k : fallbackKey);
   playerRig = makeRigFromGLTF(pick(playerKey), modelCache[pick(playerKey)], { height: 1.76, name: 'player', shadow: true, role: 'player' });
-  // v5.1: spawn lệch trái (x=-7, z=4) — không đứng giữa che ô kính gần nhất.
-  playerRig.group.position.set(-7, 0, 4);
+  // v5.3: spawn GIỮA sảnh (x=0, z=4) — v5.1 spawn lệch trái (-7,4) đặt
+  // đúng vào đường ngắm camera nên cột trụ (-8,4) chắn giữa khung hình
+  // lúc mới vào, che dãy ô kính. Ở x=0, 2 cột gần nhất (±8,4) lệch ~47°
+  // khỏi trục ngắm nên ngoài khung hình, nhìn thẳng ra cả 4 ô idol.
+  playerRig.group.position.set(0, 0, 4);
   attachAccessory(playerRig, 'cap');
   addNameTag(playerRig, state.playerName || 'Bạn');
   scene.add(playerRig.group);
@@ -867,6 +923,13 @@ async function loadPriorityModels() {
   };
   failed.push(...await loadKeysLimited(idolKeys, (k) => { bump(); buildIdolRig(k); }));
   IDOLS.forEach((d) => buildIdolRig(d.model));
+  // v5.3: tải nốt model người chơi còn lại (không chỉ model đã chọn) —
+  // nếu không, bấm chọn Sam/Matt/Shaun khác với model lưu trong
+  // localStorage sẽ không đổi được rig (swapPlayerModel trả về sớm vì
+  // modelCache thiếu) và thumbnail của nhân vật đó kẹt mãi ở chữ cái.
+  // Không tính vào đếm 5 nhân vật chính; lỗi thì chỉ cảnh báo console.
+  try { await loadKeysLimited(['sam', 'matt', 'shaun'].filter((k) => k !== playerKey && !modelCache[k]), null); }
+  catch (e) { console.warn('[thamtu] tải model người chơi phụ lỗi:', e); }
   if (failed.length) console.warn('[thamtu] model ưu tiên tải lỗi:', failed);
   if (failed.length) toast('⚠️ Một số nhân vật tải lỗi, đã thay bằng nhân vật khác: ' + failed.map((f) => f.split(':')[0]).join(', '));
   return true;
@@ -1327,8 +1390,8 @@ function flyGift(g, rig) {
 /* ================= RPG: túi đồ, nhiệm vụ, bảng vàng, hộp thoại, minimap ================= */
 const MISSIONS = [
   { id: 'visit', text: 'Thăm 1 idol trong ngày', reward: 20 },
-  { id: 'greet', text: 'Chào 1 idol (nút 👋 / bấm idol)', reward: 5 },
-  { id: 'gift', text: 'Tặng 1 món đồ thăm nuôi', reward: 10 },
+  { id: 'greet', text: 'Chào 1 idol', reward: 5 },
+  { id: 'gift', text: 'Tặng 1 món đồ', reward: 10 },
   { id: 'chat', text: 'Chat với idol 3 câu', reward: 15 },
   { id: 'game', text: 'Chơi 1 mini-game', reward: 15 }
 ];
@@ -1595,18 +1658,19 @@ function drawMinimap() {
     ctx.fillStyle = '#3FE0D0';
     ctx.beginPath(); ctx.arc(px(n.rig.group.position.x), pz(n.rig.group.position.z), 3, 0, 7); ctx.fill();
   });
-  // Chấm idol: hình tròn ĐẶC vàng đồng to + viền trắng + sao trắng — vẽ sau
-  // ô kính và sau chấm NPC nên không bị che; không dùng sao đen nữa.
+  // v5.3: chấm idol là hình tròn ĐẶC to, KHÔNG vẽ sao bên trong — v5.2 vẽ
+  // sao trắng 10px phủ gần hết đĩa vàng r=9 nên ở kích thước hiển thị thật
+  // (~100px) chấm nhìn như vòng tròn rỗng. Giờ: đĩa đặc r=11 vàng sáng
+  // #E8C268 + viền trắng dày 3, không vẽ gì thêm bên trong — không thể
+  // nhầm với vòng rỗng ở mọi kích thước hiển thị. Vẽ sau ô kính và sau
+  // chấm NPC nên không bị che.
   booths.forEach((b) => {
     if (!b.idolId) return;
     const x = px(b.x), y = pz(b.z);
-    ctx.fillStyle = '#D9B36A';
-    ctx.beginPath(); ctx.arc(x, y, 9, 0, 7); ctx.fill();
-    ctx.strokeStyle = '#FFF6E8'; ctx.lineWidth = 2.5;
-    ctx.beginPath(); ctx.arc(x, y, 9, 0, 7); ctx.stroke();
-    ctx.fillStyle = '#FFF6E8';
-    ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('★', x, y + 0.5);
+    ctx.fillStyle = '#E8C268';
+    ctx.beginPath(); ctx.arc(x, y, 11, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#FFF6E8'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(x, y, 11, 0, 7); ctx.stroke();
   });
   if (player) {
     const x = px(player.position.x), y = pz(player.position.z);
@@ -2198,19 +2262,27 @@ function tick() {
     // Tạo rig phụ theo ngân sách ~3ms/frame (mobile 1 rig/frame) để không nghẽn main thread.
     processRigQueue(IS_MOBILE ? 1 : 2, 3);
     renderer.render(scene, camera);
-    fpsFrames++; fpsTime += dt;
-    if (fpsTime >= 1) {
-      // v5.2: đọc số đo hiệu năng THẬT sau mỗi lần render (draw calls /
+    // v5.3 — SỬA ĐỒNG HỒ FPS BỊA SỐ (nguyên nhân gốc của "FPS luôn đúng 20"):
+    // dt ở trên đã bị kẹp tối đa 0.05s (dt = Math.min(0.05, ...)) nên
+    // fpsTime += dt KHÔNG phải thời gian thật — hễ frame thật chậm hơn
+    // 50ms là đồng hồ luôn hiện đúng 1/0.05 = 20 FPS bất kể tải nặng hay
+    // nhẹ (phòng thăm 47 DC hay sảnh 317 DC đều 20). Đo bằng thời gian
+    // tường thật (performance.now); dt kẹp vẫn giữ cho animation/di chuyển.
+    fpsFrames++;
+    const nowMs = performance.now();
+    if (!fpsLastT) fpsLastT = nowMs;
+    if (nowMs - fpsLastT >= 1000) {
+      // Đọc số đo hiệu năng THẬT sau mỗi lần render (draw calls /
       // triangles / mixer đang chạy / mesh đổ bóng) để lần test sau kiểm
       // chứng được, không đoán mò. Chip FPS hiện luôn số draw call.
-      const fps = Math.round(fpsFrames / fpsTime);
+      const fps = Math.round((fpsFrames * 1000) / (nowMs - fpsLastT));
       let calls = 0, tris = 0, shadowCasters = 0;
       if (renderer) { calls = renderer.info.render.calls; tris = renderer.info.render.triangles; }
       if (scene) scene.traverse((o) => { if (o.castShadow) shadowCasters++; });
       window.__thamtuPerf = { fps, calls, triangles: tris, mixers: activeMixers, shadowCasters };
       const fc = $('fpsChip');
       if (fc) fc.textContent = fps + ' FPS • ' + calls + ' DC';
-      fpsFrames = 0; fpsTime = 0;
+      fpsFrames = 0; fpsLastT = nowMs;
     }
   }
   // Minimap chỉ vẽ 10 lần/giây; HUD chỉ ghi DOM khi chỉ số đổi (xem updateHudBars).
