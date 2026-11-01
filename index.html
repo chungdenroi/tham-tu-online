@@ -73,6 +73,9 @@
             </button>
           </div>
           <div class="champ-preview" id="champPreview">
+            <!-- v5.1: portrait 3D thật của nhân vật đã chọn (chụp từ model GLB) —
+                 overlay hồ sơ giờ nền ĐẶC nên không còn nhìn xuyên sang cảnh 3D. -->
+            <img id="champPreviewImg" class="champ-preview-img" alt="" hidden>
             <div class="champ-preview-fallback" id="champPreviewFallback">
               <div class="champ-mono big" id="champPreviewMono">S</div>
               <p>Đang tải nhân vật 3D…</p>
@@ -86,7 +89,7 @@
             <div class="stat-row"><span>Sức bền</span><div class="stat-bar"><div id="statStamina" class="stat-fill" style="width:68%"></div></div><b id="statStaminaVal">68</b></div>
             <div class="stat-row"><span>Kỹ năng</span><div class="stat-bar"><div id="statSkill" class="stat-fill" style="width:74%"></div></div><b id="statSkillVal">74</b></div>
             <p class="fine" id="champDesc">Sam chạy nhanh nhất sảnh — hợp với người thích đi thăm nhiều ô kính trong thời gian ngắn.</p>
-            <p class="fine mono">MÃ HỒ SƠ: <b id="champFileNo">HS-1999-SAM</b> • LƯU TRỮ: PHÒNG THĂM NUÔI</p>
+            <p class="fine mono file-line">MÃ HỒ SƠ: <b id="champFileNo">HS-1999-SAM</b><span class="file-store">LƯU TRỮ: PHÒNG THĂM NUÔI</span></p>
           </div>
         </div>
         <div class="champ-footer">
@@ -134,7 +137,7 @@
           <div class="hud-box">
             <div class="bar-row"><span class="bar-label">🗺️ BẢN ĐỒ SẢNH</span></div>
             <canvas id="minimap" class="minimap" width="220" height="160"></canvas>
-            <div class="fine">🔺 Bạn • 🟡 Idol • 🔵 Người thăm</div>
+            <div class="fine minimap-legend">🔺 Bạn • 🟡 Idol • 🔵 Người thăm</div>
           </div>
         </div>
       </div>
@@ -142,7 +145,7 @@
       <!-- Nhật ký thăm nuôi dạng sổ (bên trái) -->
       <div id="questTracker" class="quest-tracker hud-layer" hidden>
         <div class="hud-box journal">
-          <div class="bar-row"><span class="bar-label">📋 NHẬT KÝ THĂM NUÔI</span><span id="questClock" class="fine mono">🕐 --:--</span></div>
+          <div class="bar-row"><span class="bar-label">📋 NHẬT KÝ THĂM NUÔI</span><span id="questClock" class="fine mono">🕐 --:--</span><button class="btn small quest-toggle" id="questToggle" type="button" title="Thu gọn / mở lại nhật ký">–</button></div>
           <ul class="missions" id="missionsList"></ul>
         </div>
       </div>
