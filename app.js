@@ -310,7 +310,7 @@ const state = {
   missions: store.get('missions', {}),
   chatCount: 0, giftsSentToday: 0, gamesPlayed: 0,
   currentIdol: null, visitSeconds: 180, visitPoints: 0, sentCount: 0, visitChatCount: 0, visitEnergyStart: 100,
-  timerId: null, gameTimerId: null, gameActive: false, gameScore: 0,
+  timerId: null, gameTimerId: null, gameActive: false, gameScore: 0, gameRunId: 0, catchLoopId: null, catchOnKey: null,
   ticket: null, queueNum: 14, started: false, visitMode: false,
   autoWalkTo: null, targetBooth: null, no3d: false, threeReady: false,
   // v5.2: lastMoveAt — lần cuối người chơi thực sự di chuyển (để hộp thoại NPC
@@ -924,9 +924,21 @@ function attachFace(rig) {
     const brow = new THREE.Mesh(new THREE.BoxGeometry(0.085 / s, 0.020 / s, 0.010 / s), dark);
     add(brow, side * 0.055, 0.058, side < 0 ? fs.browL : fs.browR, 0.005);
   });
-  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.020 / s, 8, 8), noseMat);
-  nose.scale.set(0.9, 1.1, 0.45); // v5.13: dẹt hơn (đầu mũi chỉ nhô ~0,015m thay vì 0,024m)
-  add(nose, 0, -0.012, fs.nose, 0.006);
+  // v5.14 — BỎ HẲN MŨI GẮN THÊM trên sam/matt/shaun, chỉ giữ trên
+  // soldier-male: v5.13 dẹt mũi (nhô 0,024→0,015m) + tối màu (0x74492a) mà
+  // test vẫn thấy khối hồng to giữa mặt Khánh Sky (model sam), trong khi mũi
+  // Trường Con (soldier-male) chỉ là chấm nhỏ gần như không thấy. Nguyên
+  // nhân: mặt sam/matt/shaun là atlas màu phẳng ĐÃ CÓ shading mũi riêng —
+  // khối cầu gắn thêm (dù dẹt/tối) vẫn là vật thể 3D lồi trước mặt, dưới đèn
+  // fill/spot nó bắt sáng khác hẳn vùng da phẳng xung quanh nên đọc thành
+  // khối tròn riêng biệt; trên soldier-male tấm Face là mặt phẳng riêng, mũi
+  // chỉ nhô 0,005m nên chìm vào mặt. Không có khối cầu thì không còn gì để
+  // đọc thành khối hồng — mắt/miệng giữ nguyên.
+  if (rig.key === 'soldierMale') {
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(0.020 / s, 8, 8), noseMat);
+    nose.scale.set(0.9, 1.1, 0.45);
+    add(nose, 0, -0.012, fs.nose, 0.006);
+  }
   // v5.12 — MIỆNG LÀ HÌNH BẦU DỤC ĐẶC (sphere dẹt), KHÔNG dùng torus nữa:
   // torus v5.11 có 3 lỗi: (1) đáy vòng bị CẰM NHÔ chôn — mặt dưới miệng
   // nhô trước mặt phẳng miệng ~2cm nên đáy nụ cười nằm sau mặt; (2) 2 đầu
@@ -2592,6 +2604,7 @@ function startGame() {
     const idol = IDOLS.find((d) => d.id === state.currentIdol);
     if (!idol) { toast('Vào thăm idol rồi mới chơi mini-game nhé!'); restoreBtn(); return; }
     stopGame();
+    state.gameRunId++; // v5.14: lượt chơi mới — vòng lặp/timer ma của game cũ tự hủy khi thấy runId đổi
     state.gameActive = true;
     state.gameScore = 0;
     $('gameScore').textContent = '0';
@@ -2694,8 +2707,37 @@ function startCatchGame(area) {
   area.innerHTML = '<canvas id="catchCanvas" width="420" height="220"></canvas><p>Kéo chuột / bấm ← → để di chuyển rổ hứng đồ ăn rơi!</p>';
   const cv = $('catchCanvas');
   const ctx = cv.getContext('2d');
+  // v5.14 — VIẾT LẠI THEO THỜI GIAN THỰC (delta-time) + VẼ HÌNH THẬT + PHÍM ← →:
+  // Nguyên nhân gốc test v5.13 (không thấy đồ rơi ~19s, điểm 0) — code cũ
+  // đếm theo SỐ TICK: spawn 12%/tick, rơi 2–4px/tick, vòng lặp 50ms. Khi
+  // trình duyệt bóp timer (tab nền/tab test nặng: setInterval kẹp ~1Hz —
+  // đúng môi trường test v5.13, FPS 3–18), 1 tick = 1 giây thật: món đầu
+  // tiên trung bình phải ~16s mới spawn (kiểm chứng node
+  // /tmp/v514_catch_test.mjs chế độ throttled: firstFoodAt=16016ms,
+  // banked=0), và rơi 2–4px/giây thì hết 20s game không món nào chạm tới
+  // rổ (cần 50–100s mới rơi hết 220px). Bản này: tốc độ rơi tính bằng
+  // px/GIÂY (dt từ Date.now, kẹp 1s), spawn theo đồng hồ tích lũy
+  // (~0,45s/món) + 3 món thả sẵn lúc mở game (món đầu thấy ngay trong
+  // ~0,2s), nên tab bị bóp timer game vẫn chạy đúng tốc độ thời gian thực.
+  // Đồ ăn + rổ VẼ BẰNG HÌNH (tròn màu + emoji phủ trên): máy test không có
+  // font emoji thì hình tròn màu vẫn thấy rõ, không còn canvas trống trơn.
+  // Phím ← → di chuyển rổ ±28px (chỉ phím mũi tên — phím D đã gắn chụp ảnh
+  // nên không dùng A/D). Chống vòng lặp ma khi bấm "Chơi lại": loop cũ tự
+  // hủy khi gameRunId đổi + start mới clear loop cũ ngay.
+  if (state.catchLoopId) { clearInterval(state.catchLoopId); state.catchLoopId = null; }
+  if (state.catchOnKey) { window.removeEventListener('keydown', state.catchOnKey); state.catchOnKey = null; } // listener của game trước (loop cũ bị clear ngoài nên cleanup của nó không chạy)
+  const run = state.gameRunId;
   let basketX = 210, items = [], left = 20;
-  const spawn = () => items.push({ x: 20 + Math.random() * 380, y: -10, v: 2 + Math.random() * 2, e: ['🍜', '🥚', '🌭', '🥤'][Math.floor(Math.random() * 4)] });
+  const FOODS = [
+    { e: '🍜', c: '#FFD34D' }, { e: '🥚', c: '#F5F5F5' },
+    { e: '🌭', c: '#D94F30' }, { e: '🥤', c: '#3FE0D0' },
+  ];
+  const spawn = (y) => {
+    const f = FOODS[Math.floor(Math.random() * FOODS.length)];
+    items.push({ x: 20 + Math.random() * 380, y: (y === undefined ? -14 : y), v: 55 + Math.random() * 40, f });
+  };
+  spawn(-14); spawn(-70); spawn(-130); // đồ rơi ngay từ đầu, không chờ spawn ngẫu nhiên
+  let spawnAcc = 0, lastT = Date.now();
   const onMove = (e) => {
     const r = cv.getBoundingClientRect();
     const cx = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
@@ -2703,11 +2745,44 @@ function startCatchGame(area) {
   };
   cv.addEventListener('pointermove', onMove);
   cv.addEventListener('pointerdown', onMove);
+  const onKey = (e) => {
+    if (!state.gameActive || run !== state.gameRunId) return;
+    if (e.code === 'ArrowLeft') { basketX = clamp(basketX - 28, 30, 390); e.preventDefault(); }
+    else if (e.code === 'ArrowRight') { basketX = clamp(basketX + 28, 30, 390); e.preventDefault(); }
+  };
+  window.addEventListener('keydown', onKey);
+  state.catchOnKey = onKey;
+  const drawItem = (it) => {
+    ctx.beginPath(); ctx.arc(it.x, it.y, 13, 0, Math.PI * 2);
+    ctx.fillStyle = it.f.c; ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.stroke();
+    ctx.font = '16px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(it.f.e, it.x, it.y + 1);
+  };
+  const drawBasket = () => {
+    ctx.beginPath();
+    ctx.moveTo(basketX - 26, 196); ctx.lineTo(basketX + 26, 196);
+    ctx.lineTo(basketX + 19, 216); ctx.lineTo(basketX - 19, 216); ctx.closePath();
+    ctx.fillStyle = '#C69A50'; ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = '#7A5200'; ctx.stroke();
+    ctx.font = '20px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('🧺', basketX, 206);
+  };
+  const cleanup = () => {
+    if (state.catchLoopId === loop) state.catchLoopId = null;
+    clearInterval(loop);
+    if (state.catchOnKey === onKey) state.catchOnKey = null;
+    window.removeEventListener('keydown', onKey);
+  };
   const loop = setInterval(() => {
-    if (!state.gameActive) { clearInterval(loop); return; }
+    if (!state.gameActive || run !== state.gameRunId) { cleanup(); return; }
+    const now = Date.now();
+    const dt = Math.min(1, Math.max(0, (now - lastT) / 1000)); // kẹp 1s: tab ẩn lâu quay lại không nhảy vọt
+    lastT = now;
+    spawnAcc += dt;
+    while (spawnAcc >= 0.45) { spawnAcc -= 0.45; spawn(); }
     ctx.clearRect(0, 0, cv.width, cv.height);
-    if (Math.random() < 0.12) spawn();
-    items.forEach((it) => { it.y += it.v; ctx.font = '22px sans-serif'; ctx.fillText(it.e, it.x, it.y); });
+    items.forEach((it) => { it.y += it.v * dt; drawItem(it); });
     items = items.filter((it) => {
       if (it.y > 200) {
         if (Math.abs(it.x - basketX) < 45) { state.gameScore += 10; $('gameScore').textContent = String(state.gameScore); }
@@ -2715,17 +2790,27 @@ function startCatchGame(area) {
       }
       return true;
     });
-    ctx.font = '30px sans-serif'; ctx.fillText('🧺', basketX - 15, 215);
+    drawBasket();
   }, 50);
+  state.catchLoopId = loop;
   $('gameTime').textContent = '0:' + left;
   state.gameTimerId = setInterval(() => {
     left--;
     $('gameTime').textContent = '0:' + String(Math.max(0, left)).padStart(2, '0');
-    if (left <= 0) { clearInterval(loop); endGame('🍜 Hết giờ hứng đồ ăn!'); }
+    if (left <= 0) { cleanup(); endGame('🍜 Hết giờ hứng đồ ăn!'); }
   }, 1000);
 }
 function startTapGame(area) {
-  area.innerHTML = '<p>Bấm <b>LIVESTREAM</b> liên tục để tăng view! Né nút <b>BỊ REPORT</b> — bấm nhầm mất 200 view!</p><button class="tap-big" id="tapBtn">📺 LIVESTREAM! +1 view</button> <button class="btn" id="reportBtn" style="display:none">🚫 BỊ REPORT</button><p>View hiện tại: <b id="tapViews">0</b></p>';
+  // v5.14 — NÚT CHÍNH CỐ ĐỊNH: trước đây nút REPORT hiện/ẩn bằng
+  // display:none ↔ inline-block, mà .game-area căn giữa (text-align:center)
+  // nên mỗi lần REPORT hiện ra, cả hàng nút căn lại giữa → nút LIVESTREAM
+  // nhảy ngang ~nửa bề rộng nút REPORT. Bấm nhanh đúng lúc nút nhảy thì
+  // mousedown trúng nút nhưng mouseup trượt ra ngoài (hoặc rơi vào đúng nút
+  // REPORT → −200 view, kẹp ở 0 nên chỉ thấy view không tăng): 10 bấm nhanh
+  // chỉ ghi 4 view. Giờ REPORT nằm ở hàng riêng BÊN DƯỚI nút chính, chiếm
+  // chỗ cố định bằng visibility (không display) nên không bao giờ làm nút
+  // chính nhúc nhích, cũng không nằm dưới ngón tay đang bấm liên tục.
+  area.innerHTML = '<p>Bấm <b>LIVESTREAM</b> liên tục để tăng view! Né nút <b>BỊ REPORT</b> — bấm nhầm mất 200 view!</p><div class="tap-row"><button class="tap-big" id="tapBtn">📺 LIVESTREAM! +1 view</button></div><div class="tap-report-row"><button class="btn" id="reportBtn" style="visibility:hidden">🚫 BỊ REPORT</button></div><p>View hiện tại: <b id="tapViews">0</b></p>';
   let left = 15;
   $('gameTime').textContent = '0:' + left;
   $('tapBtn').addEventListener('click', () => {
@@ -2734,12 +2819,13 @@ function startTapGame(area) {
     $('tapViews').textContent = String(state.gameScore);
     $('gameScore').textContent = String(state.gameScore);
   });
+  const run = state.gameRunId; // v5.14: chống timer ma khi chơi lại (timer cũ vẫn hiện/ẩn nút của game mới)
   const repTimer = setInterval(() => {
-    if (!state.gameActive) { clearInterval(repTimer); return; }
+    if (!state.gameActive || run !== state.gameRunId) { clearInterval(repTimer); return; }
     const rb = $('reportBtn');
     if (rb) {
-      rb.style.display = 'inline-block';
-      setTimeout(() => { if (rb) rb.style.display = 'none'; }, 700);
+      rb.style.visibility = 'visible';
+      setTimeout(() => { if (rb && state.gameActive && run === state.gameRunId) rb.style.visibility = 'hidden'; }, 700);
     }
   }, 1800);
   $('reportBtn').addEventListener('click', () => {
