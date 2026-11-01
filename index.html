@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<meta name="theme-color" content="#111722">
+<meta name="theme-color" content="#233B37">
 <meta name="description" content="Vào Tù Thăm Idol — game nhập vai 3D phòng thăm nuôi online parody giải trí hư cấu. Nhân vật 3D rigged thật, đi dạo sảnh, thăm 4 idol qua vách kính. Không phải thăm thật, không cổ súy vi phạm pháp luật.">
-<title>Vào Tù Thăm Idol — Game Nhập Vai 3D (RPG Parody)</title>
+<title>Vào Tù Thăm Idol — Thăm Nuôi 1999 | Game Nhập Vai 3D</title>
 <link rel="stylesheet" href="style.css">
 <script type="importmap">
 { "imports": {
@@ -18,7 +18,7 @@
 <header class="topbar rpg-topbar">
   <div class="brand">
     <span class="logo" aria-hidden="true">🏛️</span>
-    <div><strong>VÀO TÙ THĂM IDOL <span class="tag3d">RPG 3D</span></strong>
+    <div><strong>VÀO TÙ THĂM IDOL <span class="tag3d">THĂM NUÔI 1999</span></strong>
     <small>Game nhập vai phòng thăm nuôi • Parody giải trí</small></div>
   </div>
   <div class="chips">
@@ -50,56 +50,100 @@
         <button class="btn" id="dismiss3dBtn">📜 Chơi bản chữ</button>
       </div>
 
-      <!-- ===== MÀN HÌNH CHỌN TƯỚNG (Champion Select, kiểu LoL) ===== -->
+      <!-- ===== MÀN HÌNH HỒ SƠ NGƯỜI THĂM (v5: THĂM NUÔI 1999) ===== -->
       <div id="startScreen" class="start-screen champ-select">
         <div class="champ-head">
-          <h1 class="rpg-title">VÀO TÙ<br><span class="neon">THĂM IDOL</span></h1>
-          <p class="rpg-sub">— GAME NHẬP VAI 3D —</p>
+          <p class="rpg-kicker">— THĂM NUÔI 1999 —</p>
+          <h1 class="rpg-title">HỒ SƠ<br><span class="neon">NGƯỜI THĂM</span></h1>
+          <p class="rpg-sub">VÀO TÙ THĂM IDOL • GAME NHẬP VAI 3D</p>
         </div>
         <div class="champ-grid">
           <div class="champ-list" id="charSelect" role="listbox" aria-label="Chọn nhân vật">
-            <button class="champion-option char-btn selected" data-model="sam" type="button"><span class="char-emoji">🧑‍🦱</span><b>Sam</b><small>Nhanh nhẹn</small></button>
-            <button class="champion-option char-btn" data-model="matt" type="button"><span class="char-emoji">🧑</span><b>Matt</b><small>Cân bằng</small></button>
-            <button class="champion-option char-btn" data-model="shaun" type="button"><span class="char-emoji">👨</span><b>Shaun</b><small>Bền bỉ</small></button>
+            <button class="champion-option char-btn selected" data-model="sam" type="button">
+              <span class="champ-portrait"><span class="champ-mono">S</span><img data-portrait="sam" alt="Sam" hidden></span>
+              <span class="champ-meta"><b>Sam</b><small>Nhanh nhẹn</small></span>
+            </button>
+            <button class="champion-option char-btn" data-model="matt" type="button">
+              <span class="champ-portrait"><span class="champ-mono">M</span><img data-portrait="matt" alt="Matt" hidden></span>
+              <span class="champ-meta"><b>Matt</b><small>Cân bằng</small></span>
+            </button>
+            <button class="champion-option char-btn" data-model="shaun" type="button">
+              <span class="champ-portrait"><span class="champ-mono">S</span><img data-portrait="shaun" alt="Shaun" hidden></span>
+              <span class="champ-meta"><b>Shaun</b><small>Bền bỉ</small></span>
+            </button>
           </div>
           <div class="champ-preview" id="champPreview">
-            <div class="champ-preview-emoji" id="champPreviewEmoji">🧑‍🦱</div>
+            <div class="champ-preview-fallback" id="champPreviewFallback">
+              <div class="champ-mono big" id="champPreviewMono">S</div>
+              <p>Đang tải nhân vật 3D…</p>
+            </div>
             <div class="champ-preview-name" id="champPreviewName">SAM</div>
             <div class="champ-preview-tag" id="champPreviewTag">Nhanh nhẹn • Chạy nhanh nhất sảnh</div>
-            <div class="fine champ-preview-note">Nhân vật 3D đang đứng trong sảnh phía sau — chọn tướng khác để xem nhân vật đổi.</div>
           </div>
           <div class="champ-info">
-            <h3 class="rpg-h3">📊 CHỈ SỐ</h3>
+            <h3 class="rpg-h3">📊 HỒ SƠ CHỈ SỐ</h3>
             <div class="stat-row"><span>Tốc độ</span><div class="stat-bar"><div id="statSpeed" class="stat-fill" style="width:88%"></div></div><b id="statSpeedVal">88</b></div>
             <div class="stat-row"><span>Sức bền</span><div class="stat-bar"><div id="statStamina" class="stat-fill" style="width:68%"></div></div><b id="statStaminaVal">68</b></div>
             <div class="stat-row"><span>Kỹ năng</span><div class="stat-bar"><div id="statSkill" class="stat-fill" style="width:74%"></div></div><b id="statSkillVal">74</b></div>
             <p class="fine" id="champDesc">Sam chạy nhanh nhất sảnh — hợp với người thích đi thăm nhiều ô kính trong thời gian ngắn.</p>
-            <label class="name-row">Tên hiển thị của bạn
-              <input id="playerNameInput" type="text" maxlength="20" value="Bạn" placeholder="Nhập tên của bạn…">
-            </label>
+            <p class="fine mono">MÃ HỒ SƠ: <b id="champFileNo">HS-1999-SAM</b> • LƯU TRỮ: PHÒNG THĂM NUÔI</p>
           </div>
         </div>
         <div class="champ-footer">
-          <div class="champ-picked">Đã chọn: <b id="champPickedName">Sam</b> <span class="fine">— bấm CHƠI NGAY để vào sảnh, không cần nhập tên.</span></div>
-          <button class="btn primary big rpg-btn champ-play" id="enterGameBtn">⚔️ CHƠI NGAY</button>
+          <div class="ticket-stub">
+            <div class="ticket-stub-left">
+              <span class="ticket-stub-title">🎫 VÉ THĂM NUÔI</span>
+              <span class="ticket-stub-no">SỐ <b id="ticketStubNo">A-014</b></span>
+              <span class="ticket-stub-meta"><span id="ticketStubDate">--/--/----</span> • <span id="ticketStubTime">--:--</span> • BUỒNG 01–04 • 03:00 PHÚT</span>
+            </div>
+            <div class="stamp">ĐÃ DUYỆT</div>
+          </div>
+          <button class="btn primary big rpg-btn champ-play" id="enterGameBtn">🎫 NHẬN VÉ &amp; VÀO SẢNH</button>
         </div>
         <p class="fine champ-footnote">4 idol: Trường Con • Huấn Hoa Hồng • Khánh Sky • Khá Bảnh — parody hư cấu, không dùng ảnh thật.</p>
       </div>
 
-      <!-- Quest tracker góc trái trên -->
-      <div id="questTracker" class="quest-tracker hud-layer" hidden>
-        <div class="hud-box rpg-hud">
-          <div class="bar-row"><span class="bar-label">📋 NHẬT KÝ NHIỆM VỤ</span><span id="questClock" class="fine">🕐 --:--</span></div>
-          <ul class="missions" id="missionsList"></ul>
+      <!-- Vé thăm + cấp + năng lượng (góc trái trên) -->
+      <div id="ticketCard" class="ticket-card hud-layer" hidden>
+        <div class="ticket-card-head"><span class="ticket-card-title">🎫 VÉ THĂM NUÔI</span><span class="stamp mini">ĐÃ DUYỆT</span></div>
+        <div class="ticket-card-no">SỐ <b id="ticketNum">A-014</b></div>
+        <div class="ticket-card-meta"><span id="ticketDate">--/--/----</span> • <span id="ticketTime">--:--</span> • BUỒNG 01–04</div>
+        <div class="ticket-card-row">
+          <div class="player-avatar" id="playerAvatar">S</div>
+          <div class="player-bars">
+            <div class="player-line"><b id="playerLevel">Cấp 1</b><b id="goldCount">🪙 0 vàng</b></div>
+            <div class="bar-row"><span class="bar-label">❤️ Năng lượng</span><b id="energyText">100%</b></div>
+            <div class="bar hp-bar"><div id="energyFill" class="bar-fill hp-fill" style="width:100%"></div></div>
+            <div class="bar-row"><span class="bar-label">✨ XP — <span id="xpText">0/80</span></span></div>
+            <div class="bar xp-bar"><div id="xpFill" class="bar-fill xp-fill" style="width:0%"></div></div>
+          </div>
         </div>
       </div>
 
-      <!-- Minimap góc phải trên -->
-      <div id="minimapBox" class="minimap-box hud-layer" hidden>
-        <div class="hud-box rpg-hud">
-          <div class="bar-row"><span class="bar-label">🗺️ BẢN ĐỒ SẢNH</span></div>
-          <canvas id="minimap" class="minimap" width="200" height="150"></canvas>
-          <div class="fine">🔺 Bạn • 🟡 Idol • 🔵 Người thăm</div>
+      <!-- Bảng gọi số + minimap (góc phải trên) -->
+      <div id="callBoard" class="call-board hud-layer" hidden>
+        <div class="hud-box call-box">
+          <div class="bar-row"><span class="bar-label">📣 BẢNG GỌI SỐ</span><span class="fine mono" id="hudClock">--:--</span></div>
+          <div class="call-rows">
+            <div class="call-row"><span>Đang gọi</span><b id="hudCalling">A-014</b></div>
+            <div class="call-row"><span>Tiếp theo</span><b id="hudNext">A-015</b></div>
+            <div class="call-row"><span>Buồng trống</span><b id="hudCells">15/24</b></div>
+          </div>
+        </div>
+        <div id="minimapBox" class="minimap-box">
+          <div class="hud-box">
+            <div class="bar-row"><span class="bar-label">🗺️ BẢN ĐỒ SẢNH</span></div>
+            <canvas id="minimap" class="minimap" width="220" height="160"></canvas>
+            <div class="fine">🔺 Bạn • 🟡 Idol • 🔵 Người thăm</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Nhật ký thăm nuôi dạng sổ (bên trái) -->
+      <div id="questTracker" class="quest-tracker hud-layer" hidden>
+        <div class="hud-box journal">
+          <div class="bar-row"><span class="bar-label">📋 NHẬT KÝ THĂM NUÔI</span><span id="questClock" class="fine mono">🕐 --:--</span></div>
+          <ul class="missions" id="missionsList"></ul>
         </div>
       </div>
 
@@ -118,33 +162,28 @@
       <!-- Bong bóng thoại 3D -->
       <div id="speech3d" class="speech3d" hidden></div>
 
-      <!-- ===== HUD DƯỚI KIỂU MOBA ===== -->
+      <!-- ===== HUD DƯỚI: khay tiếp tế (giữa) + nút hành động (phải) ===== -->
       <div id="bottomHud" class="bottom-hud hud-layer" hidden>
-        <div id="playerStatus" class="player-status">
-          <div class="player-avatar" id="playerAvatar">🧑‍🦱</div>
-          <div class="player-bars">
-            <div class="player-line"><b id="playerLevel">Cấp 1</b><span class="fine" id="playerNameHud">Bạn</span><b id="goldCount">🪙 0 vàng</b></div>
-            <div class="bar-row"><span class="bar-label">❤️ Năng lượng</span><b id="energyText">100%</b></div>
-            <div class="bar hp-bar"><div id="energyFill" class="bar-fill hp-fill" style="width:100%"></div></div>
-            <div class="bar-row"><span class="bar-label">✨ XP — <span id="xpText">0/80</span></span></div>
-            <div class="bar xp-bar"><div id="xpFill" class="bar-fill xp-fill" style="width:0%"></div></div>
+        <div id="supplyTray" class="supply-tray">
+          <div class="tray-label">🧺 KHAY TIẾP TẾ</div>
+          <div id="hudInventory" class="hud-inventory"></div>
+        </div>
+        <div id="actionCluster" class="action-cluster">
+          <div id="skillBar" class="skill-bar" role="toolbar" aria-label="Kỹ năng">
+            <button class="skill-btn" id="waveBtn" type="button" title="Q — Vẫy tay chào"><span class="skill-emoji">👋</span><span class="skill-key">Q</span></button>
+            <button class="skill-btn" id="bowBtn" type="button" title="W — Chắp tay chào"><span class="skill-emoji">🙏</span><span class="skill-key">W</span></button>
+            <button class="skill-btn skill-main" id="interactBtn" type="button" title="E — Vào thăm / tương tác"><span class="skill-emoji">✋</span><span class="skill-key">E</span><span class="skill-label" id="interactLabel">THĂM</span></button>
+            <button class="skill-btn" id="skillRBtn" type="button" title="R — Idol biểu diễn"><span class="skill-emoji">🪭</span><span class="skill-key">R</span></button>
+            <button class="skill-btn" id="photoBtn" type="button" title="D — Chụp ảnh kỷ niệm"><span class="skill-emoji">📸</span><span class="skill-key">D</span></button>
+            <button class="skill-btn" id="skillFBtn" type="button" title="F — Túi đồ / menu"><span class="skill-emoji">🎒</span><span class="skill-key">F</span></button>
           </div>
+          <button class="btn round menu-btn" id="menuBtn" type="button" title="Mở menu (nhiệm vụ, bảng vàng, túi đồ)">☰</button>
         </div>
-        <div id="skillBar" class="skill-bar" role="toolbar" aria-label="Kỹ năng">
-          <button class="skill-btn" id="waveBtn" type="button" title="Q — Vẫy tay chào"><span class="skill-emoji">👋</span><span class="skill-key">Q</span></button>
-          <button class="skill-btn" id="bowBtn" type="button" title="W — Chắp tay chào"><span class="skill-emoji">🙏</span><span class="skill-key">W</span></button>
-          <button class="skill-btn skill-main" id="interactBtn" type="button" title="E — Vào thăm / tương tác"><span class="skill-emoji">✋</span><span class="skill-key">E</span><span class="skill-label" id="interactLabel">THĂM</span></button>
-          <button class="skill-btn" id="skillRBtn" type="button" title="R — Idol biểu diễn"><span class="skill-emoji">🪭</span><span class="skill-key">R</span></button>
-          <button class="skill-btn" id="photoBtn" type="button" title="D — Chụp ảnh kỷ niệm"><span class="skill-emoji">📸</span><span class="skill-key">D</span></button>
-          <button class="skill-btn" id="skillFBtn" type="button" title="F — Túi đồ / menu"><span class="skill-emoji">🎒</span><span class="skill-key">F</span></button>
-        </div>
-        <div id="hudInventory" class="hud-inventory"></div>
-        <button class="btn round menu-btn" id="menuBtn" type="button" title="Mở menu (nhiệm vụ, bảng vàng, túi đồ)">☰</button>
       </div>
 
       <!-- Hộp thoại NPC kiểu RPG -->
       <div id="rpgDialog" class="rpg-dialog" hidden>
-        <div class="rpg-avatar" id="rpgAvatar">🕺</div>
+        <div class="rpg-avatar" id="rpgAvatar">K</div>
         <div class="rpg-dialog-body">
           <div class="rpg-name" id="rpgName">Khá Bảnh</div>
           <div class="rpg-text" id="rpgText">Chào bạn!</div>
@@ -162,7 +201,7 @@
       <div id="menuOverlay" class="menu-overlay" hidden>
         <div class="menu-panel rpg-frame">
           <div class="menu-head">
-            <h2>☰ MENU</h2>
+            <h2>☰ SỔ THĂM NUÔI</h2>
             <button class="btn small" id="menuCloseBtn">✕ Đóng</button>
           </div>
           <div class="menu-sections">
@@ -225,7 +264,9 @@
             <div>
               <h2 id="visitTitle">Phòng thăm</h2>
               <p id="visitStatus" class="fine"></p>
+              <p class="fine mono" id="visitBooth">BUỒNG SỐ -- • LOA LIÊN LẠC: BẬT</p>
             </div>
+            <div class="stamp">ĐÃ DUYỆT</div>
             <div class="timer-box">
               <span>⏱️ Giờ thăm còn lại</span>
               <b id="visitTimer">03:00</b>
