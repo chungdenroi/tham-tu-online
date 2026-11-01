@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#233B37">
 <meta name="description" content="Vào Tù Thăm Idol — game nhập vai 3D phòng thăm nuôi online parody giải trí hư cấu. Nhân vật 3D rigged thật, đi dạo sảnh, thăm 4 idol qua vách kính. Không phải thăm thật, không cổ súy vi phạm pháp luật.">
 <title>Vào Tù Thăm Idol — Thăm Nuôi 1999 | Game Nhập Vai 3D</title>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=5.4">
 <script type="importmap">
 { "imports": {
   "three": "./vendor/three.module.js",
@@ -262,7 +262,7 @@
 
       <!-- ===== PHÒNG THĂM — overlay trong khung game, KHÔNG cuộn trang ===== -->
       <section id="visitScreen" class="screen visit-overlay">
-        <div class="panel visit-room rpg-panel">
+        <div class="panel visit-room rpg-panel" id="visitRoom">
           <div class="visit-head">
             <div>
               <h2 id="visitTitle">Phòng thăm</h2>
@@ -283,10 +283,10 @@
             <button class="btn rpg-btn" id="idolFanBtn">🪭 Idol múa quạt / biểu diễn</button>
             <span class="fine">Đã gửi trong buổi thăm này: <b id="sentCount">0</b> món • Điểm buổi thăm: <b id="visitPoints">0</b></span>
           </div>
-          <div id="speechBubble" class="speech">Bấm vào idol 3D để chào idol một cái!</div>
-
           <h3>🎁 Gửi đồ thăm nuôi — bấm để gửi (món bay tới idol trong cảnh 3D, mỗi món cộng điểm + cộng giờ)</h3>
           <div class="gifts" id="giftsRow"></div>
+          <p class="fine" id="visitEnergyNote">⚡ Năng lượng: mỗi buổi thăm 3 phút tốn tối đa 20% (100% → 80%) — về sảnh là hồi lại 100%.</p>
+          <div id="speechBubble" class="speech">Bấm vào idol 3D để chào idol một cái!</div>
 
           <h3>💬 Chat hỏi đáp với idol</h3>
           <div class="chat-log" id="chatLog"></div>
@@ -313,6 +313,21 @@
           <button class="btn rpg-btn" id="downloadCertBtn">⬇️ Tải giấy chứng nhận (PNG)</button>
           <button class="btn rpg-btn" id="photoVisitBtn">📸 Chụp ảnh phòng thăm</button>
           <p id="photoFeedback" class="feedback" hidden>Đã chụp ảnh — ảnh đã tải về máy bạn!</p>
+        </div>
+
+        <!-- Màn tổng kết buổi thăm: hiện khi hết giờ / bấm kết thúc, KHÔNG tự đóng về sảnh -->
+        <div class="panel visit-summary rpg-panel" id="visitSummary" hidden>
+          <h2>📜 Tổng kết buổi thăm</h2>
+          <p class="fine" id="summaryIdol"></p>
+          <ul class="summary-list" id="summaryList"></ul>
+          <div class="summary-cert">
+            <p class="fine">Giấy chứng nhận thăm nuôi của bạn đã sẵn sàng:</p>
+            <canvas id="summaryCertCanvas" width="640" height="400"></canvas>
+            <button class="btn primary big rpg-btn" id="summaryCertBtn">⬇️ Tải giấy chứng nhận (PNG)</button>
+          </div>
+          <div class="summary-actions">
+            <button class="btn primary big rpg-btn" id="summaryLobbyBtn">← Về sảnh</button>
+          </div>
         </div>
       </section>
     </div>
@@ -359,10 +374,11 @@
   <p class="fine">Tình trạng pháp lý ghi theo báo chí đã công bố: Trường Con 20 năm tù (2020, mua bán ma túy); Khá Bảnh 10 năm 6 tháng (2019, đánh bạc/tổ chức đánh bạc);
   Huấn Hoa Hồng và Khánh Sky bị khởi tố / tạm giam tháng 8/2026, đang chờ xử lý, chưa có bản án tuyên. Nội dung thoại của idol là lời parody hư cấu, không phải phát ngôn thật.</p>
   <p class="fine">Số liệu “đang online / lượt thăm / bảng vàng” trên trang đều là số liệu minh họa / mô phỏng.</p>
-  <p class="fine">Nhân vật 3D: Quaternius CC0 qua Cinevva (Sam/Matt/Shaun/Lis/Soldier/Knight/Casual) — xem chi tiết nguồn + giấy phép trong README.md của repo.</p>
+  <p>Phiên bản web: <b>v5.4</b> — nếu màn hình của bạn hiện số phiên bản khác, bấm Ctrl+F5 (Mac: Cmd+Shift+R) để tải bản mới nhất, đừng dùng bản trong bộ nhớ đệm.</p>
+  <p class="fine">Nhân vật 3D: Quaternius CC0 qua Cinevva (Sam/Matt/Shaun/Lis/Soldier/Casual) — xem chi tiết nguồn + giấy phép trong README.md của repo.</p>
 </footer>
 
-<script type="module" src="app.js"></script>
+<script type="module" src="app.js?v=5.4"></script>
 <script>
   // Nếu sau 12s boot vẫn chưa xong VÀ chưa ghi được lỗi cụ thể: chỉ hiện banner
   // nhỏ ở đầu khung game với đúng bước đang kẹt (đọc từ window.__thamtuBootStage)
