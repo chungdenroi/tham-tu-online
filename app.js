@@ -127,6 +127,13 @@ function updateChampPreview(key) {
   // khung chờ khi rig người chơi đã tải xong.
   const fb = $('champPreviewFallback');
   if (fb) fb.style.display = (playerRig && state.threeReady) ? 'none' : '';
+  // v5.1: hiện portrait 3D thật (chụp từ model GLB) trong khung preview — vì
+  // overlay hồ sơ giờ nền ĐẶC (không còn nhìn xuyên sang cảnh 3D phía sau).
+  const pimg = $('champPreviewImg');
+  if (pimg) {
+    const url = snapshotPortrait(key, 1.78);
+    if (url) { pimg.src = url; pimg.hidden = false; }
+  }
 }
 
 /* ================= PORTRAIT 3D THẬT (v5) =================
@@ -240,7 +247,11 @@ function renderQuickIdolBar() {
     const b = document.createElement('button');
     b.className = 'quick-idol-chip' + (state.visited.has(d.id) ? ' visited' : '');
     b.type = 'button';
-    b.textContent = d.emoji + ' ' + d.name;
+    // v5.1: tên ngắn trên chip ("Huấn Hoa Hồng" dài làm chip cuối "Khánh Sky"
+    // bị cắt ở mép phải) — tên đầy đủ vẫn hiện ở title khi di chuột vào.
+    const short = { huan: 'Huấn' }[d.id] || d.name;
+    b.textContent = d.emoji + ' ' + short;
+    b.title = d.name + ' — chạm để tự chạy tới ô kính';
     b.addEventListener('click', () => selectIdolQuick(d.id));
     bar.appendChild(b);
   });
@@ -294,6 +305,17 @@ function updateHeader() {
   const hn = $('hudNext'); if (hn) hn.textContent = 'A-015';
   const hcl = $('hudCells'); if (hcl) hcl.textContent = '15/24';
   updateHudBars();
+}
+/* Một nguồn sự thật duy nhất cho số đã thăm (v5.1): mỗi khi visited đổi thì
+   cập nhật ĐỒNG THỜI header + nhật ký + thẻ idol + thanh chọn nhanh.
+   V5: nhật ký chỉ render lại trong checkMission('visit') — mà checkMission thoát
+   sớm khi nhiệm vụ đã xong trong ngày nên nhật ký giữ số cũ (2/4) trong khi
+   header đã tăng (3/4). */
+function syncVisitedUI() {
+  updateHeader();
+  renderMissions();
+  renderIdols(); // gồm renderQuickIdolBar + applyPortraits (dấu ĐÃ THĂM)
+  renderLeaderboard();
 }
 let toastTimer = null;
 function toast(msg) {
@@ -386,7 +408,7 @@ const flyItems = [];
 const allRigs = [];
 let raycaster = null, pointerNDC = null;
 const keys = {};
-const cam = { yaw: 0, pitch: 0.32, dist: 7.5 };
+const cam = { yaw: 0, pitch: 0.22, dist: 6 }; // v5.1: camera mặc định gần + thấp hơn (v5: 0.32/7.5), hướng về dãy ô kính
 const joy = { active: false, x: 0, y: 0, id: null };
 let fpsFrames = 0, fpsTime = 0;
 let jumpV = 0, playerJumpY = 0;
@@ -416,17 +438,18 @@ async function boot3D() {
     enterNo3D('webgl', 'getContext(webgl2/webgl) trả về null');
     return;
   }
-  // 2) Tải Three.js LOCAL trong repo (./vendor/), không phụ thuộc CDN — có timeout
-  // (dynamic import không hủy được, nhưng race timeout giúp boot không đứng
-  // chờ mãi khi mạng chậm; module về muộn cũng không dùng nữa).
+  // 2) Tải Three.js LOCAL trong repo (./vendor/), không phụ thuộc CDN.
+  // v5.1: 3 module import SONG SONG trong 1 lần race 20s — v5 import tuần tự
+  // từng cái (mỗi cái timeout 20s) nên riêng giai đoạn này đã có thể mất tới
+  // 60s trước khi model nào được tải, đó là 1 phần lý do màn hồ sơ kẹt >25s.
   bootLog('three-load', 'Đang tải Three.js trong repo (vendor/)…');
   try {
     const withTimeout = (p, ms, label) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout sau ' + (ms / 1000) + 's khi tải ' + label)), ms))]);
-    const threeMod = await withTimeout(import('./vendor/three.module.js'), 20000, 'three.module.js');
+    const [threeMod, loaderMod, skelMod] = await withTimeout(
+      Promise.all([import('./vendor/three.module.js'), import('./vendor/addons/loaders/GLTFLoader.js'), import('./vendor/addons/utils/SkeletonUtils.js')]),
+      20000, 'Three.js');
     THREE = threeMod;
-    const loaderMod = await withTimeout(import('./vendor/addons/loaders/GLTFLoader.js'), 20000, 'GLTFLoader.js');
     GLTFLoaderClass = loaderMod.GLTFLoader;
-    const skelMod = await withTimeout(import('./vendor/addons/utils/SkeletonUtils.js'), 20000, 'SkeletonUtils.js');
     cloneSkinned = skelMod.clone;
     loader = new GLTFLoaderClass();
   } catch (err) {
@@ -489,7 +512,11 @@ async function fetchGLB(key) {
     if (!res.ok) throw new Error('HTTP ' + res.status + ' khi tải ' + MODEL_URLS[key]);
     const buf = await res.arrayBuffer();
     try {
-      return await loader.parseAsync(buf, '');
+      // v5.1: parse GLB cũng có timeout riêng — trước đây chỉ fetch có timeout,
+      // parse chậm/treo trên máy yếu thì boot kẹt quá 12s mà không ai ngắt được.
+      const parseP = loader.parseAsync(buf, '');
+      const parseTimeout = new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout parse GLB sau 12s: ' + MODEL_URLS[key])), MODEL_TIMEOUT_MS));
+      return await Promise.race([parseP, parseTimeout]);
     } catch (e) {
       throw new Error('Lỗi parse GLB ' + MODEL_URLS[key] + ': ' + (e && e.message ? e.message : e));
     }
@@ -741,8 +768,10 @@ function buildHall() {
     const spkDot = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), new THREE.MeshStandardMaterial({ color: 0x7A9A5B, emissive: 0x7A9A5B, emissiveIntensity: 1.2 }));
     spkDot.position.set(1.28, 2.0, 0.24); grp.add(spkDot);
     if (b.idol) {
-      const tube = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.09, 0.09),
-        new THREE.MeshStandardMaterial({ color: 0xFFF6DC, emissive: 0xFFE9A8, emissiveIntensity: 1.8 }));
+      // v5.1: đèn huỳnh quang trong buồng sáng hơn (emissive 2.6) + dài hơn,
+      // soi trực tiếp lên idol đứng sát kính.
+      const tube = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.09, 0.09),
+        new THREE.MeshStandardMaterial({ color: 0xFFF6DC, emissive: 0xFFE9A8, emissiveIntensity: 2.6 }));
       tube.position.set(0, 2.42, -0.4); grp.add(tube);
     }
     const table = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.12, 0.7), mat(0x6b4a2f));
@@ -772,8 +801,11 @@ function processRigQueue(maxPerFrame, budgetMs) {
   return rigQueue.length;
 }
 
-/* Tải ƯU TIÊN theo giai đoạn (v4): P0 chỉ model người chơi → P1 4 idol (tối đa
-   2 file/lượt). File nào lỗi thì thay bằng model đã tải được. */
+/* Tải ƯU TIÊN theo giai đoạn (v5.1): P0 chỉ model người chơi — tải xong là dựng
+   rig + hiện màn hồ sơ NGAY, không chờ 4 idol (v5: rig người chơi chỉ dựng sau
+   khi cả 5 file xong nên màn hồ sơ kẹt "Đang tải nhân vật 3D…" hơn 25 giây).
+   P1: 4 idol — dựng rig từng idol ngay khi file của nó về, không chờ cả lô.
+   File nào lỗi thì thay bằng model đã tải được. */
 async function loadPriorityModels() {
   const playerKey = state.playerModel || 'sam';
   const idolKeys = ['matt', 'shaun', 'soldierMale', 'knight'];
@@ -781,29 +813,32 @@ async function loadPriorityModels() {
   let done = 0;
   const bump = () => { done++; bootLog('models-priority', 'Đã tải nhân vật chính ' + done + '/5'); };
   const failed = [];
+  // P0 — chỉ model người chơi.
   failed.push(...await loadKeysLimited([playerKey], bump));
-  failed.push(...await loadKeysLimited(idolKeys, bump));
-  if (failed.length) console.warn('[thamtu] model ưu tiên tải lỗi:', failed);
-  const loaded = ['sam', 'matt', 'shaun', 'soldierMale', 'knight'].filter((k) => modelCache[k]);
-  if (!loaded.length) return false;
-  const fallbackKey = loaded[0];
+  const loaded0 = ['sam', 'matt', 'shaun', 'soldierMale', 'knight'].filter((k) => modelCache[k]);
+  if (!loaded0.length) return false;
+  const fallbackKey = loaded0[0];
   const pick = (k) => (modelCache[k] ? k : fallbackKey);
-  // Người chơi: model đã chọn ở màn hình RPG (mặc định Sam)
-  playerRig = makeRigFromGLTF(pick(state.playerModel || 'sam'), modelCache[pick(state.playerModel || 'sam')], { height: 1.76, name: 'player', shadow: true, role: 'player' });
-  playerRig.group.position.set(0, 0, 5);
+  playerRig = makeRigFromGLTF(pick(playerKey), modelCache[pick(playerKey)], { height: 1.76, name: 'player', shadow: true, role: 'player' });
+  // v5.1: spawn lệch trái (x=-7, z=4) — không đứng giữa che ô kính gần nhất.
+  playerRig.group.position.set(-7, 0, 4);
   attachAccessory(playerRig, 'cap');
   addNameTag(playerRig, state.playerName || 'Bạn');
   scene.add(playerRig.group);
   player = playerRig.group;
   setAnim(playerRig, 'idle');
-  // 4 idol sau vách kính — v5: đứng SÁT kính hơn (z - 0.6 thay vì -1.1) để nhìn
-  // rõ toàn thân qua ô kính đã mở khung; đèn huỳnh quang trong buồng đã thêm
-  // ở buildHall() nên idol không còn chìm trong bóng tối.
-  IDOLS.forEach((d) => {
+  updateChampPreview(playerKey); // ẩn khung chờ "Đang tải nhân vật 3D…" + hiện portrait 3D thật
+  // P1 — 4 idol: dựng rig ngay khi file về (onOne), xong lô thì dựng nốt idol
+  // nào còn thiếu bằng model dự phòng (file của nó lỗi/timeout).
+  const buildIdolRig = (modelKey) => {
+    const d = IDOLS.find((x) => x.model === modelKey);
+    if (!d || idolRigs[d.id]) return;
     const key = pick(d.model);
-    const rig = makeRigFromGLTF(key, modelCache[key], { height: d.height, name: d.id, shadow: true, role: 'idol' });
+    // v5.1: idol to hơn 15% + đứng sát kính hơn (z - 0.35 thay vì -0.6) để nhìn
+    // rõ toàn thân qua ô kính; đèn buồng + đèn chung trước dãy ô đã thêm.
+    const rig = makeRigFromGLTF(key, modelCache[key], { height: d.height * 1.15, name: d.id, shadow: true, role: 'idol' });
     const b = booths.find((x) => x.idolId === d.id);
-    rig.group.position.set(b.x, 0, b.z - 0.6);
+    rig.group.position.set(b.x, 0, b.z - 0.35);
     rig.group.rotation.y = 0;
     if (d.tint) tintMaterial(rig, d.tint, 0xff8a3d); // áo tù cam (chỉ vật liệu không texture)
     attachAccessory(rig, d.acc);
@@ -811,7 +846,10 @@ async function loadPriorityModels() {
     scene.add(rig.group);
     idolRigs[d.id] = { rig, boothX: b.x, boothZ: b.z };
     setAnim(rig, 'idle');
-  });
+  };
+  failed.push(...await loadKeysLimited(idolKeys, (k) => { bump(); buildIdolRig(k); }));
+  IDOLS.forEach((d) => buildIdolRig(d.model));
+  if (failed.length) console.warn('[thamtu] model ưu tiên tải lỗi:', failed);
   if (failed.length) toast('⚠️ Một số nhân vật tải lỗi, đã thay bằng nhân vật khác: ' + failed.map((f) => f.split(':')[0]).join(', '));
   return true;
 }
@@ -867,8 +905,10 @@ function initThree() {
   const canvas = $('gameCanvas');
   // v5: mobile DPR tối đa 1.0, desktop 1.25 (FPS ~20 ở v4 → giảm pixel phải vẽ);
   // tắt antialias trên mobile; preserveDrawingBuffer:false (chụp ảnh render lại riêng).
-  renderer = new THREE.WebGLRenderer({ canvas, antialias: !IS_MOBILE, preserveDrawingBuffer: false });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, IS_MOBILE ? 1.0 : 1.25));
+  // v5.1 FPS: tắt antialias hẳn (SwiftShader/software render rất tốn với MSAA),
+  // DPR tối đa 1.0 cả desktop (v5: 1.25) — số pixel phải vẽ giảm ~36% so với v5.
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: false, preserveDrawingBuffer: false });
+  renderer.setPixelRatio(1.0);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -876,19 +916,24 @@ function initThree() {
   scene.background = new THREE.Color(0x16211F);
   scene.fog = new THREE.Fog(0x16211F, 22, 42);
   camera = new THREE.PerspectiveCamera(58, 1, 0.1, 100);
-  camera.position.set(0, 4, 10);
+  camera.position.set(0, 3.5, 11);
   clock = new THREE.Clock();
   raycaster = new THREE.Raycaster();
   pointerNDC = new THREE.Vector2();
-  scene.add(new THREE.HemisphereLight(0xFFF2D0, 0x233B37, 1.15));
+  scene.add(new THREE.HemisphereLight(0xFFF2D0, 0x233B37, 1.35));
   const sun = new THREE.DirectionalLight(0xffe9a8, 1.6);
   sun.position.set(8, 12, 6); sun.castShadow = true;
-  // v5: shadow map nhỏ lại (512 desktop / 256 mobile) để tăng FPS.
-  sun.shadow.mapSize.set(IS_MOBILE ? 256 : 512, IS_MOBILE ? 256 : 512);
-  sun.shadow.camera.left = -18; sun.shadow.camera.right = 18;
-  sun.shadow.camera.top = 18; sun.shadow.camera.bottom = -18;
+  // v5.1: shadow map nhỏ lại nữa (256 desktop / 128 mobile, v5: 512/256),
+  // vùng shadow thu hẹp ±14 (v5: ±18) — vẫn phủ hết sảnh.
+  sun.shadow.mapSize.set(IS_MOBILE ? 128 : 256, IS_MOBILE ? 128 : 256);
+  sun.shadow.camera.left = -14; sun.shadow.camera.right = 14;
+  sun.shadow.camera.top = 14; sun.shadow.camera.bottom = -14;
   scene.add(sun);
   const warm = new THREE.PointLight(0xff8a3d, 25, 18, 1.8); warm.position.set(0, 3.6, -6); scene.add(warm);
+  // v5.1: 1 đèn chung trước dãy ô kính idol (0, 2.6, -8.2) — soi sáng cả 4 idol
+  // sau kính mà chỉ tốn 1 point light (không đặt 1 đèn/buồng).
+  const boothLight = new THREE.PointLight(0xffe9a8, 30, 16, 1.7);
+  boothLight.position.set(0, 2.6, -8.2); scene.add(boothLight);
   buildHall();
   resize();
   window.addEventListener('resize', resize);
@@ -997,8 +1042,11 @@ function updateCamera(dt) {
     return;
   }
   const cd = cam.dist;
-  const tx = player.position.x - Math.sin(cam.yaw) * cd;
-  const tz = player.position.z - Math.cos(cam.yaw) * cd;
+  // v5.1: camera đứng SAU lưng người chơi (phía nam, z lớn hơn) nhìn về dãy ô
+  // kính phía bắc — v5 đặt camera phía bắc nhìn về nam nên chỉ thấy vách tối,
+  // idol bị che sau lưng người chơi, đi tới ô kính thì camera chui qua tường.
+  const tx = player.position.x + Math.sin(cam.yaw) * cd;
+  const tz = player.position.z + Math.cos(cam.yaw) * cd;
   const ty = 2.2 + Math.sin(cam.pitch) * cd;
   camera.position.x = damp(camera.position.x, tx, 8, dt);
   camera.position.y = damp(camera.position.y, ty, 8, dt);
@@ -1008,12 +1056,27 @@ function updateCamera(dt) {
 function updateNPCs(dt) {
   for (const n of npcs) {
     if (!n.rig) continue;
+    // v5.1: NPC tránh người chơi — đang auto-walk tới ô kính thì NPC không
+    // được chắn đường / chạm vào người chơi (đó là lúc v5 bật nhầm hộp thoại).
+    if (player && !state.visitMode) {
+      const pd = Math.hypot(n.rig.group.position.x - player.position.x, n.rig.group.position.z - player.position.z);
+      if (pd < 1.6) {
+        const ax = n.rig.group.position.x - player.position.x, az = n.rig.group.position.z - player.position.z;
+        const al = Math.max(0.01, Math.hypot(ax, az));
+        n.target.set(
+          clamp(n.rig.group.position.x + (ax / al) * 4, -HALL.x + 2, HALL.x - 2), 0,
+          clamp(n.rig.group.position.z + (az / al) * 4, -4.5, HALL.z - 2));
+        n.wait = 0;
+      }
+    }
     if (n.wait > 0) { n.wait -= dt; if (n.rig.anim !== 'idle') setAnim(n.rig, 'idle'); continue; }
     const dx = n.target.x - n.rig.group.position.x, dz = n.target.z - n.rig.group.position.z;
     const d = Math.hypot(dx, dz);
     if (d < 0.3) {
       n.wait = 1 + Math.random() * 4;
-      n.target.set((Math.random() * 2 - 1) * (HALL.x - 2), 0, (Math.random() * 2 - 1) * (HALL.z - 2));
+      // v5.1: NPC chỉ đi lại ở nửa nam sảnh (z ≥ -4.5) — không chắn tầm nhìn
+      // dãy ô kính phía bắc.
+      n.target.set((Math.random() * 2 - 1) * (HALL.x - 2), 0, -4.5 + Math.random() * (HALL.z + 2.5));
       if (n.rig.anim !== 'idle') setAnim(n.rig, 'idle');
     } else {
       n.rig.group.position.x += (dx / d) * 1.2 * dt;
@@ -1033,6 +1096,9 @@ function nearestBooth() {
   }
   return best;
 }
+/* v5.1 FPS: chỉ ghi DOM khi trạng thái nhắc tương tác thực sự đổi — v5 ghi
+   textContent + classList mỗi frame (60 lần/giây) dù không có gì thay đổi. */
+let nearPromptSig = '';
 function updateNearPrompt() {
   const el = $('nearPrompt');
   const eBtn = $('interactBtn');
@@ -1041,18 +1107,25 @@ function updateNearPrompt() {
     if (eLabel) eLabel.textContent = label;
     if (eBtn) eBtn.classList.toggle('armed', !!armed);
   };
-  if (!state.started || !player) { el.hidden = true; setE('THĂM', false); return; }
-  if (state.visitMode) { el.hidden = true; setE('THĂM', false); return; }
+  if (!state.started || !player) { if (nearPromptSig !== 'off') { nearPromptSig = 'off'; el.hidden = true; setE('THĂM', false); } return; }
+  if (state.visitMode) { if (nearPromptSig !== 'visit') { nearPromptSig = 'visit'; el.hidden = true; setE('THĂM', false); } return; }
   const b = nearestBooth();
+  const sig = (b ? (b.idolId || 'empty') : 'none') + '|' + ($('rpgDialog').hidden ? '1' : '0');
+  if (sig === nearPromptSig) return; // không đổi → không chạm DOM
+  nearPromptSig = sig;
   if (!b) { el.hidden = true; setE('ĐI TỚI', false); return; }
   // Hộp thoại NPC đang mở thì ẩn nhắc tương tác (tránh 2 khung chồng nhau
   // cùng chỗ — khung thoại đã mời tương tác rồi); đóng thoại thì nhắc lại hiện.
   el.hidden = $('rpgDialog').hidden ? false : true;
   if (b.idolId) {
-    $('nearPromptText').textContent = 'Ô ' + IDOLS.find((d) => d.id === b.idolId).name + ' — bấm E để vào thăm';
+    $('nearPromptText').textContent = IS_TOUCH
+      ? 'Ô ' + IDOLS.find((d) => d.id === b.idolId).name + ' — bấm VÀO THĂM'
+      : 'Ô ' + IDOLS.find((d) => d.id === b.idolId).name + ' — bấm E để vào thăm';
     setE('VÀO THĂM', true);
   } else {
-    $('nearPromptText').textContent = 'Ô này đang trống — bấm E để ngồi chờ';
+    $('nearPromptText').textContent = IS_TOUCH
+      ? 'Ô này đang trống — bấm VÀO THĂM để ngồi chờ'
+      : 'Ô này đang trống — bấm E để ngồi chờ';
     setE('THĂM', false);
   }
   el.dataset.boothId = b.idolId || '';
@@ -1098,6 +1171,7 @@ function openVisit(idolId, source) {
   if (!state.visited.has(idolId)) {
     state.visited.add(idolId);
     addPoints(20);
+    syncVisitedUI(); // v5.1: header + nhật ký + thẻ idol cùng tăng ngay
     toast('🎉 Lần đầu thăm ' + idol.name + '! +20 điểm.');
   }
   if (state.no3d || !idolRigs[idolId]) {
@@ -1150,7 +1224,15 @@ function endVisit(msg) {
   state.visitMode = false;
   state.currentIdol = null;
   stopGame();
+  // v5.1: đóng hết hộp thoại/chat/toast của buổi thăm — v5: khung thoại Trường
+  // Con còn sót lại trên màn sảnh sau khi bấm "← Về sảnh".
+  hideRpgDialog();
+  const sp = $('speech3d');
+  if (sp) { sp.hidden = true; clearTimeout(sp._h); }
   if (playerRig && playerRig.anim !== 'idle') setAnim(playerRig, 'idle');
+  // v5.1: camera quay về hướng dãy ô kính phía bắc (yaw 0 = camera phía nam
+  // nhìn về bắc), không quay vào vách tối như v5.
+  cam.yaw = 0; cam.pitch = 0.22; cam.dist = 6;
   document.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
   // v4: overlay chỉ ẩn đi, không cuộn trang — người chơi ở lại đúng chỗ trong sảnh.
   showHint(IS_TOUCH ? 'Chạm 1 idol phía trên để thăm người tiếp theo!' : 'Chọn idol khác ở thanh phía trên để thăm tiếp!');
@@ -1260,7 +1342,9 @@ const NPC_LINES = [
 function checkMission(kind) {
   const today = todayStr();
   if (!state.missions.date || state.missions.date !== today) state.missions = { date: today, done: {} };
-  if (state.missions.done[kind]) return;
+  // v5.1: nhiệm vụ đã xong thì vẫn render lại nhật ký (số "Đã thăm x/4" trong
+  // đó phải theo state.visited hiện tại, không giữ số từ lần render trước).
+  if (state.missions.done[kind]) { renderMissions(); return; }
   const m = MISSIONS.find((x) => x.id === kind);
   if (!m) return;
   state.missions.done[kind] = true;
@@ -1391,6 +1475,9 @@ function hideRpgDialog() {
 }
 function checkProximityDialog() {
   if (!state.started || state.visitMode || Date.now() < state.dialogUntil) return;
+  // v5.1: đang auto-walk tới ô kính thì KHÔNG bật hộp thoại nào (kể cả NPC lẫn
+  // idol) — v5: NPC "Anh Ba" chắn đường bật thoại làm auto-walk dừng lại.
+  if (state.autoWalkTo) return;
   if (!$('rpgDialog').hidden) return;
   const b = nearestBooth();
   if (b && b.idolId) {
@@ -1469,7 +1556,9 @@ function drawMinimap() {
    (không gọi mỗi frame trong tick() nữa). */
 let hudSig = '';
 function updateHudBars() {
-  const energy = state.visitMode ? Math.max(0, Math.round((state.visitSeconds / 180) * 100)) : 100;
+  // v5.1: năng lượng chỉ tụt TỐI ĐA 20% trong cả buổi thăm 180 giây (v5 tụt
+  // 100% → 100% còn 64% sau ~1 phút, quá nhanh). Ngoài buổi thăm luôn 100%.
+  const energy = state.visitMode ? Math.max(80, Math.round(100 - ((180 - state.visitSeconds) / 180) * 20)) : 100;
   const p = state.points;
   const next = p >= 500 ? 1000 : p >= 200 ? 500 : p >= 80 ? 200 : 80;
   const base = p >= 500 ? 500 : p >= 200 ? 200 : p >= 80 ? 80 : 0;
@@ -1859,6 +1948,14 @@ function bindInput() {
   $('refillInvBtn').addEventListener('click', refillInventory);
   $('refillInvBtn2').addEventListener('click', refillInventory);
   $('rpgContinue').addEventListener('click', hideRpgDialog);
+  // v5.1: nhật ký thu gọn được — trên màn hình thấp, núm joystick đè lên dòng
+  // nhiệm vụ cuối; bấm nút này để thu gọn/mở lại danh sách nhiệm vụ.
+  const qt = $('questToggle');
+  if (qt) qt.addEventListener('click', () => {
+    const q = $('questTracker');
+    q.classList.toggle('collapsed');
+    qt.textContent = q.classList.contains('collapsed') ? '+' : '–';
+  });
   $('reloadBtn').addEventListener('click', () => location.reload());
   const retry = $('retry3dBtn');
   if (retry) retry.addEventListener('click', () => location.reload());
@@ -1972,9 +2069,11 @@ function tick() {
         updateCamera(dt);
       }
       updateNPCs(dt);
-      // v5 FPS: player + idol cập nhật animation mỗi frame; NPC/người ngồi chờ
-      // (xa camera, ít quan trọng) chỉ cập nhật frame chẵn — giảm tải mixer.
+      // v5.1 FPS: bỏ qua mixer của rig mà clip LoopOnce đã chạy xong (người ngồi
+      // chờ ở tư thế ngồi) — v5 update cả ~31 mixer mỗi frame; giờ chỉ còn
+      // player + 4 idol (full) + 6 NPC (nửa tốc) ≈ 8 mixer/frame.
       for (const r of allRigs) {
+        if (r.action && !r.action.isRunning()) continue;
         if (r.role === 'npc' || r.role === 'occ') { if (tickFrame % 2 === 0) r.mixer.update(dt * 2); }
         else r.mixer.update(dt);
       }
@@ -1993,7 +2092,7 @@ function tick() {
     } else {
       // Chỉ lỗi tải model: sảnh vẫn render, camera quay chậm, rig nào có thì vẫn động.
       updateCameraIdle(dt);
-      for (const r of allRigs) r.mixer.update(dt);
+      for (const r of allRigs) { if (r.action && !r.action.isRunning()) continue; r.mixer.update(dt); }
     }
     // Tạo rig phụ theo ngân sách ~3ms/frame (mobile 1 rig/frame) để không nghẽn main thread.
     processRigQueue(IS_MOBILE ? 1 : 2, 3);
