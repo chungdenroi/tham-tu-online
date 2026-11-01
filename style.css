@@ -97,15 +97,15 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 #bottomHud:not([hidden]) ~ .controls-hint{display:none}
 
 /* ===== Màn hình HỒ SƠ NGƯỜI THĂM =====
-   v5.1: nền ĐẶC hoàn toàn (v5 trong suốt nên nhãn ô kính sảnh lộ ra sau tiêu
-   đề gây rối mắt, chip tên nhân vật đè lên chữ). Nhân vật 3D vẫn thấy được
-   qua ảnh portrait thật trong khung preview (xem .champ-preview-img).
-   Đầu + chân flex:none (không bị co), lưới giữa min-height:0 để danh sách
-   nhân vật cuộn trong khung của nó, thẻ vé chỉ nằm ở footer, không đè lên
-   danh sách (v5: thẻ vé che mất hàng Shaun). */
-.start-screen{position:absolute;inset:0;z-index:var(--z-modal);display:flex;flex-direction:column;padding:20px 24px;overflow-y:auto;background:#16211F;border-bottom:3px solid var(--gold-dark)}
+   v5.2: cấu trúc GRID với hàng riêng biệt (đầu / lưới chọn nhân vật / vé /
+   chú thích) — v5.1 dùng flex column: lưới flex:1 co lại dưới nội dung
+   (preview min-height:300px) nên phần tràn của lưới vẽ ĐÈ LÊN footer, thẻ vé
+   + dấu duyệt che mất hàng Shaun và chữ Sam. Giờ lưới có hàng minmax(320px,1fr)
+   + overflow:hidden nên không gì tràn ra ngoài được; footer là hàng riêng,
+   nền ĐẶC, z-index riêng, vé + dấu chỉ nằm trong footer. */
+.start-screen{position:absolute;inset:0;z-index:var(--z-modal);display:grid;grid-template-rows:auto minmax(320px,1fr) auto auto;padding:20px 24px;overflow-y:auto;background:#16211F;border-bottom:3px solid var(--gold-dark)}
 .champ-head{text-align:center;margin-bottom:10px;flex:none}
-.champ-grid{display:grid;grid-template-columns:220px 1fr 300px;gap:20px;flex:1;min-height:0;align-items:stretch}
+.champ-grid{display:grid;grid-template-columns:220px 1fr 300px;gap:20px;min-height:0;overflow:hidden;align-items:stretch}
 .champ-list{display:flex;flex-direction:column;gap:10px;overflow-y:auto;min-height:0;position:relative;z-index:1}
 .champion-option{display:flex;align-items:center;gap:12px;background:rgba(42,69,63,.95);border:2px solid var(--line);border-radius:8px;padding:10px;color:var(--ink);text-align:left;transition:transform .1s ease,border-color .1s ease,box-shadow .1s ease;min-width:0}
 .champion-option:hover{transform:translateY(-3px);border-color:var(--gold2);box-shadow:0 8px 18px rgba(0,0,0,.5)}
@@ -130,8 +130,9 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 .stat-bar{flex:1;min-width:0;height:10px;border-radius:999px;background:#16211F;border:1px solid var(--line);overflow:hidden}
 .stat-fill{height:100%;background:linear-gradient(90deg,var(--glass),var(--gold2));border-radius:999px;transition:width .3s ease}
 .stat-row b{width:28px;flex:none;text-align:right;font-family:var(--font-hud);font-size:1.1rem}
-.champ-footer{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:16px;padding:12px 16px;background:rgba(22,33,31,.92);border:1px solid var(--gold-dark);border-radius:10px;flex:none;flex-wrap:wrap}
-.ticket-stub{display:flex;align-items:center;gap:16px;background:var(--paper);color:var(--paper-ink);border-radius:6px;padding:10px 16px;min-width:0;flex:1;border-left:6px solid var(--red)}
+.champ-footer{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:16px;padding:12px 16px;background:#16211F;border:1px solid var(--gold-dark);border-radius:10px;flex:none;flex-wrap:wrap;position:relative;z-index:2;isolation:isolate}
+.ticket-stub{display:flex;align-items:center;gap:16px;background:var(--paper);color:var(--paper-ink);border-radius:6px;padding:10px 16px;min-width:0;flex:1;border-left:6px solid var(--red);overflow:hidden}
+.ticket-stub .stamp{flex:none}
 .ticket-stub-left{display:flex;flex-direction:column;min-width:0}
 .ticket-stub-title{font-family:var(--font-title);font-weight:700;letter-spacing:2px;color:var(--red)}
 .ticket-stub-no{font-family:var(--font-mono);font-weight:600;font-size:1.15rem}
@@ -142,16 +143,20 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 .champ-play{font-size:1.25rem;padding:16px 32px;font-family:var(--font-title);letter-spacing:1px;white-space:nowrap}
 .champ-footnote{text-align:center;margin:10px 0 0;text-shadow:0 1px 4px #000}
 
-/* ===== Vé thăm (góc trái trên) — tờ vé giấy kem ===== */
-.ticket-card{position:absolute;left:12px;top:12px;z-index:var(--z-quest);width:300px;background:var(--paper);color:var(--paper-ink);border-radius:6px;border-left:6px solid var(--red);padding:10px 12px;box-shadow:0 6px 18px rgba(0,0,0,.5)}
+/* ===== Vé thăm (góc trái trên) — tờ vé giấy kem =====
+   v5.2: gọn lại (~25px) để nhật ký bên dưới đủ chỗ hiện đủ 5 dòng nhiệm vụ
+   mà không bị cắt nửa dòng. */
+.ticket-card{position:absolute;left:12px;top:12px;z-index:var(--z-quest);width:300px;background:var(--paper);color:var(--paper-ink);border-radius:6px;border-left:6px solid var(--red);padding:8px 10px;box-shadow:0 6px 18px rgba(0,0,0,.5)}
 .ticket-card-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .ticket-card-title{font-family:var(--font-title);font-weight:700;letter-spacing:2px;color:var(--red)}
-.ticket-card-no{font-family:var(--font-mono);font-weight:600;font-size:1.2rem;margin-top:2px}
+.ticket-card-no{font-family:var(--font-mono);font-weight:600;font-size:1.15rem;margin-top:1px}
 .ticket-card-meta{font-family:var(--font-mono);font-size:.72rem;color:var(--paper-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ticket-card-row{display:flex;gap:10px;align-items:center;margin-top:8px}
-.player-avatar{font-family:var(--font-title);font-weight:700;font-size:1.9rem;width:56px;height:56px;flex:none;display:flex;align-items:center;justify-content:center;background:var(--bg);color:var(--gold2);border:2px solid var(--gold);border-radius:6px}
+.ticket-card-row{display:flex;gap:10px;align-items:center;margin-top:6px}
+.player-avatar{font-family:var(--font-title);font-weight:700;font-size:1.6rem;width:48px;height:48px;flex:none;display:flex;align-items:center;justify-content:center;background:var(--bg);color:var(--gold2);border:2px solid var(--gold);border-radius:6px}
 .player-bars{flex:1;min-width:0}
-.player-line{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px 8px;font-family:var(--font-hud);font-size:1rem;letter-spacing:.5px}
+.player-line{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px 8px;font-family:var(--font-hud);font-size:.92rem;letter-spacing:.5px}
+.ticket-card .bar{height:9px;margin-bottom:3px}
+.ticket-card .bar-row{margin:1px 0}
 .player-line b{white-space:nowrap;color:var(--paper-ink)}
 .bar-row{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.82rem;margin:2px 0;min-width:0}
 .bar-row b{white-space:nowrap}
@@ -186,9 +191,11 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 @keyframes pop{0%{transform:translateX(-50%) scale(.7)}60%{transform:translateX(-50%) scale(1.06)}100%{transform:translateX(-50%) scale(1)}}
 
 /* ===== Nhật ký thăm nuôi dạng sổ giấy =====
-   v5.1: tiêu đề được wrap (v5: "NHẬT KÝ TH…" bị cắt); nhật ký giới hạn chiều
-   cao + cuộn được và thu gọn được (v5: núm joystick đè lên dòng nhiệm vụ cuối). */
-.quest-tracker{position:absolute;left:12px;top:196px;z-index:var(--z-quest);max-width:300px;max-height:calc(100% - 470px);overflow-y:auto;pointer-events:auto}
+   v5.2: dời lên top:180px (vé thăm đã gọn lại) + panel đủ cao cho đủ 5 dòng
+   nhiệm vụ + dòng tổng kết, KHÔNG cắt nửa dòng: dòng nhiệm vụ gọn (padding
+   3px, line-height 1.35), chữ đồng hồ chỉ còn giờ:phút, dòng tổng kết ngắn
+   lại (xem renderMissions). Panel vẫn cuộn được khi màn hình thấp. */
+.quest-tracker{position:absolute;left:12px;top:180px;z-index:var(--z-quest);max-width:300px;max-height:clamp(110px,calc(100% - 432px),224px);overflow-y:auto;pointer-events:auto;scrollbar-width:thin}
 .quest-tracker.collapsed .missions{display:none}
 .quest-toggle{flex:none;padding:2px 9px;font-size:.9rem}
 .journal{background:var(--paper);color:var(--paper-ink);border-radius:4px;border-left:6px solid var(--red);box-shadow:0 6px 18px rgba(0,0,0,.45)}
@@ -196,7 +203,7 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 .journal .bar-label{color:var(--red);font-family:var(--font-title);letter-spacing:1px;font-size:1rem;white-space:normal}
 .journal .fine{color:var(--paper-muted)}
 .missions{list-style:none;padding:0;margin:6px 0 0}
-.missions li{background:rgba(35,59,55,.06);border:1px solid rgba(35,59,55,.25);border-left:4px solid var(--gold);border-radius:6px;padding:6px 10px;margin-bottom:6px;font-size:.85rem;color:var(--paper-ink)}
+.missions li{background:rgba(35,59,55,.06);border:1px solid rgba(35,59,55,.25);border-left:4px solid var(--gold);border-radius:6px;padding:3px 8px;margin-bottom:3px;font-size:.85rem;line-height:1.35;color:var(--paper-ink)}
 .missions li.done{opacity:.65;text-decoration:line-through;border-left-color:var(--green)}
 .missions .reward{color:var(--red);font-weight:700}
 
@@ -386,9 +393,11 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 40px;color:var(--muted);
   .boot-log{max-width:52%;font-size:.7rem}
   .mobile-menu-bar{display:flex;position:absolute;left:0;right:0;bottom:0;z-index:var(--z-hud);height:calc(44px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);background:rgba(22,33,31,.97);border-top:1px solid var(--line);gap:6px;padding-left:8px;padding-right:8px}
   .mobile-menu-bar .btn{flex:1;padding:8px 4px;font-size:.9rem}
-  /* Hồ sơ người thăm mobile: preview lên đầu, danh sách ngang */
-  .start-screen{padding:12px}
-  .champ-grid{grid-template-columns:1fr;gap:12px;overflow-y:auto}
+  /* Hồ sơ người thăm mobile: preview lên đầu, danh sách ngang; v5.2: hàng
+     lưới để auto (không kẹp 320px) + lưới không cắt nội dung — cả màn hình
+     hồ sơ cuộn chung trong start-screen, footer luôn nằm sau lưới. */
+  .start-screen{padding:12px;grid-template-rows:auto auto auto auto}
+  .champ-grid{grid-template-columns:1fr;gap:12px;overflow:visible}
   .champ-preview{order:-1;min-height:240px}
   .champ-preview-name{font-size:1.7rem}
   .champ-list{flex-direction:row;overflow-x:auto}
