@@ -72,7 +72,16 @@ const IDOLS = [
     status: 'Bị bắt khẩn cấp + khởi tố tháng 8/2026 — ĐANG CHỜ XỬ LÝ, chưa có bản án tuyên.',
     desc: 'Thiên tử livestream. Vào thăm là được xem livestream trong tù, view tăng vù vù.',
     game: 'Livestream tăng view', gameDesc: 'Bấm liên tục để tăng view livestream trong 15 giây. Né nút “BỊ REPORT” — bấm nhầm là mất 200 view!',
-    color: 0xffd34d, pants: 0x4a2d78, hair: 0x3a2a00, acc: 'crown', model: 'knight', height: 1.86,
+    color: 0xffd34d, pants: 0x4a2d78, hair: 0x3a2a00, acc: 'crown', model: 'sam', height: 1.86,
+    // v5.4: KHÔNG dùng knight nữa — mũ giáp hiệp sĩ là hình học Armor của
+    // cùng 1 mesh skinned duy nhất, không tách riêng được, không có mặt người
+    // bên dưới nên idol này không bao giờ thấy mặt. Tái dùng rig 'sam' (mặt
+    // người thấy rõ, 20 clip): phân biệt với Sam người chơi bằng vương miện
+    // vàng + cao hơn hẳn (1.86×1.2 ≈ 2.23m) + bảng tên "Khánh Sky" + đứng
+    // sau ô kính; portrait thẻ idol cũng chụp kèm vương miện (xem
+    // snapshotPortrait/renderIdols). Đã kiểm tra các model nam CC0 khác trên
+    // Cinevva/Quaternius (cyberpunk = đầu robot, toon soldier = mũ + súng
+    // to, zombie = mặt zombie, knight bạc = mũ kín) — không có model nào hợp.
     lines: ['Livestream của anh lúc nào cũng đông, giờ trong này cũng đông!', 'Các em bấm follow cho anh nhé, dù anh đang… nghỉ livestream dài hạn!', 'Anh xin lỗi mọi người, giờ anh chỉ muốn sống yên ổn thôi!', 'View tăng nhanh thế, các em bấm nhiệt tình quá!'],
     chat: [
       { keys: ['làm', 'an', 'ăn'], reply: 'Làm livestream thì phải có trách nhiệm với lời nói của mình, em ạ. Anh giờ mới hiểu.' },
@@ -96,8 +105,10 @@ const QUIZ = [
 /* Model GLB rigged (đã tải về repo, không tải runtime từ URL ngoài trừ file local) */
 const MODEL_URLS = {
   sam: 'models/sam.glb', matt: 'models/matt.glb', shaun: 'models/shaun.glb',
-  soldierMale: 'models/soldier-male.glb', knight: 'models/knight-golden-male.glb',
+  soldierMale: 'models/soldier-male.glb',
   lis: 'models/lis.glb', casualF: 'models/casual-female.glb', soldierF: 'models/soldier-female.glb'
+  // v5.4: bỏ knight (models/knight-golden-male.glb còn trong repo nhưng không
+  // dùng nữa — mũ giáp che kín mặt, xem ghi chú ở idol Khánh Sky).
 };
 
 /* Nhân vật chọn được (Hồ sơ người thăm) — chỉ số hiển thị ở màn hình chọn */
@@ -145,8 +156,11 @@ function updateChampPreview(key) {
    diện chính. Chụp 1 lần/model rồi cache dataURL; lỗi thì giữ chữ cái monogram. */
 const portraitCache = {};
 let portraitRenderer = null;
-function snapshotPortrait(key, height) {
-  if (portraitCache[key]) return portraitCache[key];
+function snapshotPortrait(key, height, acc) {
+  // v5.4: acc (vd 'crown') chụp kèm phụ kiện lên đầu — Khánh Sky tái dùng
+  // model 'sam' nên portrait thẻ idol cần vương miện để khác Sam người chơi.
+  const cacheKey = key + (acc ? ':' + acc : '');
+  if (portraitCache[cacheKey]) return portraitCache[cacheKey];
   const gltf = modelCache[key];
   if (!gltf || !THREE || !cloneSkinned) return null;
   try {
@@ -171,6 +185,7 @@ function snapshotPortrait(key, height) {
     clone.position.set(-ctr.x, -box.min.y, -ctr.z);
     sc.add(grp);
     fixDarkSkinMaterials(grp); // v5.3: da đen → da ấm (phòng khi chụp portrait trước lúc tạo rig)
+    if (acc) { try { attachAccessory({ group: grp }, acc); } catch (e) { /* không có xương Head thì bỏ qua */ } }
     // Dáng đứng tự nhiên: phát clip Idle một lúc rồi mới chụp.
     try {
       const mixer = new THREE.AnimationMixer(grp);
@@ -182,7 +197,7 @@ function snapshotPortrait(key, height) {
     cam2.lookAt(0, 0.95, 0);
     portraitRenderer.render(sc, cam2);
     const url = portraitRenderer.domElement.toDataURL('image/png');
-    portraitCache[key] = url;
+    portraitCache[cacheKey] = url;
     return url;
   } catch (e) {
     console.warn('[thamtu] chụp portrait lỗi:', key, e);
@@ -196,7 +211,7 @@ function applyPortraits() {
   document.querySelectorAll('img[data-portrait]').forEach((img) => {
     const key = img.dataset.portrait;
     if (img.src && !img.hidden) return;
-    const url = snapshotPortrait(key, 1.78);
+    const url = snapshotPortrait(key, 1.78, img.dataset.acc || null); // v5.4: portrait kèm phụ kiện (vd vương miện Khánh Sky)
     if (url) { img.src = url; img.hidden = false; filled++; }
     else missing++;
   });
@@ -283,7 +298,7 @@ const state = {
   lastVisitDay: store.get('lastVisitDay', ''),
   missions: store.get('missions', {}),
   chatCount: 0, giftsSentToday: 0, gamesPlayed: 0,
-  currentIdol: null, visitSeconds: 180, visitPoints: 0, sentCount: 0,
+  currentIdol: null, visitSeconds: 180, visitPoints: 0, sentCount: 0, visitChatCount: 0, visitEnergyStart: 100,
   timerId: null, gameTimerId: null, gameActive: false, gameScore: 0,
   ticket: null, queueNum: 14, started: false, visitMode: false,
   autoWalkTo: null, targetBooth: null, no3d: false, threeReady: false,
@@ -603,7 +618,7 @@ const CLIP_PATS = {
 };
 /* v5.3 — SỬA MẶT IDOL ĐEN (nguyên nhân gốc, đã kiểm chứng bằng cách đọc
    trực tiếp file GLB): model soldier-male / soldier-female /
-   knight-golden-male / casual-female (không dùng texture atlas) có
+   casual-female (không dùng texture atlas) có
    material 'Skin' với baseColorFactor ≈ 0.0134 (gần như đen tuyệt đối —
    lỗi export Quaternius/Cinevva) nên mặt + tay idol gần như đen, chỉ còn
    2 chấm mắt trắng (material 'Face' = trắng [1,1,0.94]) — khớp đúng mô tả
@@ -790,7 +805,10 @@ function buildHall() {
   }
   const boothDefs = [];
   IDOLS.forEach((d, i) => boothDefs.push({ x: -10.5 + i * 7, z: -HALL.z - 1.2, idol: d }));
-  for (let i = 0; i < 4; i++) boothDefs.push({ x: -13.5 + i * 9, z: -HALL.z - 1.2, idol: null });
+  // Ô trống dãy bắc: x = -13.5/-7/7/13.5 — KHÔNG đặt sát ô idol (-10.5/-3.5/
+  // 3.5/10.5): trước đây -4.5 chỉ cách ô idol -3.5 có 1m nên nhãn "Ô 06"
+  // chồng lên nhãn tên idol ngay trước ô kính.
+  [-13.5, -7, 7, 13.5].forEach((x) => boothDefs.push({ x, z: -HALL.z - 1.2, idol: null }));
   for (let i = 0; i < 8; i++) boothDefs.push({ x: -13.5 + i * 3.9, z: HALL.z + 1.2, idol: null });
   for (let i = 0; i < 4; i++) boothDefs.push({ x: -HALL.x - 1.2, z: -6 + i * 4, idol: null, rotY: Math.PI / 2 });
   for (let i = 0; i < 4; i++) boothDefs.push({ x: HALL.x + 1.2, z: -6 + i * 4, idol: null, rotY: Math.PI / 2 });
@@ -832,8 +850,11 @@ function buildHall() {
     table.position.set(0, 0.85, 0.35); grp.add(table);
     const chair = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.5, 0.6), mat(0x33544C));
     chair.position.set(0, 0.25, 0.9); grp.add(chair);
-    const num = textSprite(b.idol ? b.idol.name : ('Ô ' + String(idx + 1).padStart(2, '0')), b.idol ? 1 : 0.8);
-    num.position.set(0, 3.05, 0.2); grp.add(num);
+    // Nhãn ô chỉ ghi SỐ Ô (nhỏ hơn, cao hơn): tên idol đã có trên name tag
+    // riêng của nhân vật ngay trước ô kính — trước đây nhãn ô ghi tên idol
+    // nên tên bị nhân đôi và chồng lên name tag.
+    const num = textSprite('Ô ' + String(idx + 1).padStart(2, '0'), 0.8);
+    num.position.set(0, 3.4, 0.2); grp.add(num);
     scene.add(grp);
     booths.push({ x: b.x, z: b.z, idolId: b.idol ? b.idol.id : null, boothNo: idx + 1, frontX: b.x, frontZ: b.rotY ? b.z : (b.z > 0 ? HALL.z - 0.6 : -HALL.z + 1.6), rotY: b.rotY || 0 });
   });
@@ -879,14 +900,14 @@ function processRigQueue(maxPerFrame, budgetMs) {
    File nào lỗi thì thay bằng model đã tải được. */
 async function loadPriorityModels() {
   const playerKey = state.playerModel || 'sam';
-  const idolKeys = ['matt', 'shaun', 'soldierMale', 'knight'];
+  const idolKeys = ['matt', 'shaun', 'soldierMale', 'sam']; // v5.4: Khánh Sky dùng 'sam' thay 'knight'
   bootLog('models-priority', 'Đang tải nhân vật chính 0/5 (người chơi trước)…');
   let done = 0;
   const bump = () => { done++; bootLog('models-priority', 'Đã tải nhân vật chính ' + done + '/5'); };
   const failed = [];
   // P0 — chỉ model người chơi.
   failed.push(...await loadKeysLimited([playerKey], bump));
-  const loaded0 = ['sam', 'matt', 'shaun', 'soldierMale', 'knight'].filter((k) => modelCache[k]);
+  const loaded0 = ['sam', 'matt', 'shaun', 'soldierMale'].filter((k) => modelCache[k]);
   if (!loaded0.length) return false;
   const fallbackKey = loaded0[0];
   const pick = (k) => (modelCache[k] ? k : fallbackKey);
@@ -1069,7 +1090,14 @@ function updatePlayer(dt) {
       // Tới ô kính đã chọn nhanh → nhắc bấm VÀO THĂM (1 thao tác cuối).
       if (state.targetBooth) {
         const d = IDOLS.find((x) => x.id === state.targetBooth);
-        if (d) showHint('📍 Đã tới ô ' + d.name + ' — chạm nút VÀO THĂM để vào thăm!');
+        if (d) {
+          showHint('📍 Đã tới ô ' + d.name + ' — chạm nút VÀO THĂM để vào thăm!');
+          // Tới nơi bằng chip chọn nhanh thì KHÔNG bật hộp thoại chào idol
+          // (nó che khung nhắc VÀO THĂM, người chơi phải bấm "Tiếp tục"
+          // xong mới thấy nút — đó là ~4s chờ thừa sau khi tới nơi).
+          // Đánh dấu như đã chào ở ô này: khung nhắc hiện ngay lập tức.
+          state.dialogDismissedFor = d.id;
+        }
         state.targetBooth = null;
       }
     }
@@ -1226,6 +1254,10 @@ function enterGame() {
   // v5: bỏ qua tên người chơi — mặc định là "Bạn", không bắt nhập tên.
   $('startScreen').hidden = true;
   state.started = true;
+  // v5.4: reset camera về góc chuẩn nhìn thẳng dãy ô kính — camera chờ ở màn
+  // hồ sơ quay chậm vòng quanh (updateCameraIdle) nên lúc bấm NHẬN VÉ yaw là
+  // ngẫu nhiên, cột trụ có thể rơi đúng giữa khung (giống endVisit()).
+  cam.yaw = 0; cam.pitch = 0.26; cam.dist = 7.5;
   // Hiện HUD THĂM NUÔI 1999 (v5): vé thăm + bảng gọi số/minimap + nhật ký + khay.
   ['questTracker', 'callBoard', 'ticketCard', 'quickIdolBar', 'bottomHud'].forEach((id) => { const el = $(id); if (el) el.hidden = false; });
   renderQuickIdolBar();
@@ -1251,11 +1283,14 @@ function openVisit(idolId, source) {
   const idol = IDOLS.find((d) => d.id === idolId);
   if (!idol) return;
   if (!state.started) { enterGame(); }
+  hideRpgDialog(); // hộp thoại chào còn sót thì đóng — không để nó nằm sau lớp phủ phòng thăm
   state.currentIdol = idolId;
   state.visitMode = true;
   state.visitSeconds = 180;
   state.visitPoints = 0;
   state.sentCount = 0;
+  state.visitChatCount = 0;
+  state.visitEnergyStart = 100; // ngoài buổi thăm năng lượng luôn 100%
   bumpStreak();
   if (!state.visited.has(idolId)) {
     state.visited.add(idolId);
@@ -1294,8 +1329,15 @@ function openVisit(idolId, source) {
   $('gameDesc').textContent = idol.gameDesc;
   $('gameArea').innerHTML = '<p class="hint">Bấm “Bắt đầu chơi” để chơi mini-game của ' + idol.name + '.</p>';
   renderGifts();
+  // Phòng thăm là tấm đáy: luôn mở lại từ đầu (phòng hiện, tổng kết ẩn),
+  // cuộn về đầu để hàng quà nằm ngay dưới nút chào — không còn dưới nếp gấp.
+  const room = $('visitRoom'), summ = $('visitSummary');
+  if (room) { room.hidden = false; room.scrollTop = 0; }
+  if (summ) summ.hidden = true;
   // v4: phòng thăm là overlay trong khung game — KHÔNG scrollIntoView (không cuộn trang mobile).
   showHint('🎁 Chọn quà bên dưới để tặng ' + idol.name + '!');
+  const gr = $('giftsRow');
+  if (gr) gr.scrollIntoView({ block: 'nearest' });
   const greetBtn = $('greetIdolBtn');
   if (greetBtn) greetBtn.textContent = '👋 Chào ' + idol.name;
   clearInterval(state.timerId);
@@ -1307,7 +1349,9 @@ function openVisit(idolId, source) {
   }, 1000);
   checkMission('visit');
 }
-function endVisit(msg) {
+/* Đóng phòng thăm về sảnh ngay (nút "← Về sảnh" — người chơi chủ động thoát,
+   không qua màn tổng kết). */
+function closeVisitToLobby(msg) {
   clearInterval(state.timerId);
   if (msg) toast(msg);
   state.visitMode = false;
@@ -1323,9 +1367,50 @@ function endVisit(msg) {
   // nhìn về bắc), không quay vào vách tối như v5.
   cam.yaw = 0; cam.pitch = 0.26; cam.dist = 7.5;
   document.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
+  // Đứng ngay trước ô kính vừa thăm: chặn hộp thoại chào tự bật lại 8 giây
+  // (không thì vừa về sảnh đã bị thoại che màn hình).
+  state.dialogUntil = Date.now() + 8000;
   // v4: overlay chỉ ẩn đi, không cuộn trang — người chơi ở lại đúng chỗ trong sảnh.
   showHint(IS_TOUCH ? 'Chạm 1 idol phía trên để thăm người tiếp theo!' : 'Chọn idol khác ở thanh phía trên để thăm tiếp!');
 }
+/* Hết giờ / bấm "Kết thúc buổi thăm" → MÀN TỔNG KẾT (không tự đóng về sảnh
+   nữa): điểm, quà đã tặng, cấp/danh hiệu, năng lượng đã dùng + nút tải giấy
+   chứng nhận TO. Chỉ nút "Về sảnh" trên màn tổng kết mới đóng về sảnh. */
+function showVisitSummary(msg) {
+  clearInterval(state.timerId);
+  const idol = IDOLS.find((d) => d.id === state.currentIdol);
+  const energyStart = state.visitEnergyStart || 100;
+  const energyEnd = visitEnergy();
+  const pts = state.visitPoints;
+  const sent = state.sentCount;
+  const rankBefore = rankFor(state.points - pts);
+  const rankAfter = rankFor(state.points);
+  const levelBefore = Math.floor((state.points - pts) / 100) + 1;
+  const levelAfter = Math.floor(state.points / 100) + 1;
+  stopGame();
+  hideRpgDialog();
+  const sp = $('speech3d');
+  if (sp) { sp.hidden = true; clearTimeout(sp._h); }
+  $('summaryIdol').textContent = (idol ? idol.emoji + ' ' + idol.name : 'Idol') + ' • ' + new Date().toLocaleDateString('vi-VN');
+  $('summaryList').innerHTML =
+    '<li><span>⭐ Điểm buổi thăm</span><b>+' + pts + ' điểm</b></li>' +
+    '<li><span>🎁 Quà đã tặng</span><b>' + sent + ' món</b></li>' +
+    '<li><span>💬 Đã chat</span><b>' + state.visitChatCount + ' câu</b></li>' +
+    '<li><span>🏅 Cấp / danh hiệu</span><b>Cấp ' + levelBefore + ' ' + rankBefore + ' → Cấp ' + levelAfter + ' ' + rankAfter + '</b></li>' +
+    '<li><span>⚡ Năng lượng đã dùng</span><b>−' + (energyStart - energyEnd) + '% (' + energyStart + '% → ' + energyEnd + '%)</b></li>' +
+    '<li><span>🔋 Hồi năng lượng</span><b>Về lại 100% khi về sảnh</b></li>';
+  drawCert('summaryCertCanvas');
+  const room = $('visitRoom'), summ = $('visitSummary');
+  if (room) room.hidden = true;
+  if (summ) { summ.hidden = false; summ.scrollTop = 0; }
+  if (msg) toast(msg);
+  state.visitMode = false;
+  state.currentIdol = null;
+  if (playerRig && playerRig.anim !== 'idle') setAnim(playerRig, 'idle');
+  cam.yaw = 0; cam.pitch = 0.26; cam.dist = 7.5;
+  state.dialogUntil = Date.now() + 8000;
+}
+function endVisit(msg) { showVisitSummary(msg); }
 function greetIdol() {
   const idol = IDOLS.find((d) => d.id === state.currentIdol);
   if (!idol) return;
@@ -1450,9 +1535,9 @@ function renderMissions() {
     html.push('<li class="' + (done ? 'done' : '') + '">' + (done ? '✅ ' : '🔲 ') + m.text + ' <span class="reward">+' + m.reward + 'đ</span></li>');
   });
   const doneCount = MISSIONS.filter((m) => state.missions.done[m.id]).length;
-  // v5.2: dòng tổng kết ngắn lại cho vừa 1 dòng trong nhật ký (không quấn
-  // 2 dòng làm nhật ký tràn + cắt nửa dòng).
-  html.push('<li>🎯 Đã thăm <b>' + state.visited.size + '/4</b> • Xong <b>' + doneCount + '/' + MISSIONS.length + '</b> • Reset 00:00</li>');
+  // v5.4: dòng tổng kết rút gọn còn 1 dòng ngắn (bỏ "• Reset 00:00" — giờ
+  // đã có ở đồng hồ trên tiêu đề nhật ký) để nhật ký đủ chỗ hiện hết.
+  html.push('<li>🎯 Đã thăm <b>' + state.visited.size + '/4</b> • Xong <b>' + doneCount + '/' + MISSIONS.length + '</b></li>');
   ['missionsList', 'menuMissionsList'].forEach((id) => {
     const ul = $(id);
     if (ul) ul.innerHTML = html.join('');
@@ -1467,7 +1552,7 @@ function renderIdols() {
     card.className = 'idol-card' + (state.visited.has(d.id) ? ' visited' : '');
     // Portrait 3D thật (chụp từ model GLB) — monogram chữ cái hiện trước,
     // ảnh chụp xong thì đè lên. Thăm rồi thì đóng dấu mộc đỏ ĐÃ THĂM.
-    card.innerHTML = '<div class="idol-portrait"><span class="champ-mono">' + d.name.charAt(0) + '</span><img data-portrait="' + d.model + '" alt="' + d.name + '" hidden></div><h3>' + d.name + '</h3>' +
+    card.innerHTML = '<div class="idol-portrait"><span class="champ-mono">' + d.name.charAt(0) + '</span><img data-portrait="' + d.model + '" data-acc="' + (d.acc || '') + '" alt="' + d.name + '" hidden></div><h3>' + d.name + '</h3>' +
       '<span class="tag">' + d.tag + '</span><p>' + d.desc + '</p>' +
       '<p class="fine">' + d.status + '</p>' +
       (state.visited.has(d.id) ? '<span class="stamp card-stamp">ĐÃ THĂM</span>' : '') +
@@ -1661,15 +1746,17 @@ function drawMinimap() {
   // v5.3: chấm idol là hình tròn ĐẶC to, KHÔNG vẽ sao bên trong — v5.2 vẽ
   // sao trắng 10px phủ gần hết đĩa vàng r=9 nên ở kích thước hiển thị thật
   // (~100px) chấm nhìn như vòng tròn rỗng. Giờ: đĩa đặc r=11 vàng sáng
-  // #E8C268 + viền trắng dày 3, không vẽ gì thêm bên trong — không thể
+  // #E8C268 + viền nâu đậm, không vẽ gì thêm bên trong — không thể
   // nhầm với vòng rỗng ở mọi kích thước hiển thị. Vẽ sau ô kính và sau
   // chấm NPC nên không bị che.
+  // v5.4: viền đổi từ trắng (#FFF6E8) sang nâu đậm #594538 — viền trắng dày
+  // làm đĩa vàng bị trắng lóa, nhìn nhạt như vòng kem ở kích thước nhỏ.
   booths.forEach((b) => {
     if (!b.idolId) return;
     const x = px(b.x), y = pz(b.z);
     ctx.fillStyle = '#E8C268';
     ctx.beginPath(); ctx.arc(x, y, 11, 0, 7); ctx.fill();
-    ctx.strokeStyle = '#FFF6E8'; ctx.lineWidth = 3;
+    ctx.strokeStyle = '#594538'; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.arc(x, y, 11, 0, 7); ctx.stroke();
   });
   if (player) {
@@ -1686,11 +1773,14 @@ function drawMinimap() {
 }
 /* Thanh máu/XP/vàng + đồng hồ nhiệm vụ — v4: chỉ ghi DOM khi chỉ số đổi
    (không gọi mỗi frame trong tick() nữa). */
+/* Năng lượng: chỉ tụt TỐI ĐA 20% trong cả buổi thăm 180 giây (v5.1) —
+   ngoài buổi thăm luôn 100%. Dùng chung cho HUD + màn tổng kết. */
+function visitEnergy() {
+  return state.visitMode ? Math.max(80, Math.round(100 - ((180 - state.visitSeconds) / 180) * 20)) : 100;
+}
 let hudSig = '';
 function updateHudBars() {
-  // v5.1: năng lượng chỉ tụt TỐI ĐA 20% trong cả buổi thăm 180 giây (v5 tụt
-  // 100% → 100% còn 64% sau ~1 phút, quá nhanh). Ngoài buổi thăm luôn 100%.
-  const energy = state.visitMode ? Math.max(80, Math.round(100 - ((180 - state.visitSeconds) / 180) * 20)) : 100;
+  const energy = visitEnergy();
   const p = state.points;
   const next = p >= 500 ? 1000 : p >= 200 ? 500 : p >= 80 ? 200 : 80;
   const base = p >= 500 ? 500 : p >= 200 ? 200 : p >= 80 ? 80 : 0;
@@ -1748,6 +1838,7 @@ function sendChat(text) {
   if (!idol || !text) return;
   addChatMsg('you', text);
   state.chatCount++;
+  state.visitChatCount++;
   const low = text.toLowerCase();
   let reply = idol.lines[Math.floor(Math.random() * idol.lines.length)];
   for (const c of idol.chat) {
@@ -1759,7 +1850,9 @@ function sendChat(text) {
     const info = idolRigs[idol.id];
     if (info && info.rig) setAnim(info.rig, 'wave', { once: true });
   }, 400);
-  addPoints(2);
+  // Chat 1 câu +5đ (trước đây +2đ — quá ít so với nhiệm vụ "chat 3 câu
+  // +15đ": 3 câu chat chỉ được 6đ trong khi nhiệm vụ thưởng 15đ).
+  addPoints(5);
   if (state.chatCount >= 3) checkMission('chat');
 }
 function renderQuickAsk() {
@@ -1916,8 +2009,8 @@ function startTapGame(area) {
 }
 
 /* ================= GIẤY CHỨNG NHẬN + ẢNH ================= */
-function drawCert() {
-  const c = $('certCanvas');
+function drawCert(canvasId) {
+  const c = $(canvasId || 'certCanvas');
   const ctx = c.getContext('2d');
   ctx.fillStyle = '#FFF6E8'; ctx.fillRect(0, 0, 640, 400);
   ctx.strokeStyle = '#C69A50'; ctx.lineWidth = 8; ctx.strokeRect(10, 10, 620, 380);
@@ -1943,10 +2036,10 @@ function drawCert() {
   ctx.fillText('ĐÃ DUYỆT', 0, 10);
   ctx.restore();
 }
-function downloadCert() {
-  drawCert();
+function downloadCert(canvasId) {
+  drawCert(canvasId);
   const a = document.createElement('a');
-  a.href = $('certCanvas').toDataURL('image/png');
+  a.href = $(canvasId || 'certCanvas').toDataURL('image/png');
   a.download = 'giay-chung-nhan-tham-nuoi.png';
   a.click();
   toast('📜 Đã tải giấy chứng nhận!');
@@ -2072,12 +2165,14 @@ function bindInput() {
   });
   $('greetIdolBtn').addEventListener('click', greetIdol);
   $('idolFanBtn').addEventListener('click', doIdolPerform);
-  $('endVisitBtn').addEventListener('click', () => { drawCert(); endVisit('👋 Kết thúc buổi thăm. Giấy chứng nhận đã cấp bên dưới!'); });
-  $('backToLobbyBtn').addEventListener('click', () => { drawCert(); endVisit(); });
+  $('endVisitBtn').addEventListener('click', () => { endVisit('👋 Kết thúc buổi thăm — xem tổng kết + giấy chứng nhận nhé!'); });
+  $('backToLobbyBtn').addEventListener('click', () => { closeVisitToLobby(); });
   $('chatSendBtn').addEventListener('click', () => { const v = $('chatInput').value.trim(); if (v) { sendChat(v); $('chatInput').value = ''; } });
   $('chatInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') { const v = e.target.value.trim(); if (v) { sendChat(v); e.target.value = ''; } } });
   $('gameStartBtn').addEventListener('click', startGame);
-  $('downloadCertBtn').addEventListener('click', downloadCert);
+  $('downloadCertBtn').addEventListener('click', () => downloadCert());
+  $('summaryCertBtn').addEventListener('click', () => downloadCert('summaryCertCanvas'));
+  $('summaryLobbyBtn').addEventListener('click', () => { closeVisitToLobby(); });
   $('photoVisitBtn').addEventListener('click', takePhoto);
   $('refillInvBtn').addEventListener('click', refillInventory);
   $('refillInvBtn2').addEventListener('click', refillInventory);
@@ -2103,7 +2198,7 @@ function bindInput() {
   let dragging = false, camPointerId = null, lastX = 0, lastY = 0, downX = 0, downY = 0;
   gc.addEventListener('pointerdown', (e) => {
     if (dragging) return; // đã có 1 ngón đang xoay camera
-    if (e.target.closest('button') || e.target.closest('input') || e.target.closest('.joystick') || e.target.closest('.rpg-dialog') || e.target.closest('#menuOverlay') || e.target.closest('#visitScreen') || e.target.closest('#startScreen')) return;
+    if (e.target.closest('button') || e.target.closest('input') || e.target.closest('.joystick') || e.target.closest('.rpg-dialog') || e.target.closest('#menuOverlay') || e.target.closest('#visitScreen') || e.target.closest('#startScreen') || e.target.closest('.hud-layer')) return;
     dragging = true; camPointerId = e.pointerId; lastX = e.clientX; lastY = e.clientY; downX = e.clientX; downY = e.clientY;
     gc.setPointerCapture(e.pointerId);
   });
@@ -2133,13 +2228,31 @@ function bindInput() {
       const rect = renderer.domElement.getBoundingClientRect();
       pointerNDC.set(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
       raycaster.setFromCamera(pointerNDC, camera);
+      let hitNpc = false;
       for (const n of npcs) {
         if (!n.rig) continue;
         const hits = raycaster.intersectObject(n.rig.group, true);
         if (!hits.length) continue;
+        hitNpc = true;
         const dd = Math.hypot(n.rig.group.position.x - player.position.x, n.rig.group.position.z - player.position.z);
         if (dd < 4) openNpcDialog(n);
         break;
+      }
+      // Bấm vào idol 3D sau kính ở sảnh: phải có phản hồi ngay — đứng gần
+      // ô đó thì vào thăm luôn, đứng xa thì tự chạy tới ô kính đó (như
+      // chạm chip idol phía trên). Trước đây chỉ raycast NPC nên bấm idol
+      // không có phản hồi gì.
+      if (!hitNpc) {
+        for (const d of IDOLS) {
+          const info = idolRigs[d.id];
+          if (!info || !info.rig) continue;
+          const hits = raycaster.intersectObject(info.rig.group, true);
+          if (!hits.length) continue;
+          const b = nearestBooth();
+          if (b && b.idolId === d.id) openVisit(d.id, 'booth');
+          else selectIdolQuick(d.id);
+          break;
+        }
       }
     }
   });
@@ -2150,6 +2263,16 @@ function bindInput() {
     e.preventDefault();
     cam.dist = clamp(cam.dist + e.deltaY * 0.01, 4, 12);
   }, { passive: false });
+  // v5.4: cuộn/chạm trong panel HUD và overlay (nhật ký, bảng gọi số, vé,
+  // khay đồ, màn hồ sơ, menu, phòng thăm, hộp thoại) KHÔNG được lọt xuống
+  // khung game — trước đây lăn chuột trong nhật ký lại zoom camera 3D, kéo
+  // trên nhật ký lại xoay camera, và cuộn trong nhật ký không hiện thêm dòng.
+  // (.hud-layer đã chặn pointerdown ở guard trên; wheel/touchmove cần chặn
+  // riêng vì chúng nổi bọt lên listener wheel của gc.)
+  document.querySelectorAll('.hud-layer, #startScreen, #menuOverlay, #visitScreen, #rpgDialog').forEach((el) => {
+    el.addEventListener('wheel', (e) => e.stopPropagation(), { passive: true });
+    el.addEventListener('touchmove', (e) => e.stopPropagation(), { passive: true });
+  });
   // Joystick ảo — bán kính tính theo kích thước thật của joystick
   // (maxRadius = 30% chiều rộng), phân biệt ngón joystick bằng pointerId riêng.
   const joyEl = $('joystick'), knob = $('joyKnob');
@@ -2276,10 +2399,11 @@ function tick() {
       // triangles / mixer đang chạy / mesh đổ bóng) để lần test sau kiểm
       // chứng được, không đoán mò. Chip FPS hiện luôn số draw call.
       const fps = Math.round((fpsFrames * 1000) / (nowMs - fpsLastT));
-      let calls = 0, tris = 0, shadowCasters = 0;
+      let calls = 0, tris = 0;
       if (renderer) { calls = renderer.info.render.calls; tris = renderer.info.render.triangles; }
-      if (scene) scene.traverse((o) => { if (o.castShadow) shadowCasters++; });
-      window.__thamtuPerf = { fps, calls, triangles: tris, mixers: activeMixers, shadowCasters };
+      // Không còn đếm shadowCasters bằng scene.traverse mỗi giây (duyệt
+      // toàn cảnh chỉ để báo cáo) — đỡ 1 lần nghẽn main thread/giây.
+      window.__thamtuPerf = { fps, calls, triangles: tris, mixers: activeMixers };
       const fc = $('fpsChip');
       if (fc) fc.textContent = fps + ' FPS • ' + calls + ' DC';
       fpsFrames = 0; fpsLastT = nowMs;
