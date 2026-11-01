@@ -365,7 +365,15 @@ function showSpeech3d(text, ms) {
   const el = $('speech3d'); if (!el) return; el.textContent = text; el.hidden = false;
   clearTimeout(el._h); el._h = setTimeout(() => { el.hidden = true; }, ms || 3500);
 }
-function addPoints(n) { state.points += n; state.visitPoints += n; updateHeader(); const vp = $('visitPoints'); if (vp) vp.textContent = state.visitPoints; save(); }
+function addPoints(n) {
+  state.points += n; state.visitPoints += n; updateHeader();
+  const vp = $('visitPoints'); if (vp) vp.textContent = state.visitPoints;
+  // v5.7: vẽ lại giấy chứng nhận khi điểm buổi thăm đổi — trước đây cert chỉ
+  // vẽ 1 lần lúc mở trang (0 điểm) nên test v5.6 thấy chứng nhận ghi 0 điểm
+  // dù buổi thăm đã +5. Chỉ vẽ trong lúc thăm (ngoài buổi thăm cert không hiện).
+  if (state.visitMode && state.currentIdol) drawCert();
+  save();
+}
 
 /* ================= BOOT LOG + LỖI 3D (v3.1) =================
    Mọi bước khởi động 3D đều ghi vào #bootLog (DOM, có timestamp) và
@@ -448,8 +456,12 @@ const allRigs = [];
 let raycaster = null, pointerNDC = null;
 const keys = {};
 const cam = { yaw: 0, pitch: 0.26, dist: 7.5, snap: false, estab: false, estabUntil: 0 }; // v5.2: lùi camera thêm 1.5 (v5.1: 6) + nâng lên (pitch 0.26, ty 2.6) — v5.1 đầu/tóc nhân vật che ~1/4 màn hình vì camera quá gần + thấp
-// v5.6: visitFraming cache độ lệch ngang điểm ngắm thăm (xem updateCamera) —
-// tính lại chỉ khi bề rộng khung đổi, tránh ép layout mỗi frame.
+// v5.7: visitFraming cache độ lệch ngang điểm ngắm thăm (xem updateCamera) —
+// tính lại chỉ khi bề rộng khung đổi, tránh ép layout mỗi frame. KHÔNG dùng
+// camera.setViewOffset() cho phòng thăm: setViewOffset chỉ cắt frustum rồi map
+// ra toàn canvas, KHÔNG tự căn tâm nhìn — kết hợp lookAt thẳng vào idol thì
+// đầu rơi vào NDC +0.67 (sau tấm panel phải). Offset lookAt tay là đúng hình
+// học, đã kiểm chứng bằng three.js thật (/tmp/verify_framing.mjs).
 let visitFraming = { vw: 0, offsetX: 0 };
 // v5.5: cam.snap=true → lần updateCamera tới ĐẶT THẲNG camera vào vị trí đích,
 // KHÔNG damp từ vị trí cũ (xem updateCamera). Đặt snap ở mọi lần chuyển cảnh.
@@ -724,10 +736,23 @@ function attachAccessory(rig, kind) {
   const armR = findBone(rig.group, ['LowerArmR', 'FistR']);
   const armL = findBone(rig.group, ['LowerArmL', 'FistL']);
   const torso = findBone(rig.group, ['Torso', 'Spine', 'Spine1']);
-  const gold = new THREE.MeshStandardMaterial({ color: 0xffd34d, metalness: 0.6, roughness: 0.3 });
+  const gold = new THREE.MeshStandardMaterial({ color: 0xffc800, metalness: 0.7, roughness: 0.25, emissive: 0xffc800, emissiveIntensity: 0.3 });
   if (kind === 'crown' && head) {
-    const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.17, 0.14, 8), gold);
-    crown.position.y = 0.16; head.add(crown);
+    // v5.7 — VƯƠNG MIỆN TO + RÕ HÌNH: v5.6 chỉ là 1 vành trụ nhỏ (r=0.14) màu
+    // vàng-cam nên test đọc nhầm thành mũ/nón cam. Giờ vành rộng hơn (r≈0.2) +
+    // 6 chóp nhọn quanh vành + viên ngọc đỏ phía trước, vàng tươi (0xffc800)
+    // + emissive nhẹ để nổi trên tóc — nhìn từ xa trong sảnh cũng phải nhận
+    // ra vương miện. Chóp đặt trên vành (y 0.27, đỉnh ~0.35 trên đỉnh đầu).
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.22, 0.12, 12), gold);
+    band.position.y = 0.15; head.add(band);
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.16, 4), gold);
+      spike.position.set(Math.cos(a) * 0.19, 0.27, Math.sin(a) * 0.19);
+      head.add(spike);
+    }
+    const jewel = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), new THREE.MeshStandardMaterial({ color: 0xe6396b, emissive: 0xe6396b, emissiveIntensity: 0.7 }));
+    jewel.position.set(0, 0.15, 0.21); head.add(jewel);
   } else if (kind === 'fan' && armR) {
     const fan = new THREE.Group();
     const blade = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.22, 0.02), new THREE.MeshStandardMaterial({ color: 0xffd34d, roughness: 0.6 }));
@@ -746,20 +771,24 @@ function attachAccessory(rig, kind) {
     cap.position.y = 0.15; head.add(cap);
   }
 }
-function addNameTag(rig, text, y) {
-  const c = document.createElement('canvas'); c.width = 512; c.height = 128;
+function addNameTag(rig, text, y, big) {
+  const c = document.createElement('canvas');
+  // v5.7: thẻ tên idol TO HƠN để đọc được từ camera cảnh mở đầu (cách 13.2m):
+  // canvas 1024×256, font 100px, sprite 2.8×0.7 → chữ cao ~0.27m ≈ 12px ở
+  // 13.2m (tag cũ 0.20m chỉ ~5–9px, test v5.6 chỉ đọc rõ 1 biển). Chỉ ô idol.
+  c.width = big ? 1024 : 512; c.height = big ? 256 : 128;
   const ctx = c.getContext('2d');
   ctx.fillStyle = 'rgba(22,33,31,0.92)';
   ctx.beginPath();
-  if (ctx.roundRect) ctx.roundRect(6, 18, 500, 92, 12); else ctx.rect(6, 18, 500, 92);
+  if (ctx.roundRect) ctx.roundRect(6, 18, c.width - 12, c.height - 36, 12); else ctx.rect(6, 18, c.width - 12, c.height - 36);
   ctx.fill();
-  ctx.strokeStyle = '#C69A50'; ctx.lineWidth = 5; ctx.stroke();
-  ctx.fillStyle = '#E8D9B7'; ctx.font = 'bold 46px system-ui, sans-serif';
+  ctx.strokeStyle = '#C69A50'; ctx.lineWidth = big ? 10 : 5; ctx.stroke();
+  ctx.fillStyle = '#E8D9B7'; ctx.font = 'bold ' + (big ? 100 : 46) + 'px system-ui, sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(text, 256, 66);
+  ctx.fillText(text, c.width / 2, c.height / 2 + 2);
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
-  sp.scale.set(2.2, 0.55, 1);
+  sp.scale.set(big ? 2.8 : 2.2, big ? 0.7 : 0.55, 1);
   sp.position.y = y || (rig.height + 0.45);
   rig.group.add(sp);
   return sp;
@@ -867,13 +896,17 @@ function buildHall() {
     table.position.set(0, 0.85, 0.35); grp.add(table);
     const chair = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.5, 0.6), mat(0x33544C));
     chair.position.set(0, 0.25, 0.9); grp.add(chair);
-    // Nhãn ô chỉ ghi SỐ Ô (nhỏ hơn, cao hơn): tên idol đã có trên name tag
-    // riêng của nhân vật ngay trước ô kính — trước đây nhãn ô ghi tên idol
-    // nên tên bị nhân đôi và chồng lên name tag.
-    const num = textSprite('Ô ' + String(idx + 1).padStart(2, '0'), 0.8);
+    // v5.7 — SỐ BUỒNG THỐNG NHẤT 1 HỆ: ô idol đánh số 01–04 theo thứ tự
+    // trái→phải dãy bắc (theo IDOLS), ô trống chỉ ghi "Ô TRỐNG" — trước đây
+    // số ô lấy từ idx+1 trên toàn bộ 24 ô nên biển ghi "Ô 03"/"Ô 07" trong
+    // khi vé ghi "BUỒNG 01–04", người chơi không biết đâu là buồng nào
+    // (test v5.6). Số này dùng ở MỌI chỗ: biển ô, tiêu đề phòng thăm,
+    // dòng nhắc bấm E, minimap (qua boothLabel trong booths).
+    const idolNo = b.idol ? IDOLS.indexOf(b.idol) + 1 : 0;
+    const num = textSprite(b.idol ? ('Ô ' + String(idolNo).padStart(2, '0')) : 'Ô TRỐNG', b.idol ? 1.1 : 0.8);
     num.position.set(0, 3.4, 0.2); grp.add(num);
     scene.add(grp);
-    booths.push({ x: b.x, z: b.z, idolId: b.idol ? b.idol.id : null, boothNo: idx + 1, frontX: b.x, frontZ: b.rotY ? b.z : (b.z > 0 ? HALL.z - 0.6 : -HALL.z + 1.6), rotY: b.rotY || 0 });
+    booths.push({ x: b.x, z: b.z, idolId: b.idol ? b.idol.id : null, boothNo: idx + 1, boothLabel: b.idol ? String(idolNo).padStart(2, '0') : null, frontX: b.x, frontZ: b.rotY ? b.z : (b.z > 0 ? HALL.z - 0.6 : -HALL.z + 1.6), rotY: b.rotY || 0 });
   });
   // v5.2: đèn fill RIÊNG trước mặt từng idol (ngang mặt, trong buồng) — đèn
   // chung 1 cái trước dãy ô (v5.1) tới 2 idol bìa quá xa (hơn 10m, decay 1.7)
@@ -959,7 +992,7 @@ async function loadPriorityModels() {
     rig.group.rotation.y = 0;
     if (d.tint) tintMaterial(rig, d.tint, 0xff8a3d); // áo tù cam (chỉ vật liệu không texture)
     attachAccessory(rig, d.acc);
-    addNameTag(rig, d.name);
+    addNameTag(rig, d.name, rig.height + 0.4, true); // v5.7: thẻ tên idol to (xem addNameTag)
     scene.add(rig.group);
     idolRigs[d.id] = { rig, boothX: b.x, boothZ: b.z };
     setAnim(rig, 'idle');
@@ -1173,22 +1206,33 @@ function updatePlayer(dt) {
 function updateCamera(dt) {
   if (!player || !camera) return;
   if (state.visitMode && state.currentIdol) {
+    // v5.7 — bx lấy từ Ô KÍNH (booths, luôn có) chứ KHÔNG lấy từ idolRigs:
+    // boot log test v5.6 ghi "Đã tải nhân vật chính 3/5" sau 27.5s — rig idol
+    // có thể chưa tải xong khi mở phòng thăm; idolRigs[id] undefined thì bx cũ
+    // = 0, camera ngắm vào khoảng trống giữa 2 ô (nghi phạm số 1 vụ "chỉ thấy
+    // chân + ghế" ở test v5.6). Ô kính thì luôn có nên bx luôn đúng.
+    const b = booths.find((x) => x.idolId === state.currentIdol);
     const info = idolRigs[state.currentIdol];
-    const bx = info ? info.boothX : 0;
-    // v5: camera thăm lại gần hơn (cách idol ~4m, ngang vai) để thấy rõ toàn
-    // thân idol sau kính thay vì chỉ thấy đầu nhỏ từ xa như v4.
+    const bx = b ? b.x : (info ? info.boothX : 0);
     // v5.5: aim vào ĐẦU idol (y 1.9 thay vì 1.5 ngực) — idol cao 2.14–2.23m,
     // mặt ở ~1.9–2.05; aim ngực làm mặt lệch lên mép trên khung, ở FPS thấp
     // camera còn lerp dở thì mặt ra ngoài khung hẳn (test v5.4).
-    // v5.6 — FRAME IDOL VÀO VÙNG 3D NHÌN THẤY ĐƯỢC (nguyên nhân gốc test v5.5:
-    // tấm đáy 64% che mất mặt vì mặt aim vào giữa khung — giờ bố cục đổi nên
-    // điểm ngắm phải tính theo vùng nhìn thấy thật, không phải toàn màn hình):
-    // - DESKTOP: panel thăm là cột phải ~440px → mặt idol phải nằm giữa dải 3D
-    //   còn lại bên trái: lệch điểm ngắm sang phải một đoạn offsetX để idol
-    //   dạt sang trái đúng tâm dải trái (tính từ bề rộng panel thật + FOV).
-    // - MOBILE: tấm đáy chiếm 52% dưới → mặt phải nằm trong dải trên (~20%
-    //   từ đỉnh, vùng gradient còn trong): aim thấp xuống y≈0.63 để mặt
-    //   (y≈2.0) dâng lên ~18° trên tâm khung. Đã tính bằng node (FOV 58°).
+    // v5.6/v5.7 — FRAME IDOL VÀO VÙNG 3D NHÌN THẤY ĐƯỢC: panel thăm là cột phải
+    // ~440px → mặt idol phải nằm giữa dải 3D còn lại bên trái: lệch điểm ngắm
+    // sang phải một đoạn offsetX để idol dạt sang trái đúng tâm dải trái (tính
+    // từ bề rộng panel thật + FOV). MOBILE: tấm đáy chiếm 52% dưới → mặt phải
+    // nằm trong dải trên (~20% từ đỉnh): aim thấp xuống y≈0.63 để mặt dâng
+    // lên ~18° trên tâm khung. Đã tính bằng node (FOV 58°).
+    // VÌ SAO KHÔNG setViewOffset (đã kiểm chứng bằng three.js thật, node,
+    // /tmp/verify_framing.mjs): setViewOffset chỉ cắt một hình chữ nhật con
+    // của frustum rồi map nó ra TOÀN canvas — nó KHÔNG tự căn lại tâm nhìn.
+    // setViewOffset(vw,vh,0,0,visW,vh) + lookAt thẳng vào đầu idol → đầu rơi
+    // vào NDC (+0.67,+0.05) = canvas x≈964, tức NẰM SAU tấm panel phải (panel
+    // che từ x≈684) — tệ hơn v5.6. Muốn setViewOffset căn đúng thì vẫn phải
+    // lệch lookAt (tới +2.7m) mà ảnh hiện ra Y HỆT offset tay, lại thêm gánh
+    // raycast phải đổi hệ NDC — nên GIỮ offset tay, bỏ setViewOffset.
+    // Offset tay đã kiểm chứng đúng: đầu idol ở NDC (-0.42,+0.07) = đúng tâm
+    // dải trái, chân ở -0.94 còn trong khung (kịch bản C của script trên).
     const target = new THREE.Vector3(bx + 0.4, 1.7, -HALL.z + 2.4);
     if (cam.snap) { camera.position.copy(target); cam.snap = false; }
     else {
@@ -1196,6 +1240,11 @@ function updateCamera(dt) {
       camera.position.y = damp(camera.position.y, target.y, 4, dt);
       camera.position.z = damp(camera.position.z, target.z, 4, dt);
     }
+    // v5.7 — Ép idol quay mặt về phía camera trong lúc thăm: test v5.6 thấy
+    // Khánh Sky quay mặt nghiêng (clip idle xoay người, rotation.y ≠ 0). Chỉ ép
+    // khi anim là idle/wave/bow — KHÔNG ép lúc biểu diễn 'fan' để khỏi đánh
+    // nhau với clip múa quạt.
+    if (info && info.rig && (info.rig.anim === 'idle' || info.rig.anim === 'wave' || info.rig.anim === 'bow')) info.rig.group.rotation.y = 0;
     const look = new THREE.Vector3(bx, 1.9, -HALL.z - 1.8);
     if (window.innerWidth > 750) {
       // Tâm dải 3D trái chỉ đổi khi bề rộng khung đổi → cache theo vw, KHÔNG
@@ -1219,18 +1268,17 @@ function updateCamera(dt) {
   }
   const cd = cam.dist;
   // v5.6 — CẢNH MỞ ĐẦU (establishing shot): 2.5 giây đầu sau khi vào sảnh,
-  // camera cao (pitch ~0.55 → y≈6.5) nhìn thẳng vào giữa dãy ô kính thay vì
-  // nhìn lưng người chơi; panel 2 bên thu gọn (class .estab trên #gameContainer)
-  // để cả 4 ô lọt khe giữa. Khung game tối đa ~1148px: vé + nhật ký trái ~330px
-  // (29%), bảng gọi số phải ~242px (21%) — ô biên ở 25.5%/74.5% bề rộng nên
-  // không thu gọn panel thì ô 01 vẫn bị che (test v5.5). Hết cảnh (2.5s hoặc
-  // bấm di chuyển/xoay/zoom lần đầu) thì về camera bám theo bình thường.
-  // Đã tính bằng node (FOV 58°, cam (0,6.52,11.5), look (0,2.0,-10.2)): đỉnh ô
-  // +2.7°, mặt idol 0°, chân ô -4.9° so với tâm khung — cả dãy ô nằm gọn trong
-  // dải giữa khung (nửa FOV dọc 29°); 2 ô biên ở NDC ±0.49.
+  // camera nhìn thẳng vào giữa dãy ô kính thay vì nhìn lưng người chơi; panel 2
+  // bên thu gọn (class .estab trên #gameContainer) để cả 4 ô lọt khe giữa.
+  // Hết cảnh (2.5s hoặc bấm di chuyển/xoay/zoom lần đầu) thì về camera bám theo
+  // bình thường.
+  // v5.7 — Camera cảnh mở đầu LẠI GẦN HƠN + THẤP HƠN: camera v5.6 ở (0,6.52,11.5)
+  // cách dãy ô 21.7m, chữ tên cao 0.20m chỉ ~5px nên test v5.6 chỉ đọc rõ 1 biển
+  // "Trường Con". Camera mới ở (0,4.2,3) — cách 13.2m, chữ tag lớn 0.33m ≈ 14px.
+  // Đã tính bằng three.js thật (node, /tmp/verify_framing.mjs): đầu 4 idol ở
+  // NDC x ±0.26/±0.77, y -0.02; biển tên ±0.77, y +0.06 — cả dãy lọt khung.
   if (cam.estab) {
-    const ety = 2.6 + Math.sin(0.55) * cd;
-    const tx = player.position.x, tz = player.position.z + cd, ty = ety;
+    const tx = player.position.x, tz = player.position.z - 1, ty = 4.2;
     if (cam.snap) { camera.position.set(tx, ty, tz); cam.snap = false; }
     else {
       camera.position.x = damp(camera.position.x, tx, 8, dt);
@@ -1240,7 +1288,7 @@ function updateCamera(dt) {
     camera.position.x = clamp(camera.position.x, -15.5, 15.5);
     camera.position.y = clamp(camera.position.y, 1.4, 9);
     camera.position.z = clamp(camera.position.z, -11.5, 11.5);
-    camera.lookAt(0, 2.0, -HALL.z - 1.2);
+    camera.lookAt(player.position.x, 2.2, -HALL.z - 1.2); // v5.7: ngắm giữa dãy ô (y 2.2 thay vì 2.0 — camera thấp hơn nên ngắm cao hơn một chút để cả dãy căn giữa dọc)
     return;
   }
   // v5.1: camera đứng SAU lưng người chơi (phía nam, z lớn hơn) nhìn về dãy ô
@@ -1325,6 +1373,21 @@ function updateNearPrompt() {
   };
   if (!state.started || !player) { if (nearPromptSig !== 'off') { nearPromptSig = 'off'; el.hidden = true; setE('THĂM', false); } return; }
   if (state.visitMode) { if (nearPromptSig !== 'visit') { nearPromptSig = 'visit'; el.hidden = true; setE('THĂM', false); } return; }
+  // v5.7: đang tự chạy tới ô (auto-walk) thì nhắc đúng idol ĐÍCH — trước đây
+  // lấy ô GẦN NHẤT nên test v5.6 thấy nhắc "Ô Trường Con" trong lúc nhân vật
+  // đang chạy tới ô Khánh Sky.
+  if (state.autoWalkTo && state.targetBooth) {
+    const d = IDOLS.find((x) => x.id === state.targetBooth);
+    const bT = booths.find((x) => x.idolId === state.targetBooth);
+    const sig = 'walk|' + state.targetBooth + '|' + ($('rpgDialog').hidden ? '1' : '0');
+    if (sig !== nearPromptSig) {
+      nearPromptSig = sig;
+      el.hidden = $('rpgDialog').hidden ? false : true;
+      $('nearPromptText').textContent = '🏃 Đang chạy tới ô ' + (d ? d.name : '') + (bT && bT.boothLabel ? ' (Buồng ' + bT.boothLabel + ')' : '') + '…';
+      setE('ĐI TỚI', false);
+    }
+    return;
+  }
   const b = nearestBooth();
   const sig = (b ? (b.idolId || 'empty') : 'none') + '|' + ($('rpgDialog').hidden ? '1' : '0');
   if (sig === nearPromptSig) return; // không đổi → không chạm DOM
@@ -1334,9 +1397,11 @@ function updateNearPrompt() {
   // cùng chỗ — khung thoại đã mời tương tác rồi); đóng thoại thì nhắc lại hiện.
   el.hidden = $('rpgDialog').hidden ? false : true;
   if (b.idolId) {
+    const dIdol = IDOLS.find((d) => d.id === b.idolId);
+    const bNo2 = b.boothLabel ? ' (Buồng ' + b.boothLabel + ')' : ''; // v5.7: số buồng idol 01–04 thống nhất
     $('nearPromptText').textContent = IS_TOUCH
-      ? 'Ô ' + IDOLS.find((d) => d.id === b.idolId).name + ' — bấm VÀO THĂM'
-      : 'Ô ' + IDOLS.find((d) => d.id === b.idolId).name + ' — bấm E để vào thăm';
+      ? 'Ô ' + dIdol.name + bNo2 + ' — bấm VÀO THĂM'
+      : 'Ô ' + dIdol.name + bNo2 + ' — bấm E để vào thăm';
     setE('VÀO THĂM', true);
   } else {
     $('nearPromptText').textContent = IS_TOUCH
@@ -1418,6 +1483,7 @@ function openVisit(idolId, source) {
   state.sentCount = 0;
   state.visitChatCount = 0;
   state.visitEnergyStart = 100; // ngoài buổi thăm năng lượng luôn 100%
+  drawCert(); // v5.7: vẽ lại chứng nhận với tên idol + 0 điểm của buổi thăm mới — nếu không, chứng nhận vẫn giữ tên/điểm buổi thăm trước
   bumpStreak();
   if (!state.visited.has(idolId)) {
     state.visited.add(idolId);
@@ -1449,7 +1515,7 @@ function openVisit(idolId, source) {
   const vb = $('visitBooth');
   if (vb) {
     const bNo = booths.find((x) => x.idolId === idolId);
-    vb.textContent = 'BUỒNG SỐ ' + String(bNo ? bNo.boothNo : '--').padStart(2, '0') + ' • LOA LIÊN LẠC: BẬT • VÉ A-014';
+    vb.textContent = 'BUỒNG SỐ ' + (bNo && bNo.boothLabel ? bNo.boothLabel : '--') + ' • LOA LIÊN LẠC: BẬT • VÉ A-014'; // v5.7: số buồng idol 01–04 (boothLabel), không dùng boothNo (số thứ tự 24 ô)
   }
   $('sentCount').textContent = '0';
   $('visitPoints').textContent = state.visitPoints;
@@ -2194,16 +2260,34 @@ function takePhoto() {
     toast('📸 Bản chữ không chụp được ảnh 3D — dùng giấy chứng nhận bên dưới nhé!');
     return;
   }
-  try {
-    // preserveDrawingBuffer:false nên phải render lại rồi toDataURL NGAY trong
-    // cùng 1 tác vụ JS (trước khi trình duyệt composite) mới lấy được ảnh.
-    renderer.render(scene, camera);
-    const a = document.createElement('a');
-    a.href = renderer.domElement.toDataURL('image/png');
-    a.download = 'tham-tu-' + Date.now() + '.png';
-    a.click();
-    toast('📸 Đã chụp ảnh kỷ niệm!');
-  } catch (e) { toast('📸 Không chụp được ảnh: ' + e.message); }
+  // v5.7: KHÔNG làm việc nặng đồng bộ trong handler click — trước đây render +
+  // toDataURL 1080p chạy NGAY trong click; trên máy render phần mềm (SwiftShader)
+  // toDataURL tốn hàng giây nên trình duyệt báo "trang không phản hồi" và thao
+  // tác không có hiệu lực (test v5.6: bấm chụp ảnh/mini-game/tặng đồ/chat đều
+  // kẹt). Giờ click chỉ xếp lịch: rAF sau mới render + toDataURL (vẫn trong
+  // cùng 1 tác vụ JS để preserveDrawingBuffer:false còn lấy được ảnh — rAF
+  // chạy trước khi trình duyệt composite nên buffer vẫn còn), và thu nhỏ về
+  // tối đa 960px trước khi toDataURL để nhẹ hơn nhiều. Các handler thăm khác
+  // (chào/tặng đồ/chat/mini-game/biểu diễn) vốn chỉ đổi state + DOM nên không
+  // cần đổi — chúng kẹt là do main thread đang bận parse GLB nền, không phải
+  // do bản thân handler nặng.
+  toast('📸 Đang chụp…');
+  requestAnimationFrame(() => {
+    try {
+      renderer.render(scene, camera);
+      const src = renderer.domElement;
+      const scale = Math.min(1, 960 / src.width);
+      const c = document.createElement('canvas');
+      c.width = Math.max(2, Math.round(src.width * scale));
+      c.height = Math.max(2, Math.round(src.height * scale));
+      c.getContext('2d').drawImage(src, 0, 0, c.width, c.height);
+      const a = document.createElement('a');
+      a.href = c.toDataURL('image/png');
+      a.download = 'tham-tu-' + Date.now() + '.png';
+      a.click();
+      toast('📸 Đã chụp ảnh kỷ niệm!');
+    } catch (e) { toast('📸 Không chụp được ảnh: ' + e.message); }
+  });
 }
 
 /* Kỹ năng MOBA (gán chức năng thật, không nút trang trí) */
@@ -2578,12 +2662,28 @@ function tick() {
       // vẽ minimap) — để lần test sau đọc __thamtuPerf thì biết FPS 1–3 là
       // do render, do logic JS, hay do môi trường test bóp rAF.
       const pn = Math.max(1, perfSum.n);
+      const msU = +(perfSum.update / pn).toFixed(1), msR = +(perfSum.render / pn).toFixed(1), msM = +(perfSum.minimap / Math.max(1, perfSum.mN)).toFixed(1);
+      // v5.7 — TỰ KIỂM FRAMING PHÒNG THĂM: chiếu đầu idol sang NDC mỗi giây
+      // (matrixWorld đã cập nhật sau render). Đầu idol phải ở NDC x≈-0.42
+      // (giữa dải 3D trái, desktop) — nếu lệch nhiều thì camera thăm sai,
+      // lần test sau đọc là biết ngay mà không cần đoán từ ảnh chụp.
+      let headNdc = null;
+      if (state.visitMode && state.currentIdol && camera) {
+        const bb = booths.find((x) => x.idolId === state.currentIdol);
+        if (bb) {
+          const v = new THREE.Vector3(bb.x, 2.0, bb.z - 0.35).project(camera);
+          headNdc = [+v.x.toFixed(2), +v.y.toFixed(2)];
+        }
+      }
       window.__thamtuPerf = { fps, calls, triangles: tris, mixers: activeMixers, resScale,
-        msUpdate: +(perfSum.update / pn).toFixed(2), msRender: +(perfSum.render / pn).toFixed(2),
-        msMinimap: +(perfSum.minimap / Math.max(1, perfSum.mN)).toFixed(2) };
+        msUpdate: msU, msRender: msR, msMinimap: msM, headNdc };
       perfSum = { update: 0, render: 0, minimap: 0, n: 0, mN: 0 };
       const fc = $('fpsChip');
-      if (fc) fc.textContent = fps + ' FPS • ' + calls + ' DC' + (resScale < 1 ? ' • ' + Math.round(resScale * 100) + '%' : '');
+      // v5.7: hiện luôn 3 số ms NGAY TRÊN chip FPS (công cụ test không có
+      // console nên __thamtuPerf không đọc được — đọc bằng mắt thường).
+      // Trong lúc thăm thêm HEAD:x,y để kiểm chứng framing (đầu idol phải
+      // ở x≈-0.42 desktop / y≈+0.6 mobile).
+      if (fc) fc.textContent = fps + ' FPS • ' + calls + ' DC' + (resScale < 1 ? ' • ' + Math.round(resScale * 100) + '%' : '') + ' • R:' + msR + ' U:' + msU + ' M:' + msM + (headNdc ? ' • HEAD:' + headNdc[0] + ',' + headNdc[1] : '');
       resFpsSum += fps; resFpsN++;
       if (!resEvalT) resEvalT = nowMs;
       if (nowMs - resEvalT >= 2000 && resFpsN > 0) {
