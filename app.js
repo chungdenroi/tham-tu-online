@@ -40,7 +40,9 @@ const IDOLS = [
       { keys: ['tiền'], reply: 'Tiền thì anh không rủ ai đánh bạc nữa đâu. Giờ anh chỉ đếm… nhịp múa thôi.' },
       { keys: ['ra tù', 'về'], reply: 'Anh hứa ra tù sẽ làm công dân tốt. Giờ thì múa tiếp cho qua ngày!' },
       { keys: ['nhớ nhà', 'nhớ mẹ'], reply: 'Anh cũng nhớ nhà lắm. Nhưng mà múa một bài là thấy đỡ nhớ hơn một tí.' },
-      { keys: ['quạt', 'múa'], reply: 'Muốn xem múa quạt không? Bấm nút MÚA ở mini-game bên dưới kìa!' }
+      { keys: ['quạt', 'múa'], reply: 'Muốn xem múa quạt không? Bấm nút MÚA ở mini-game bên dưới kìa!' },
+      { keys: ['khỏe', 'sức khỏe'], reply: 'Anh vẫn khỏe, múa quạt mỗi ngày nên người cứ dẻo dai ra! Em ở ngoài nhớ giữ sức khỏe nhé!' },
+      { keys: ['mì', 'đồ ăn'], reply: 'Mì tôm à? Anh thì chỉ cần một gói mì là vui cả ngày! Gửi cho anh một gói ở nút quà bên dưới kìa!' }
     ] },
   { id: 'huan', name: 'Huấn Hoa Hồng', real: 'Bùi Xuân Huấn', emoji: '🌹', tag: 'Thầy giảng đạo lý',
     status: 'Bị khởi tố + tạm giam tháng 8/2026 — ĐANG CHỜ XỬ LÝ, chưa có bản án tuyên.',
@@ -53,7 +55,9 @@ const IDOLS = [
       { keys: ['tiền'], reply: 'Tiền kiếm bằng mồ hôi mới bền. Tiền nhanh thì đi cũng nhanh lắm em ạ.' },
       { keys: ['ra tù', 'về'], reply: 'Thầy đang chờ xử lý, chưa có bản án. Các em cứ sống tốt đi, đừng học theo thầy đoạn này.' },
       { keys: ['nhớ nhà', 'nhớ'], reply: 'Nhớ nhà thì gọi về cho bố mẹ đi em. Đừng để tới lúc muốn gọi mà không được.' },
-      { keys: ['hoa', 'hồng'], reply: 'Hoa hồng thì đẹp, nhưng gai thì đau. Làm ăn cũng vậy, đừng ham cái đẹp mà quên cái gai!' }
+      { keys: ['hoa', 'hồng'], reply: 'Hoa hồng thì đẹp, nhưng gai thì đau. Làm ăn cũng vậy, đừng ham cái đẹp mà quên cái gai!' },
+      { keys: ['khỏe', 'sức khỏe'], reply: 'Thầy vẫn khỏe, ăn uống điều độ, tập thể dục đều. Các em ở ngoài cũng phải giữ gìn sức khỏe đấy!' },
+      { keys: ['mì', 'đồ ăn'], reply: 'Mì tôm thì thầy cũng thèm, nhưng làm thì mới có ăn — em gửi thầy một gói thì thầy cảm ơn!' }
     ] },
   { id: 'truong', name: 'Trường Con', real: 'Trịnh Xuân Trường', emoji: '🍜', tag: 'Thánh ăn chực',
     status: 'Đang chấp hành án 20 năm tù (xử 2020) — tội mua bán trái phép chất ma túy.',
@@ -66,7 +70,8 @@ const IDOLS = [
       { keys: ['tiền'], reply: 'Tiền thì anh không có, nhưng đồ ăn thì anh xin một miếng được không?' },
       { keys: ['ra tù', 'về'], reply: 'Án anh còn dài lắm. Các em ở ngoài nhớ sống tử tế, đừng dính vào ma túy nhé.' },
       { keys: ['nhớ nhà', 'nhớ'], reply: 'Anh nhớ Nam Định lắm. Nhớ cả những bữa cơm nhà nữa…' },
-      { keys: ['mì', 'đồ ăn'], reply: 'Mì tôm là chân ái! Gửi cho anh một gói ở nút quà bên dưới kìa!' }
+      { keys: ['mì', 'đồ ăn'], reply: 'Mì tôm là chân ái! Gửi cho anh một gói ở nút quà bên dưới kìa!' },
+      { keys: ['khỏe', 'sức khỏe'], reply: 'Anh vẫn khỏe em ạ, chỉ thèm bát mì tôm với nhớ cơm nhà thôi!' }
     ] },
   { id: 'khanh', name: 'Khánh Sky', real: 'Nguyễn Văn Hợi', emoji: '👑', tag: 'Thiên tử livestream',
     status: 'Bị bắt khẩn cấp + khởi tố tháng 8/2026 — ĐANG CHỜ XỬ LÝ, chưa có bản án tuyên.',
@@ -88,7 +93,9 @@ const IDOLS = [
       { keys: ['tiền'], reply: 'Tiền view thì nhanh, nhưng cái giá phải trả cũng không rẻ đâu em.' },
       { keys: ['ra tù', 'về'], reply: 'Anh đang chờ xử lý, chưa có bản án. Mong mọi người đừng chửi bới nhau nữa.' },
       { keys: ['nhớ nhà', 'nhớ'], reply: 'Anh nhớ nhà, nhớ mẹ lắm. Ở đây anh mới có thời gian nghĩ lại.' },
-      { keys: ['live', 'view'], reply: 'Muốn tăng view không? Chơi mini-game livestream bên dưới đi, bấm càng nhanh view càng lên!' }
+      { keys: ['live', 'view'], reply: 'Muốn tăng view không? Chơi mini-game livestream bên dưới đi, bấm càng nhanh view càng lên!' },
+      { keys: ['khỏe', 'sức khỏe'], reply: 'Anh vẫn khỏe, cảm ơn em hỏi thăm. Ở đây anh có thời gian nghĩ lại nhiều thứ.' },
+      { keys: ['mì', 'đồ ăn'], reply: 'Mì tôm trong này là đặc sản đấy em! Em gửi anh một gói thì anh cảm ơn nhiều lắm!' }
     ] }
 ];
 const GIFTS = [
@@ -821,28 +828,34 @@ function attachAccessory(rig, kind) {
 // /tmp/face_head_v511.mjs — chỉ lấy đỉnh chịu ảnh hưởng của xương Head,
 // skinWeight > 0.25). Không đổi file model; gắn geometry nhỏ lên xương Head
 // (theo đầu khi idol quay/vẫy tay), đặt theo tâm mặt đo thật từng model
-// (80% chiều cao rig, xem idolHeadWorld). Kích thước tính cho khoảng cách
-// thăm 4.15m (mặt ~75px ngang): mắt Ø~0.056m ≈ 8px, miệng rộng ~0.08m ≈
-// 12px — đủ đọc; zoom thăm 3.2m thì mắt ~11px. Tọa độ tâm mặt (unscaled,
-// tọa độ inner): sam/matt/shaun mặt hướng -Z trong tư thế bind (đầu nằm sau
-// tâm thân ~0.47m); soldier-male lấy tâm tấm Face (mặt trước z=0.163).
+// (80% chiều cao rig, xem idolHeadWorld). Kích thước tính theo WORLD cho
+// khoảng cách thăm 3,2m (zoom gần nhất): mắt 6,4×2,9cm ≈ 13×6px, miệng
+// bầu dục 6,8×2,6cm ≈ 13×5px, mũi Ø 4,8cm ≈ 10px — đủ đọc; ở 4,15m mặc
+// định thì mắt ~10px. Tọa độ tâm mặt (unscaled, tọa độ inner):
+// sam/matt/shaun mặt hướng -Z trong tư thế bind (đầu nằm sau tâm thân
+// ~0.47m); soldier-male lấy tâm tấm Face (mặt trước z≈0.14).
 const FACE_U = {
   sam:         { x: -0.014, y: 1.401, z: -0.245 },
   matt:        { x: -0.012, y: 1.401, z: -0.252 },
   shaun:       { x: -0.013, y: 1.401, z: -0.101 },
   soldierMale: { x: -0.055, y: 1.465, z: 0.163 },
 };
-// Mặt trước z TẠI TỪNG NÉT (unscaled, tọa độ inner) — đo thật bằng three.js
-// (/tmp/face_surface2_v511.mjs: z lớn nhất của đỉnh đầu trong cửa sổ ±0.05
-// quanh nét). Mặt nghiêng trong tư thế bind nên má lùi sau chóp mũi khác
-// nhau từng nét (matt mắt -0.285, shaun miệng -0.225); dùng chung mặt phẳng
-// chóp mũi (FACE_U.z) sẽ làm mắt/miệng lơ lửng 3–15cm trước mặt. soldier-male:
-// tấm Face là mesh phẳng riêng, mặt trước z=0.163 cho mọi nét.
+// Mặt trước z TẠI TỪNG NÉT (unscaled, tọa độ inner) — v5.12: ĐO LẠI BẰNG
+// RAYCAST TẠI ĐÚNG VỊ TRÍ TỪNG NÉT (tia từ +Z, /tmp/v512_verify_v3.mjs).
+// Cách đo v5.11 (z lớn nhất của đỉnh đầu trong cửa sổ ±0.05) SAI: nó lấy
+// mặt phẳng chóp mũi/cạnh mặt trong cửa sổ chứ không phải mặt tại nét đó —
+// mắt shaun đặt ở -0.103 trong khi mặt thật tại mắt là -0.278 (lơ lửng
+// 17,5cm trước mặt), mắt matt lơ lửng 6,7cm, sam 3,3cm; miệng sam/shaun
+// thì ngược lại — đặt SAU mặt thật ~2cm nên bị chôn hẳn (torus tube chỉ
+// 0,0075). Đó là nguyên nhân gốc mắt chỉ là 2 chấm mờ + không thấy mũi/
+// miệng ở test v5.11. Bây giờ mỗi nét đặt đúng mặt thật tại (x,y) của nó.
+// soldier-male: tấm Face là mesh phẳng riêng, mặt trước z≈0.13–0.16.
+// (matt brow -0.371: lông mày nằm trên trán cong gắt, lùi sâu hơn mắt.)
 const FACE_SURF = {
-  sam:         { eyeL: -0.260, eyeR: -0.260, browL: -0.260, browR: -0.260, nose: -0.246, mouth: -0.246 },
-  matt:        { eyeL: -0.285, eyeR: -0.285, browL: -0.303, browR: -0.318, nose: -0.275, mouth: -0.252 },
-  shaun:       { eyeL: -0.103, eyeR: -0.104, browL: -0.103, browR: -0.104, nose: -0.101, mouth: -0.225 },
-  soldierMale: { eyeL: 0.163, eyeR: 0.163, browL: 0.163, browR: 0.163, nose: 0.163, mouth: 0.163 },
+  sam:         { eyeL: -0.264, eyeR: -0.264, browL: -0.289, browR: -0.289, nose: -0.242, mouth: -0.230 },
+  matt:        { eyeL: -0.303, eyeR: -0.303, browL: -0.371, browR: -0.371, nose: -0.279, mouth: -0.275 },
+  shaun:       { eyeL: -0.264, eyeR: -0.264, browL: -0.280, browR: -0.280, nose: -0.231, mouth: -0.217 },
+  soldierMale: { eyeL: 0.130, eyeR: 0.143, browL: 0.130, browR: 0.143, nose: 0.141, mouth: 0.142 },
 };
 function attachFace(rig) {
   if (!rig || !rig.group || !rig.inner) return false;
@@ -867,36 +880,50 @@ function attachFace(rig) {
   const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(hq);
   hq.invert();
   const dark = new THREE.MeshStandardMaterial({ color: 0x2a1a12, roughness: 0.55 });
-  const mouthMat = new THREE.MeshStandardMaterial({ color: 0x8a3a2e, roughness: 0.6 });
-  const noseMat = new THREE.MeshStandardMaterial({ color: 0xc68e5a, roughness: 0.7 });
+  const mouthMat = new THREE.MeshStandardMaterial({ color: 0x7a2e22, roughness: 0.6 });
+  const noseMat = new THREE.MeshStandardMaterial({ color: 0x8a5a30, roughness: 0.7 }); // v5.12: tối hơn (0xc68e5a cũ gần màu da nên mũi chìm)
   // dx/dy: offset world (m) quanh tâm mặt; surfZ: mặt má tại đúng nét đó
   // (unscaled, xem FACE_SURF); protrude: lồi ra theo hướng mặt (m) — nửa
   // sau của nét chìm vào mặt nên không lơ lửng, không chìm hẳn.
+  // v5.12 — KÍCH THƯỚC TÍNH THEO WORLD (chia cho s vì group scale s nhân
+  // vào local): mắt v5.11 r=0.028 local = Ø ~7,1cm world đã to, nhưng vì
+  // đặt sai mặt (lơ lửng) nên vẫn chỉ thấy 2 chấm mờ. Mắt mới Ø 6,4cm
+  // nhưng DẸT (scaleY 0.45) nên không nuốt lông mày (v5.11 mắt tròn cao
+  // 8,4cm world, lông mày nằm gọn trong phạm vi mắt → raycast: lông mày
+  // firstHit = mắt, tức bị mắt che).
   const add = (mesh, dx, dy, surfZ, protrude, rz) => {
     const local = new THREE.Vector3(fu.x + dx / s + ip.x, fu.y + dy / s + ip.y, surfZ + ip.z);
     const wp = rig.group.localToWorld(local);
     wp.addScaledVector(fwd, protrude);
     mesh.position.copy(head.worldToLocal(wp));
-    // Căn trục theo world + góc xoay riêng (miệng cười cần xoay 180° quanh Z
-    // trong khung world — KHÔNG set mesh.rotation trước vì quaternion dưới
-    // đây ghi đè nó).
+    // Căn trục theo world (không set mesh.rotation trước vì quaternion dưới
+    // đây ghi đè nó). rz: góc xoay riêng quanh Z trong khung world.
     mesh.quaternion.copy(hq);
     if (rz) mesh.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), rz));
     mesh.castShadow = false; mesh.receiveShadow = false;
     head.add(mesh);
   };
   [-1, 1].forEach((side) => {
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.028, 10, 8), dark);
-    eye.scale.set(1, 1, 0.55); // hơi dẹt, ôm sát mặt (nửa sau chìm vào mặt)
-    add(eye, side * 0.10, 0.035, side < 0 ? fs.eyeL : fs.eyeR, 0.010);
-    const brow = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.014, 0.012), dark);
-    add(brow, side * 0.10, 0.078, side < 0 ? fs.browL : fs.browR, 0.004);
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.032 / s, 10, 8), dark);
+    eye.scale.set(1, 0.45, 0.5); // dẹt dọc + dẹt sâu, ôm sát mặt (Ø 6,4×2,9cm world ≈ 13×6px ở 3,2m)
+    add(eye, side * 0.055, 0.030, side < 0 ? fs.eyeL : fs.eyeR, 0.010);
+    const brow = new THREE.Mesh(new THREE.BoxGeometry(0.085 / s, 0.020 / s, 0.010 / s), dark);
+    add(brow, side * 0.055, 0.058, side < 0 ? fs.browL : fs.browR, 0.005);
   });
-  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.020, 8, 8), noseMat);
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.024 / s, 8, 8), noseMat);
   nose.scale.set(0.9, 1.25, 0.6);
-  add(nose, 0, -0.008, fs.nose, 0.006);
-  const mouth = new THREE.Mesh(new THREE.TorusGeometry(0.032, 0.0075, 8, 16, Math.PI), mouthMat);
-  add(mouth, 0, -0.062, fs.mouth, 0.006, Math.PI); // nửa dưới vòng tròn = nụ cười (∪)
+  add(nose, 0, -0.012, fs.nose, 0.010);
+  // v5.12 — MIỆNG LÀ HÌNH BẦU DỤC ĐẶC (sphere dẹt), KHÔNG dùng torus nữa:
+  // torus v5.11 có 3 lỗi: (1) đáy vòng bị CẰM NHÔ chôn — mặt dưới miệng
+  // nhô trước mặt phẳng miệng ~2cm nên đáy nụ cười nằm sau mặt; (2) 2 đầu
+  // vòng HỞ (không có nắp) nên tia kiểm tra đi xuyên qua lỗ đầu ống;
+  // (3) tâm vòng là LỖ RỖNG nên raycast tới tâm luôn trúng đầu. Oval đặc
+  // không có lỗ/đầu hở, gọn theo chiều dọc (cao 2,6cm world) nên không
+  // chạm cằm — raycast từ camera thăm 3,2m: tâm + mép dưới đều firstHit
+  // = miệng ở cả 4 idol (xem /tmp/v512_verify_v3.mjs).
+  const mouth = new THREE.Mesh(new THREE.SphereGeometry(0.034 / s, 12, 8), mouthMat);
+  mouth.scale.set(1, 0.38, 0.35); // bầu dục ngang 6,8×2,6cm world ≈ 13×5px ở 3,2m
+  add(mouth, 0, -0.058, fs.mouth, 0.008);
   return true;
 }
 function addNameTag(rig, text, y, big) {
@@ -1165,6 +1192,16 @@ async function loadPriorityModels() {
     // v5.2: idol to hơn nữa (×1.2 thay vì ×1.15) để nhìn rõ mặt cả khi đứng
     // xa trong sảnh; đứng sát kính hơn (z - 0.35 thay vì -0.6).
     const rig = makeRigFromGLTF(key, modelCache[key], { height: d.height * 1.2, name: d.id, shadow: true, role: 'idol' });
+    // v5.12 — ẨN 6 VŨ KHÍ kèm sẵn trong file sam/matt/shaun (Axe / Guitar /
+    // Rifle / Spear / 2 gậy — cùng gắn ở tay trái, KHÔNG phải đạo cụ của
+    // idol). Đo bằng three.js thật: gậy WoodenBat_Saw quét NGANG VÙNG MẶT
+    // ở t=1.6s của clip Wave (vẫy tay chào/chat), và cổ guitar treo tĩnh
+    // ngay trước miệng (tia tới miệng Khánh Sky chạm vật lạ ở 3.31m, tức
+    // trước mặt 0,19m — test v5.11 thấy "thanh kiếm/khiên bạc vắt chéo
+    // trước người"). Idol chỉ cần phụ kiện riêng (quạt/hoa/bát/vương miện).
+    // Chỉ ẩn ở rig idol — người chơi giữ vũ khí (nhân vật game cầm vũ khí
+    // là bình thường, lại chỉ nhìn từ sau lưng).
+    rig.group.traverse((o) => { if (o.isMesh && /axe|guitar|rifle|spear|bat/i.test(o.name)) o.visible = false; });
     const b = booths.find((x) => x.idolId === d.id);
     rig.group.position.set(b.x, 0, b.z - 0.35);
     rig.group.rotation.y = 0;
@@ -1986,13 +2023,17 @@ function showVisitSummary(msg) {
   const idol = IDOLS.find((d) => d.id === state.currentIdol);
   const energyStart = state.visitEnergyStart || 100;
   const energyEnd = visitEnergy();
+  // v5.12 — BANK GAME TRƯỚC KHI CHỤP ĐIỂM: stopGame() trước đây không cộng
+  // gameScore đang chơi dở nên tổng kết/chứng nhận mất điểm game nếu hết
+  // giờ đúng lúc đang chơi. Giờ stopGame bank điểm trước (xem stopGame),
+  // rồi mới chụp pts — list và cert cùng đọc 1 giá trị pts duy nhất.
+  stopGame();
   const pts = state.visitPoints;
   const sent = state.sentCount;
   const rankBefore = rankFor(state.points - pts);
   const rankAfter = rankFor(state.points);
   const levelBefore = Math.floor((state.points - pts) / 100) + 1;
   const levelAfter = Math.floor(state.points / 100) + 1;
-  stopGame();
   hideRpgDialog();
   const sp = $('speech3d');
   if (sp) { sp.hidden = true; clearTimeout(sp._h); }
@@ -2005,7 +2046,7 @@ function showVisitSummary(msg) {
     '<li><span>🎖️ Danh hiệu</span><b>' + (rankAfter === rankBefore ? rankAfter : '↑ ' + rankAfter) + '</b></li>' +
     '<li><span>⚡ Năng lượng đã dùng</span><b>−' + (energyStart - energyEnd) + '% (' + energyStart + '% → ' + energyEnd + '%)</b></li>' +
     '<li><span>🔋 Hồi năng lượng</span><b>Về lại 100% khi về sảnh</b></li>';
-  drawCert('summaryCertCanvas');
+  drawCert('summaryCertCanvas', pts); // v5.12: cùng pts với list tổng kết — không thể lệch
   const room = $('visitRoom'), summ = $('visitSummary');
   if (room) room.hidden = true;
   if (summ) { summ.hidden = false; summ.scrollTop = 0; }
@@ -2372,13 +2413,18 @@ function drawMinimap() {
   // #E8C268 (232,194,104) — test v5.4 vẫn đọc tâm đĩa nhạt như trắng dù code
   // đã đúng; vàng đậm trên nền minimap tối không thể đọc nhầm thành trắng.
   // Chấm to hơn r=13, viền mỏng 2px.
+  // v5.12: test v5.11 VẪN đọc 4 chấm là "vàng nhạt gần kem vàng" dù code
+  // đã #C69A50 — ở cỡ hiển thị thật (~12px) vàng #C69A50 (độ sáng ~0,58)
+  // trên nền tối mắt vẫn đọc thành vàng nhạt. Đổi sang đồng đậm #A67C2E
+  // (166,124,46 — cùng họ vàng đồng, tối + bão hòa hơn) + to hơn r=14 +
+  // viền dày 2,5px: không thể đọc nhầm thành kem/trắng ở mọi cỡ hiển thị.
   booths.forEach((b) => {
     if (!b.idolId) return;
     const x = px(b.x), y = pz(b.z);
-    ctx.fillStyle = '#C69A50';
-    ctx.beginPath(); ctx.arc(x, y, 13, 0, 7); ctx.fill();
-    ctx.strokeStyle = '#594538'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(x, y, 13, 0, 7); ctx.stroke();
+    ctx.fillStyle = '#A67C2E';
+    ctx.beginPath(); ctx.arc(x, y, 14, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#594538'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(x, y, 14, 0, 7); ctx.stroke();
   });
   if (player) {
     const x = px(player.position.x), y = pz(player.position.z);
@@ -2500,6 +2546,16 @@ function renderQuickAsk() {
 
 /* ================= MINI-GAME ================= */
 function stopGame() {
+  // v5.12 — BANK ĐIỂM GAME ĐANG CHƠI DỞ: trước đây stopGame chỉ tắt timer,
+  // gameScore chưa cộng bị MẤT LẶNG. Hết giờ thăm đúng lúc đang chơi game
+  // (hoặc bấm Về sảnh giữa chừng) thì điểm game biến mất khỏi tổng kết +
+  // chứng nhận. Giờ mọi điểm đã kiếm được đều qua addPoints() trước khi
+  // tắt — kể cả chơi lại (startGame gọi stopGame trước) hay hết giờ thăm.
+  if (state.gameActive && state.gameScore > 0) {
+    const sc = state.gameScore;
+    state.gameScore = 0;
+    addPoints(sc);
+  }
   state.gameActive = false;
   clearInterval(state.gameTimerId);
   state.gameTimerId = null;
@@ -2564,11 +2620,11 @@ function startGame() {
 }
 function endGame(msg) {
   if (!state.gameActive) return;
-  stopGame();
-  addPoints(state.gameScore);
-  $('gameScore').textContent = String(state.gameScore);
+  const sc = state.gameScore; // chụp trước — stopGame() bank điểm rồi reset gameScore về 0
+  stopGame(); // bank điểm qua addPoints (xem stopGame)
+  $('gameScore').textContent = String(sc);
   const r = $('gameResult');
-  r.textContent = msg + ' (+' + state.gameScore + ' điểm đã cộng vào túi vàng!)';
+  r.textContent = msg + ' (+' + sc + ' điểm đã cộng vào túi vàng!)';
   r.hidden = false;
   checkMission('game');
   const info = state.currentIdol ? idolRigs[state.currentIdol] : null;
@@ -2685,7 +2741,14 @@ function startTapGame(area) {
 }
 
 /* ================= GIẤY CHỨNG NHẬN + ẢNH ================= */
-function drawCert(canvasId) {
+function drawCert(canvasId, pts) {
+  // v5.12 — pts TƯỜNG MINH: giấy chứng nhận phải ghi đúng TỔNG điểm buổi
+  // thăm lúc vẽ. Trước đây drawCert đọc state.visitPoints trực tiếp, còn
+  // showVisitSummary chụp pts trước rồi mới stopGame() (lúc đó gameScore
+  // chưa bank) — 2 chỗ đọc 2 thời điểm khác nhau nên tổng kết +8 mà chứng
+  // nhận chỉ 5 (điểm game chưa kịp cộng). Giờ showVisitSummary bank game
+  // trước, chụp pts một lần, rồi truyền cùng pts đó cho cả list lẫn cert.
+  const total = (pts !== undefined && pts !== null) ? pts : state.visitPoints;
   const c = $(canvasId || 'certCanvas');
   const ctx = c.getContext('2d');
   ctx.fillStyle = '#FFF6E8'; ctx.fillRect(0, 0, 640, 400);
@@ -2700,7 +2763,7 @@ function drawCert(canvasId) {
   ctx.font = 'bold 30px system-ui, sans-serif'; ctx.fillStyle = '#8A6A34';
   ctx.fillText(idol ? idol.emoji + ' ' + idol.name : 'Idol', 320, 185);
   ctx.font = '20px system-ui, sans-serif'; ctx.fillStyle = '#233B37';
-  ctx.fillText('Ngày ' + new Date().toLocaleDateString('vi-VN') + ' • Điểm buổi thăm: ' + state.visitPoints, 320, 235);
+  ctx.fillText('Ngày ' + new Date().toLocaleDateString('vi-VN') + ' • Điểm buổi thăm: ' + total, 320, 235);
   ctx.fillText('Parody giải trí hư cấu — không phải buổi thăm thật', 320, 280);
   ctx.font = 'bold 20px system-ui, sans-serif'; ctx.fillStyle = '#A84238';
   ctx.fillText('★ VÀO TÙ THĂM IDOL — THĂM NUÔI 1999 ★', 320, 340);
