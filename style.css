@@ -88,22 +88,25 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 .webgl-error button{pointer-events:auto}
 .webgl-error b{color:#FFD34D}
 .webgl-error span{color:#FFE9D0}
-.game-toast{position:absolute;left:50%;bottom:190px;transform:translateX(-50%);z-index:var(--z-toast);background:#16211F;color:var(--ink);border:1px solid var(--gold);border-radius:999px;padding:9px 16px;white-space:nowrap;max-width:94%;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+/* v5.1: toast wrap chữ thay vì cắt bằng "…" (v5: white-space:nowrap + ellipsis
+   làm toast dài giữa màn hình bị cắt). */
+.game-toast{position:absolute;left:50%;bottom:190px;transform:translateX(-50%);z-index:var(--z-toast);background:#16211F;color:var(--ink);border:1px solid var(--gold);border-radius:16px;padding:9px 16px;max-width:min(560px,92%);text-align:center;line-height:1.4;pointer-events:none}
 .controls-hint{position:absolute;left:0;right:0;bottom:8px;z-index:9;text-align:center;color:var(--ink);font-size:.8rem;text-shadow:0 1px 4px #000;pointer-events:none}
 .controls-hint button{pointer-events:auto}
 /* Khi HUD dưới đã hiện thì ẩn dòng hướng dẫn (nó nằm sau HUD, không đọc được) */
 #bottomHud:not([hidden]) ~ .controls-hint{display:none}
 
 /* ===== Màn hình HỒ SƠ NGƯỜI THĂM =====
-   Giữa màn hình TRONG SUỐT để thấy nhân vật 3D toàn thân đứng trong sảnh phía sau;
-   chỉ các panel (danh sách / hồ sơ / đầu / chân) là nền đặc. */
-.start-screen{position:absolute;inset:0;z-index:var(--z-modal);display:flex;flex-direction:column;padding:20px 24px;overflow-y:auto;background:linear-gradient(180deg,rgba(22,33,31,.95) 0%,rgba(22,33,31,.55) 16%,rgba(22,33,31,.10) 42%,rgba(22,33,31,.10) 62%,rgba(22,33,31,.55) 84%,rgba(22,33,31,.95) 100%);border-bottom:3px solid var(--gold-dark)}
-.champ-head{text-align:center;margin-bottom:10px}
-.rpg-kicker{color:var(--gold2);letter-spacing:5px;font-weight:800;font-size:.85rem;margin:0;font-family:var(--font-title)}
-.rpg-title{font-family:var(--font-title);font-weight:700;font-size:clamp(2rem,5.5vw,2.9rem);letter-spacing:4px;margin:.05em 0;text-shadow:0 2px 0 #16211F}
-.rpg-sub{color:var(--gold2);letter-spacing:3px;font-weight:700;font-size:.9rem;font-family:var(--font-title)}
+   v5.1: nền ĐẶC hoàn toàn (v5 trong suốt nên nhãn ô kính sảnh lộ ra sau tiêu
+   đề gây rối mắt, chip tên nhân vật đè lên chữ). Nhân vật 3D vẫn thấy được
+   qua ảnh portrait thật trong khung preview (xem .champ-preview-img).
+   Đầu + chân flex:none (không bị co), lưới giữa min-height:0 để danh sách
+   nhân vật cuộn trong khung của nó, thẻ vé chỉ nằm ở footer, không đè lên
+   danh sách (v5: thẻ vé che mất hàng Shaun). */
+.start-screen{position:absolute;inset:0;z-index:var(--z-modal);display:flex;flex-direction:column;padding:20px 24px;overflow-y:auto;background:#16211F;border-bottom:3px solid var(--gold-dark)}
+.champ-head{text-align:center;margin-bottom:10px;flex:none}
 .champ-grid{display:grid;grid-template-columns:220px 1fr 300px;gap:20px;flex:1;min-height:0;align-items:stretch}
-.champ-list{display:flex;flex-direction:column;gap:10px;overflow-y:auto}
+.champ-list{display:flex;flex-direction:column;gap:10px;overflow-y:auto;min-height:0;position:relative;z-index:1}
 .champion-option{display:flex;align-items:center;gap:12px;background:rgba(42,69,63,.95);border:2px solid var(--line);border-radius:8px;padding:10px;color:var(--ink);text-align:left;transition:transform .1s ease,border-color .1s ease,box-shadow .1s ease;min-width:0}
 .champion-option:hover{transform:translateY(-3px);border-color:var(--gold2);box-shadow:0 8px 18px rgba(0,0,0,.5)}
 .champion-option.selected{border-color:var(--gold2);background:#3D5C50;box-shadow:0 0 0 1px var(--gold2)}
@@ -114,11 +117,12 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 .champ-meta{min-width:0}
 .champ-meta b{display:block;font-family:var(--font-title);font-size:1.25rem;letter-spacing:1px}
 .champ-meta small{color:var(--muted)}
-.champ-preview{position:relative;border:1px solid rgba(198,154,80,.55);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;text-align:center;padding:16px;background:transparent;min-height:300px}
-.champ-preview-fallback{display:flex;flex-direction:column;align-items:center;gap:8px;margin:auto;color:var(--muted)}
+.champ-preview{position:relative;border:1px solid rgba(198,154,80,.55);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;text-align:center;padding:16px;background:radial-gradient(ellipse at 50% 75%,rgba(83,103,123,.35),transparent 65%);min-height:300px;overflow:hidden}
+.champ-preview-img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;z-index:0;pointer-events:none}
+.champ-preview-fallback{display:flex;flex-direction:column;align-items:center;gap:8px;margin:auto;color:var(--muted);position:relative;z-index:1}
 .champ-preview-fallback p{margin:0;font-size:.9rem}
-.champ-preview-name{font-family:var(--font-title);font-weight:700;font-size:2.2rem;letter-spacing:6px;color:var(--gold2);text-shadow:0 2px 0 #16211F,0 0 12px rgba(0,0,0,.8)}
-.champ-preview-tag{color:var(--ink);font-weight:700;text-shadow:0 1px 4px #000}
+.champ-preview-name{font-family:var(--font-title);font-weight:700;font-size:2.2rem;letter-spacing:6px;color:var(--gold2);text-shadow:0 2px 0 #16211F,0 0 12px rgba(0,0,0,.8);position:relative;z-index:1}
+.champ-preview-tag{color:var(--ink);font-weight:700;text-shadow:0 1px 4px #000;position:relative;z-index:1}
 .champ-info{background:rgba(42,69,63,.95);border:1px solid var(--line);border-radius:10px;padding:16px;overflow-y:auto}
 .rpg-h3{color:var(--gold2);letter-spacing:1px;margin-top:4px;font-family:var(--font-title)}
 .stat-row{display:flex;align-items:center;gap:8px;margin:8px 0;font-size:.9rem}
@@ -126,12 +130,15 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 .stat-bar{flex:1;min-width:0;height:10px;border-radius:999px;background:#16211F;border:1px solid var(--line);overflow:hidden}
 .stat-fill{height:100%;background:linear-gradient(90deg,var(--glass),var(--gold2));border-radius:999px;transition:width .3s ease}
 .stat-row b{width:28px;flex:none;text-align:right;font-family:var(--font-hud);font-size:1.1rem}
-.champ-footer{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:16px;padding:12px 16px;background:rgba(22,33,31,.92);border:1px solid var(--gold-dark);border-radius:10px}
-.ticket-stub{display:flex;align-items:center;gap:16px;background:var(--paper);color:var(--paper-ink);border-radius:6px;padding:10px 16px;min-width:0;border-left:6px solid var(--red)}
+.champ-footer{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:16px;padding:12px 16px;background:rgba(22,33,31,.92);border:1px solid var(--gold-dark);border-radius:10px;flex:none;flex-wrap:wrap}
+.ticket-stub{display:flex;align-items:center;gap:16px;background:var(--paper);color:var(--paper-ink);border-radius:6px;padding:10px 16px;min-width:0;flex:1;border-left:6px solid var(--red)}
 .ticket-stub-left{display:flex;flex-direction:column;min-width:0}
 .ticket-stub-title{font-family:var(--font-title);font-weight:700;letter-spacing:2px;color:var(--red)}
 .ticket-stub-no{font-family:var(--font-mono);font-weight:600;font-size:1.15rem}
-.ticket-stub-meta{font-family:var(--font-mono);font-size:.75rem;color:var(--paper-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ticket-stub-meta{font-family:var(--font-mono);font-size:.75rem;color:var(--paper-muted);white-space:normal;overflow-wrap:anywhere}
+/* v5.1: dòng mã hồ sơ wrap gọn trong khung (v5 tràn 2 dòng + bị thẻ vé che) */
+.file-line{overflow-wrap:anywhere}
+.file-store{display:block}
 .champ-play{font-size:1.25rem;padding:16px 32px;font-family:var(--font-title);letter-spacing:1px;white-space:nowrap}
 .champ-footnote{text-align:center;margin:10px 0 0;text-shadow:0 1px 4px #000}
 
@@ -164,20 +171,29 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 .minimap-box{margin-top:8px}
 .hud-box{background:rgba(22,33,31,.88);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:.88rem}
 .minimap{width:100%;height:auto;border:2px solid var(--gold);border-radius:6px;background:#16211F;display:block}
-.quick-idol-bar{position:absolute;top:12px;left:330px;z-index:var(--z-quest);display:flex;gap:8px;max-width:min(520px,calc(100% - 580px));overflow-x:auto;padding:2px;scrollbar-width:none}
+/* v5.1: chú thích minimap không ngắt dòng ("Người thăm" rớt xuống dòng 2). */
+.minimap-legend{white-space:nowrap;font-size:.78rem}
+.quick-idol-bar{position:absolute;top:12px;left:330px;z-index:var(--z-quest);display:flex;gap:8px;max-width:min(560px,calc(100% - 560px));overflow-x:auto;padding:2px;scrollbar-width:none}
 .quick-idol-bar::-webkit-scrollbar{display:none}
-.quick-idol-chip{flex:none;display:flex;align-items:center;gap:6px;background:rgba(22,33,31,.9);border:1px solid var(--line);border-radius:999px;padding:7px 12px;color:var(--ink);font-weight:700;white-space:nowrap}
+/* v5.1: chip nhỏ lại để cả 4 chip vừa khung không cần cuộn (v5: chip cuối
+   "Khánh Sky" chỉ còn "👑 K" ở mép phải). */
+.quick-idol-chip{flex:none;display:flex;align-items:center;gap:6px;background:rgba(22,33,31,.9);border:1px solid var(--line);border-radius:999px;padding:6px 10px;color:var(--ink);font-weight:700;font-size:.85rem;white-space:nowrap}
 .quick-idol-chip:hover{border-color:var(--gold2)}
 .quick-idol-chip.visited{border-color:var(--green)}
-.hint-bar{position:absolute;left:50%;bottom:340px;transform:translateX(-50%);z-index:25;max-width:92%;background:rgba(22,33,31,.95);border:1px solid var(--gold);border-radius:999px;padding:9px 18px;font-weight:700;text-align:center;pointer-events:none;box-shadow:0 6px 20px rgba(0,0,0,.5)}
+.hint-bar{position:absolute;left:50%;bottom:340px;transform:translateX(-50%);z-index:25;max-width:92%;background:rgba(22,33,31,.95);border:1px solid var(--gold);border-radius:16px;padding:9px 18px;font-weight:700;text-align:center;line-height:1.4;pointer-events:none;box-shadow:0 6px 20px rgba(0,0,0,.5)}
 .near-prompt{position:absolute;left:50%;bottom:132px;transform:translateX(-50%);z-index:var(--z-hud);display:flex;gap:10px;align-items:center;background:rgba(22,33,31,.95);border:1px solid var(--gold);border-radius:999px;padding:10px 12px 10px 18px;font-weight:700;white-space:nowrap;max-width:94%}
 .speech3d{position:absolute;left:50%;top:64px;transform:translateX(-50%);z-index:55;max-width:88%;background:var(--paper);color:var(--paper-ink);border-radius:12px;padding:10px 16px;font-weight:600;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.5);animation:pop .3s ease;pointer-events:none}
 @keyframes pop{0%{transform:translateX(-50%) scale(.7)}60%{transform:translateX(-50%) scale(1.06)}100%{transform:translateX(-50%) scale(1)}}
 
-/* ===== Nhật ký thăm nuôi dạng sổ giấy ===== */
-.quest-tracker{position:absolute;left:12px;top:196px;z-index:var(--z-quest);max-width:300px}
+/* ===== Nhật ký thăm nuôi dạng sổ giấy =====
+   v5.1: tiêu đề được wrap (v5: "NHẬT KÝ TH…" bị cắt); nhật ký giới hạn chiều
+   cao + cuộn được và thu gọn được (v5: núm joystick đè lên dòng nhiệm vụ cuối). */
+.quest-tracker{position:absolute;left:12px;top:196px;z-index:var(--z-quest);max-width:300px;max-height:calc(100% - 470px);overflow-y:auto;pointer-events:auto}
+.quest-tracker.collapsed .missions{display:none}
+.quest-toggle{flex:none;padding:2px 9px;font-size:.9rem}
 .journal{background:var(--paper);color:var(--paper-ink);border-radius:4px;border-left:6px solid var(--red);box-shadow:0 6px 18px rgba(0,0,0,.45)}
-.journal .bar-label{color:var(--red);font-family:var(--font-title);letter-spacing:1px;font-size:1rem}
+.journal .bar-row{flex-wrap:wrap;row-gap:2px}
+.journal .bar-label{color:var(--red);font-family:var(--font-title);letter-spacing:1px;font-size:1rem;white-space:normal}
 .journal .fine{color:var(--paper-muted)}
 .missions{list-style:none;padding:0;margin:6px 0 0}
 .missions li{background:rgba(35,59,55,.06);border:1px solid rgba(35,59,55,.25);border-left:4px solid var(--gold);border-radius:6px;padding:6px 10px;margin-bottom:6px;font-size:.85rem;color:var(--paper-ink)}
@@ -325,40 +341,49 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 40px;color:var(--muted);
   main>.panel,main .lobby-grid{display:none}
   .game-wrap{margin:0}
   .game-container{position:fixed;inset:0;width:100%;height:100dvh;min-height:0;border:none;border-radius:0;z-index:50}
-  /* Vé thăm trái trên + bảng gọi số/minimap phải trên */
-  .ticket-card{top:8px;left:8px;width:min(300px,56vw);padding:8px 10px}
-  .ticket-card-no{font-size:1.05rem}
-  .ticket-card-meta{font-size:.66rem}
-  .player-avatar{width:40px;height:40px;font-size:1.5rem}
-  .player-line{font-size:.9rem}
-  .bar{height:9px}
-  .call-board{top:8px;right:8px;width:104px}
+  /* Vé thăm trái trên: gọn thành dải trạng thái, chữ nhỏ */
+  .ticket-card{top:8px;left:8px;width:auto;max-width:52vw;padding:6px 8px}
+  .ticket-card-no{font-size:.9rem}
+  .ticket-card-meta{display:none}
+  .ticket-card .stamp.mini{font-size:.6rem;padding:1px 4px}
+  .player-avatar{width:30px;height:30px;font-size:1.2rem}
+  .player-line{font-size:.78rem}
+  .ticket-card .bar{display:none}
+  .ticket-card .bar-row{font-size:.7rem;margin:1px 0}
+  .ticket-card .player-bars .bar-row + .bar + .bar-row{display:none}
+  .call-board{top:8px;right:8px;width:92px}
   .call-box{display:none}
   .minimap-box{margin-top:0}
+  .minimap-box .bar-row{display:none}
   .minimap-box .fine{display:none}
-  .minimap-box .hud-box{padding:4px 6px}
+  .minimap-box .hud-box{padding:3px}
   .quest-tracker{display:none}
-  .quick-idol-bar{top:166px;left:8px;right:120px;transform:none;max-width:none}
-  .speech3d{top:214px}
+  .quick-idol-bar{top:96px;left:8px;right:104px;transform:none;max-width:none}
+  .quick-idol-chip{padding:5px 9px;font-size:.8rem}
+  .speech3d{top:140px;font-size:.9rem;padding:8px 12px}
   /* HUD dưới thành lớp phủ toàn màn hình để định vị lại từng khối */
   .bottom-hud{inset:0;min-height:0;background:none;padding:0;display:block}
-  .supply-tray{position:absolute;left:50%;transform:translateX(-50%);bottom:200px;padding:6px 8px 8px}
-  .tray-label{font-size:.8rem}
-  .hud-inv-slot{width:44px;height:46px;font-size:1rem}
-  .hud-inv-slot small{display:none}
-  .action-cluster{position:absolute;right:8px;bottom:60px;flex-wrap:wrap;justify-content:flex-end;max-width:210px;gap:6px}
-  .skill-bar{flex-wrap:wrap;justify-content:flex-end;max-width:210px;gap:6px}
-  .skill-btn{width:52px;height:52px}
-  .skill-btn.skill-main{width:72px;height:72px}
+  /* Khay tiếp tế ẩn hẳn trên mobile ở sảnh (trong phòng thăm đã có hàng quà
+     riêng; túi đồ vẫn mở được từ menu đáy) — bớt 1 khối giữa màn hình */
+  .supply-tray{display:none}
+  .action-cluster{position:absolute;right:8px;bottom:60px;flex-wrap:wrap;justify-content:flex-end;max-width:190px;gap:6px}
+  .skill-bar{flex-wrap:wrap;justify-content:flex-end;max-width:190px;gap:6px}
+  .skill-btn{width:46px;height:46px}
+  .skill-btn .skill-emoji{font-size:1.2rem;margin-top:0}
+  .skill-btn .skill-key{display:none}
+  .skill-btn.skill-main{width:64px;height:64px}
+  .skill-btn.skill-main .skill-emoji{font-size:1.5rem;margin-top:-8px}
   .menu-btn{display:none}
   .joystick{left:12px;bottom:60px;width:116px;height:116px}
   .joy-knob{left:35px;top:35px;width:46px;height:46px}
-  .hint-bar{bottom:344px}
-  .near-prompt{bottom:292px}
+  /* Thông báo nhỏ lại, dời xuống gần cụm nút để giữa màn hình thoáng */
+  .hint-bar{bottom:244px;font-size:.8rem;padding:6px 12px;max-width:86%}
+  .near-prompt{bottom:188px;max-width:92%;padding:6px 8px 6px 12px;font-size:.82rem;font-weight:600;white-space:normal;text-align:left;border-radius:12px}
+  .near-prompt .btn{flex:none;padding:7px 12px;font-size:.85rem}
   .rpg-dialog{left:8px;right:8px;bottom:292px;width:auto}
-  .game-toast{bottom:392px}
+  .game-toast{bottom:292px;font-size:.8rem;padding:6px 12px;max-width:88%}
   .controls-hint{display:none}
-  .boot-log{max-width:60%}
+  .boot-log{max-width:52%;font-size:.7rem}
   .mobile-menu-bar{display:flex;position:absolute;left:0;right:0;bottom:0;z-index:var(--z-hud);height:calc(44px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);background:rgba(22,33,31,.97);border-top:1px solid var(--line);gap:6px;padding-left:8px;padding-right:8px}
   .mobile-menu-bar .btn{flex:1;padding:8px 4px;font-size:.9rem}
   /* Hồ sơ người thăm mobile: preview lên đầu, danh sách ngang */
@@ -382,10 +407,7 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 40px;color:var(--muted);
   .joy-knob{left:29px;top:29px;width:42px;height:42px}
   .skill-btn{width:46px;height:46px}
   .skill-btn.skill-main{width:64px;height:64px}
-  .ticket-card{width:52vw}
   .quick-idol-bar{right:100px}
-  .supply-tray{bottom:192px}
-  .hud-inv-slot{width:40px;height:42px}
 }
 /* Màn hình thấp ≤700px */
 @media (max-height:700px) and (min-width:751px){
