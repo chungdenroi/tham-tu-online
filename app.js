@@ -660,15 +660,32 @@ const CLIP_PATS = {
    'Skin' nào không có map mà tối gần như đen (độ sáng < 0.05) thì đổi về
    tone da ấm (khớp atlas của Sam/Matt/Shaun). Material dùng chung cho
    mọi clone của cùng model nên sửa 1 lần là áp dụng khắp nơi (idol,
-   NPC, người ngồi chờ, portrait). */
+   NPC, người ngồi chờ, portrait).
+   v5.10 — NHUỘM CẢ TẤM MẶT TRẮNG ('Face'): đo bằng three.js thật (node,
+   /tmp/face_measure.mjs) — soldier-male có mesh riêng material 'Face' =
+   [1,1,0.94] (trắng gần tuyệt đối, KHÔNG texture): đó là tấm mặt trước
+   0.43×0.20m ở giữa đầu (tâm Y=1.47m trên thân 1.84m, Z=+0.10 phía trước).
+   Atlas 512×512 của sam/matt/shaun cũng chỉ là các mảng màu phẳng, không
+   có nét mặt vẽ sẵn — tức MỌI model đều KHÔNG CÓ mắt/mũi/miệng trong file
+   gốc, nên "mặt không đọc được nét mặt" (test v5.9) một phần là giới hạn
+   model, không sửa bằng đèn được. Nhưng tấm trắng này dưới đèn mạnh cháy
+   thành khối vàng kem sáng chói — nhuộm về da ấm sáng 0xE8B88A (hơi sáng
+   hơn da thân 0xDCA878 để vẫn phân biệt mặt) thì đầu đọc thành một khối da
+   liền mạch, hết chói. Đây là sửa màu material như v5.3, KHÔNG đổi model,
+   KHÔNG thêm phụ kiện mặt. */
 function fixDarkSkinMaterials(root) {
   root.traverse((m) => {
     if (!m.isMesh) return;
     const mats = Array.isArray(m.material) ? m.material : [m.material];
     mats.forEach((mt) => {
-      if (!mt || mt.name !== 'Skin' || mt.map || !mt.color) return;
-      const lum = 0.2126 * mt.color.r + 0.7152 * mt.color.g + 0.0722 * mt.color.b;
-      if (lum < 0.05) { mt.color.setHex(0xDCA878); mt.needsUpdate = true; }
+      if (!mt || !mt.color) return;
+      if (mt.name === 'Skin' && !mt.map) {
+        const lum = 0.2126 * mt.color.r + 0.7152 * mt.color.g + 0.0722 * mt.color.b;
+        if (lum < 0.05) { mt.color.setHex(0xDCA878); mt.needsUpdate = true; }
+      } else if (mt.name === 'Face' && !mt.map) {
+        // v5.10: tấm mặt trước trắng [1,1,0.94] → da ấm sáng (xem ghi chú trên).
+        mt.color.setHex(0xE8B88A); mt.needsUpdate = true;
+      }
     });
   });
 }
@@ -844,9 +861,17 @@ function textSprite(text, scale) {
 // #D9B36A chỉ ~7px ở 13.2m nên chìm hẳn. Giờ canvas 1024×320, tên 100px,
 // số ô 76px vàng tươi #FFD34D + vạch ngăn cách, sprite 3.0×0.94 — số ô
 // ~11px ở 13.2m, ~14px ở điểm spawn (10m), đọc được.
+// v5.10 — BIỂN TO HƠN NỮA (sprite 4.2×1.58, canvas 1024×384, tên 120px,
+// số 90px): test v5.9 biển vẫn "rất nhỏ/mờ" ở góc nhìn mặc định lúc vào
+// sảnh, chỉ đọc rõ khi chạy lại gần — tính bằng three.js thật
+// (/tmp/verify_v510.mjs): biển cũ chữ tên chỉ 14px ở ô giữa / 11px ở ô
+// bìa (13.2m/16.9m); biển mới 24px / 19px (≥16px). Biển rộng 4.2m vẫn lọt
+// giữa 2 ô kề (cách nhau 7m), cao 1.58m (tâm y=3.4 → 2.61–4.19) không chạm
+// ống huỳnh quang (y=2.42) hay mép tường bắc (4.5m). Tâm biển 4 ô ở NDC
+// x ±0.27/±0.82, y +0.19 trong cảnh mở đầu — đều trong khung.
 function boothSignSprite(name, label) {
   const c = document.createElement('canvas');
-  c.width = 1024; c.height = 320;
+  c.width = 1024; c.height = 384;
   const ctx = c.getContext('2d');
   ctx.fillStyle = 'rgba(22,33,31,0.92)';
   ctx.beginPath();
@@ -854,15 +879,15 @@ function boothSignSprite(name, label) {
   ctx.fill();
   ctx.strokeStyle = '#C69A50'; ctx.lineWidth = 8; ctx.stroke();
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#E8D9B7'; ctx.font = 'bold 100px system-ui, sans-serif';
-  ctx.fillText(name.toUpperCase(), c.width / 2, 104);
+  ctx.fillStyle = '#E8D9B7'; ctx.font = 'bold 120px system-ui, sans-serif';
+  ctx.fillText(name.toUpperCase(), c.width / 2, 130);
   ctx.strokeStyle = '#C69A50'; ctx.lineWidth = 4;
-  ctx.beginPath(); ctx.moveTo(140, 178); ctx.lineTo(c.width - 140, 178); ctx.stroke();
-  ctx.fillStyle = '#FFD34D'; ctx.font = 'bold 76px system-ui, sans-serif';
-  ctx.fillText(label, c.width / 2, 248);
+  ctx.beginPath(); ctx.moveTo(140, 215); ctx.lineTo(c.width - 140, 215); ctx.stroke();
+  ctx.fillStyle = '#FFD34D'; ctx.font = 'bold 90px system-ui, sans-serif';
+  ctx.fillText(label, c.width / 2, 300);
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
-  sp.scale.set(3.0, 0.94, 1);
+  sp.scale.set(4.2, 1.58, 1);
   return sp;
 }
 
@@ -961,26 +986,36 @@ function buildHall() {
     scene.add(grp);
     booths.push({ x: b.x, z: b.z, idolId: b.idol ? b.idol.id : null, boothNo: idx + 1, boothLabel: b.idol ? String(idolNo).padStart(2, '0') : null, frontX: b.x, frontZ: b.rotY ? b.z : (b.z > 0 ? HALL.z - 0.6 : -HALL.z + 1.6), rotY: b.rotY || 0 });
   });
-  // v5.2: đèn fill RIÊNG trước mặt từng idol (ngang mặt, trong buồng) — đèn
-  // chung 1 cái trước dãy ô (v5.1) tới 2 idol bìa quá xa (hơn 10m, decay 1.7)
-  // nên mặt vẫn tối; đèn huỳnh quang emissive trên đầu chỉ sáng đỉnh đầu.
+  // v5.10 — ĐÈN MẶT GIẢM MẠNH (fill 12→2.5, spot 10→2.5) + NGẮM ĐÚNG TÂM MẶT
+  // (fill y=1.85, spot target y=1.8): nguyên nhân gốc mặt "sáng chói" đã đo
+  // bằng three.js thật (node, /tmp/verify_v510.mjs) — KHÔNG phải chỉ do đèn
+  // mạnh mà do CỘNG HƯỞNG 2 thứ: (1) đèn fill 12 ở cách mặt 1.45m (decay
+  // 1.6) cho irradiance ~6.5, cộng spot ~2.7 + hemi/sun/warm ~2.1 → tổng
+  // E≈11.4, da (albedo ~0.72) ra 2.60 tuyến tính, mặt trắng [1,1,0.94] ra
+  // 3.61 — gấp 3 lần ngưỡng cháy (1.0) nên mọi chi tiết đều clip thành khối
+  // vàng kem sáng chói (test v5.9); (2) material 'Face' của soldier-male là
+  // tấm phẳng TRẮNG [1,1,0.94] không texture — xem fixDarkSkinMaterials,
+  // giờ nhuộm về da ấm. Fill 2.5 + spot 2.5 → E≈4.2, da ra 0.95 (sáng nhưng
+  // không clip), mặt nhuộm da ra ~0.73. Fill 12 là di sản v5.3 (tăng sáng
+  // khi da còn đen gần như tuyệt đối); da đã sửa từ v5.3 nên không cần nữa.
   booths.forEach((b) => {
     if (!b.idolId) return;
     // v5.3: fill mạnh hơn (12 thay vì 5, tầm 8 thay vì 5) + 1 SpotLight
     // chiếu thẳng mặt idol (target = đầu idol, KHÔNG đổ bóng nên không
     // thêm shadow pass). Lưu ý: đèn chỉ là phụ — nguyên nhân gốc mặt đen
     // là material 'Skin' gần như đen (xem fixDarkSkinMaterials).
-    // v5.5: đèn ngang MẶT idol cao nhất (Khánh Sky 2.23m, mặt ~2.0) — trước
-    // đây fill y=1.7 / spot target y=1.85 là ngang ngực idol cao, mặt nhận
-    // ít sáng nhất; ô 04 (Khánh Sky, cao nhất) tối nhất trong sảnh (test
-    // v5.4). Fill y=1.9, spot target y=1.95: mặt cả 4 idol (1.9–2.05) đều
-    // nhận sáng trực diện, đèn vẫn cách mặt ~1.45m nên không chói.
-    const face = new THREE.PointLight(0xffe9a8, 12, 8, 1.6);
-    face.position.set(b.x, 1.9, b.z + 1.1);
+    // v5.5: đèn ngang MẶT idol cao nhất (Khánh Sky 2.23m) — trước đây fill
+    // y=1.7 / spot target y=1.85 là ngang ngực idol cao, mặt nhận ít sáng
+    // nhất; ô 04 (Khánh Sky, cao nhất) tối nhất trong sảnh (test v5.4).
+    // v5.10: mặt thật ở ~1.74–1.78 (tâm tấm mặt = 80% chiều cao, đo thật)
+    // nên fill y=1.85, spot target y=1.8 — ngang mặt cả 4 idol, không còn
+    // 1.9/1.95 như v5.5 (số đó ngắm vào trán/mũ).
+    const face = new THREE.PointLight(0xffe9a8, 2.5, 8, 1.6);
+    face.position.set(b.x, 1.85, b.z + 1.1);
     scene.add(face);
-    const spot = new THREE.SpotLight(0xffe9a8, 10, 6, 0.45, 0.6, 1.6);
+    const spot = new THREE.SpotLight(0xffe9a8, 2.5, 6, 0.45, 0.6, 1.6);
     spot.position.set(b.x, 2.6, b.z + 1.6);
-    spot.target.position.set(b.x, 1.95, b.z - 0.35);
+    spot.target.position.set(b.x, 1.8, b.z - 0.35);
     scene.add(spot); scene.add(spot.target);
   });
 }
@@ -1258,8 +1293,9 @@ function updatePlayer(dt) {
 }
 // v5.8 — VỊ TRÍ ĐẦU IDOL THẬT (từ rig đang chạy, không phải điểm tĩnh của ô):
 // Vị trí MẶT idol thật (dùng cho bảng debug + chip HEAD + camera thăm):
-// tính từ chiều cao rig (88% chiều cao = giữa mặt), KHÔNG dùng xương 'Head'
-// (xem idolHeadWorld — xương Head nằm ở hàm/cổ, thấp hơn mặt thật ~0.5m).
+// tính từ chiều cao rig (80% chiều cao = tâm tấm mặt trước, đo thật v5.10),
+// KHÔNG dùng xương 'Head' (xem idolHeadWorld — xương Head nằm ở hàm/cổ,
+// thấp hơn mặt thật ~0.5m).
 // Test v5.7 chứng minh chip cũ đo ĐIỂM TĨNH của ô kính (bb.x, 2.0, bb.z-0.35)
 // nên "đúng số mà sai ảnh": camera sau snap cũng tĩnh → HEAD đóng băng ở
 // (-0.42, 0.07) ở cả 2 phòng và cả sau khi rời phòng, trong khi ảnh chụp vẫn
@@ -1283,10 +1319,15 @@ function idolHeadWorld(idolId) {
   // đỉnh mesh đầu ở 1.48m / 1.84m (đã đo bằng three.js thật, node). Dùng vị
   // trí xương làm mặt thì camera ngắm thấp hơn mặt thật ~0.5–0.6m (test v5.8:
   // Trường Con HEAD Y=4.09 nhưng ảnh vẫn chỉ thấy thân — một phần vì rig
-  // cao gấp đôi, một phần vì điểm ngắm đã thấp sẵn). Mặt thật ≈ 88% chiều
-  // cao rig (2.23m → ~1.96m). X/Z lấy từ tâm rig (xương còn lệch ~0.5m về
-  // phía sau so với tâm thân: Head world Z=-0.43 trong khi tâm thân Z=0).
-  return new THREE.Vector3(g.position.x, g.position.y + rec.rig.height * 0.88, g.position.z);
+  // cao gấp đôi, một phần vì điểm ngắm đã thấp sẵn).
+  // v5.10 — MẶT = 80% CHIỀU CAO RIG (không phải 88% như v5.9): đo bằng
+  // three.js thật (/tmp/face_measure.mjs) — tấm mặt trước ('Face') của
+  // soldier-male có tâm ở Y=1.47m trên thân 1.84m = 79.9% chiều cao; 88%
+  // (1.92m với idol 2.18m) ngắm vào trán/mũ, đẩy mặt xuống dưới tâm khung.
+  // Mặt thật ≈ 80% chiều cao rig (2.18m → ~1.74m; 2.23m → ~1.78m). X/Z lấy
+  // từ tâm rig (xương còn lệch ~0.5m về phía sau so với tâm thân: Head
+  // world Z=-0.43 trong khi tâm thân Z=0).
+  return new THREE.Vector3(g.position.x, g.position.y + rec.rig.height * 0.80, g.position.z);
 }
 // v5.8 — NGƯỜI CHƠI CÓ CHẮN TẦM NHÌN TỚI ĐẦU IDOL KHÔNG? So góc giữa
 // hướng camera→đầu idol và camera→người chơi: người chơi ở gần camera hơn
@@ -1348,7 +1389,8 @@ function updateCamera(dt) {
     const info = idolRigs[state.currentIdol];
     const bx = b ? b.x : (info ? info.boothX : 0);
     // v5.5: aim vào ĐẦU idol (y 1.9 thay vì 1.5 ngực) — idol cao 2.14–2.23m,
-    // mặt ở ~1.9–2.05; aim ngực làm mặt lệch lên mép trên khung, ở FPS thấp
+    // mặt ở ~1.74–1.78 (v5.10: tâm tấm mặt = 80% chiều cao, đo thật);
+    // aim ngực làm mặt lệch lên mép trên khung, ở FPS thấp
     // camera còn lerp dở thì mặt ra ngoài khung hẳn (test v5.4).
     // v5.6/v5.7 — FRAME IDOL VÀO VÙNG 3D NHÌN THẤY ĐƯỢC: panel thăm là cột phải
     // ~440px → mặt idol phải nằm giữa dải 3D còn lại bên trái: lệch điểm ngắm
@@ -1375,7 +1417,15 @@ function updateCamera(dt) {
     // khung, còn ~0.5m biên trên/dưới. Kèm 2 biện pháp khác: ẩn người chơi
     // trong lúc thăm (openVisit) + sửa bug normCache làm Khánh Sky thấp
     // hơn 21% (makeRigFromGLTF).
-    const target = new THREE.Vector3(bx + 0.4, 1.9, -HALL.z + 3.6);
+    // v5.10 — CAMERA THĂM LẠI GẦN HƠN (target z -5.4 → -6.4, cách idol
+    // 4.15m): test v5.9 mặt idol chỉ 57×29px trong khung 1148×640, quá nhỏ
+    // để đọc nét mặt dù đã hết chói; ở 4.15m mặt thành 75×35px (+32%).
+    // Đã kiểm chứng bằng three.js thật (/tmp/verify_v510.mjs): đầu vẫn ở
+    // NDC (-0.13, 0.00) = tâm khe hở, chân NDC y=-0.75, đỉnh đầu +0.19 —
+    // toàn thân còn trong khung; mobile mặt ở 28% từ đỉnh (dải thấy được
+    // 0–48%), không đổi look.y=0.63. Hệ số offsetX dưới đây đổi theo
+    // khoảng cách mới (5.4 → 4.15).
+    const target = new THREE.Vector3(bx + 0.4, 1.9, -HALL.z + 2.6);
     // v5.8 — SNAP 3 FRAME ĐẦU: snap 1 lần (v5.5) có thể bị nhánh khác nuốt mất
     // (vd updateCamera chạy trước khi openVisit set xong trạng thái); ép snap
     // liên tiếp 3 frame sau khi mở phòng để camera chắc chắn đứng đúng chỗ.
@@ -1390,8 +1440,9 @@ function updateCamera(dt) {
     // khi anim là idle/wave/bow — KHÔNG ép lúc biểu diễn 'fan' để khỏi đánh
     // nhau với clip múa quạt.
     if (info && info.rig && (info.rig.anim === 'idle' || info.rig.anim === 'wave' || info.rig.anim === 'bow')) info.rig.group.rotation.y = 0;
-    // v5.9 — lookAt y = MẶT IDOL THẬT (idolHeadWorld, ~1.96m), không còn số
-    // cố định 2.0: nếu rig lại sai chiều cao thì camera vẫn bám theo mặt thật.
+    // v5.9 — lookAt y = MẶT IDOL THẬT (idolHeadWorld, ~1.74–1.78m sau sửa
+    // v5.10: 80% chiều cao), không còn số cố định 2.0: nếu rig lại sai chiều
+    // cao thì camera vẫn bám theo mặt thật.
     const _head = idolHeadWorld(state.currentIdol);
     const look = new THREE.Vector3(bx, _head ? _head.y : 2.0, -HALL.z - 1.8);
     if (window.innerWidth > 750) {
@@ -1428,7 +1479,7 @@ function updateCamera(dt) {
         const ndcX = 2 * (gapC / vw) - 1;
         const halfH = Math.atan(Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.aspect);
         const ang = Math.atan(Math.tan(halfH) * ndcX);
-        visitFraming = { vw, offsetX: Math.tan(-ang) * 5.4 }; // dz camera→mặt phẳng ngắm = 5.4m (camera z=-5.4, ngắm z=-10.8)
+        visitFraming = { vw, offsetX: Math.tan(-ang) * 4.15 }; // v5.10: dz camera→mặt phẳng ngắm = 4.15m (camera z=-6.4, ngắm z=-10.8) — v5.9 là 5.4m
       }
       look.x = bx + visitFraming.offsetX;
     } else {
@@ -1717,6 +1768,18 @@ function openVisit(idolId, source) {
   $('speechBubble').textContent = '"' + idol.lines[0] + '"';
   $('chatLog').innerHTML = '';
   $('gameResult').textContent = '';
+  // v5.10 — XÓA ẢNH CHỤP BUỔI TRƯỚC: test v5.9 ảnh xem trước của buổi Trường
+  // Con còn hiện sang phòng Khánh Sky (chưa chụp mới) — ảnh cũ là dữ liệu
+  // của buổi thăm cũ, phải xóa ngay khi mở phòng mới như chứng nhận
+  // (drawCert() ở trên) và chatLog/gameResult ở đây.
+  const _pp = $('photoPreview'); if (_pp) { _pp.src = ''; _pp.hidden = true; }
+  const _pd = $('photoDownloadBtn'); if (_pd) _pd.hidden = true;
+  const _pf = $('photoFeedback'); if (_pf) _pf.hidden = true;
+  photoBusy = false;
+  // v5.10: nút mini-game giờ giữ trạng thái "🔄 Chơi lại mini-game" sau khi
+  // chơi (xem startGame) — trả về "▶️ Chơi mini-game" khi mở phòng mới,
+  // cùng chỗ reset điểm game/giờ ở dưới.
+  const _gb = $('gameStartBtn'); if (_gb) { _gb.disabled = false; _gb.textContent = '▶️ Chơi mini-game'; }
   $('gameScore').textContent = '0';
   $('gameTime').textContent = '0:00';
   $('gameTitle').textContent = '🎮 ' + idol.game;
@@ -1727,6 +1790,18 @@ function openVisit(idolId, source) {
   // cuộn về đầu để hàng quà nằm ngay dưới nút chào — không còn dưới nếp gấp.
   const room = $('visitRoom'), summ = $('visitSummary');
   if (room) { room.hidden = false; room.scrollTop = 0; }
+  // v5.10 — CUỘN NỘI BỘ PANEL ĐỂ LỘ Ô CHAT NGAY TỪ ĐẦU: ô nhập nằm sau hàng
+  // quà + khung chat log nên ở scrollTop=0 nó nằm dưới nếp gấp (~20px),
+  // test v5.9 phải tự cuộn mới gõ được (2 lần điền đầu treo khi ô còn ngoài
+  // vùng nhìn). Chỉ chạm room.scrollTop (container cuộn của panel, tối thiểu
+  // vừa đủ để hiện ô nhập), KHÔNG cuộn trang (quyết định v4) — hàng quà vẫn
+  // ở gần đầu panel như trước.
+  const ci = $('chatInput');
+  if (room && ci) {
+    const rr = room.getBoundingClientRect(), ir = ci.getBoundingClientRect();
+    if (ir.bottom > rr.bottom) room.scrollTop += ir.bottom - rr.bottom + 12;
+    else if (ir.top < rr.top) room.scrollTop -= rr.top - ir.top + 12;
+  }
   if (summ) summ.hidden = true;
   // v4: phòng thăm là overlay trong khung game — KHÔNG scrollIntoView (không cuộn trang mobile).
   showHint('🎁 Chọn quà bên dưới để tặng ' + idol.name + '!');
@@ -2338,8 +2413,20 @@ function startGame() {
         console.error('[thamtu] startGame failed', err);
         toast('⚠️ Mini-game lỗi: ' + (err && err.message ? err.message : err));
         state.gameActive = false;
+        restoreBtn();
+        return;
       }
-      restoreBtn();
+      // v5.10 — NHÃN NÚT KHÔNG TRẢ VỀ CHỮ CŨ NỮA: nguyên nhân gốc test v5.9
+      // không thấy "Đang chuẩn bị…" — v5.9 kéo dài chờ lên 250ms nhưng
+      // restoreBtn() vẫn chạy NGAY trong cùng setTimeout đó, tức nhãn
+      // "Đang chuẩn bị…" chỉ tồn tại đúng 250ms rồi trả về "▶️ Chơi
+      // mini-game" trước khi ảnh chụp nào kịp bắt (ở FPS 5–8, 250ms = 1–2
+      // frame, trình duyệt chưa chắc đã vẽ kịp 1 lần). Giờ sau khi game đã
+      // chạy, nút thành "🔄 Chơi lại mini-game" và GIỮ NGUYÊN trong suốt buổi
+      // chơi — ảnh chụp lúc nào cũng thấy nút đã đổi trạng thái; bấm lại thì
+      // chơi lại từ đầu (startGame gọi stopGame() trước). Chỉ khi start lỗi
+      // mới trả về chữ cũ (nhánh catch trên).
+      if (btn) { btn.disabled = false; btn.textContent = '🔄 Chơi lại mini-game'; }
       // v5.9: nhãn "Đang chuẩn bị…" phải HIỆN ĐỦ LÂU ĐỂ NHÌN THẤY — trước đây
       // phần nặng chạy sau 30ms nên nhãn chỉ tồn tại ~30ms, ảnh chụp test
       // không bao giờ bắt được (test v5.8 tưởng nhãn không đổi dù game vẫn
