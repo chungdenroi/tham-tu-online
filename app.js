@@ -144,24 +144,70 @@ function showSpeech3d(text, ms) {
 }
 function addPoints(n) { state.points += n; state.visitPoints += n; updateHeader(); const vp = $('visitPoints'); if (vp) vp.textContent = state.visitPoints; save(); }
 
-/* ================= LỖI 3D: banner nhỏ, KHÔNG che nút, vẫn chơi bản chữ ================= */
+/* ================= BOOT LOG + LỖI 3D (v3.1) =================
+   Mọi bước khởi động 3D đều ghi vào #bootLog (DOM, có timestamp) và
+   window.__thamtuBootLog / __thamtuBootStage — để lần test sau đọc được
+   chính xác boot kẹt ở bước nào, thay vì chỉ thấy màn hình đen.
+   Banner lỗi tĩnh trong index.html chỉ là chữ trung tính "Đang tải 3D…",
+   KHÔNG bao giờ tự kết luận "trình duyệt chưa bật WebGL" khi chưa xác định
+   được nguyên nhân thật. */
+const BOOT_T0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+function bootLog(stage, detail) {
+  const t = (((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) - BOOT_T0) / 1000;
+  const line = '[' + t.toFixed(1) + 's] ' + stage + (detail ? ' — ' + detail : '');
+  window.__thamtuBootStage = stage;
+  if (!Array.isArray(window.__thamtuBootLog)) window.__thamtuBootLog = [];
+  window.__thamtuBootLog.push(line);
+  try { console.log('[thamtu boot]', line); } catch (e) {}
+  const el = $('bootLog');
+  if (el) el.textContent = '⏳ ' + line;
+  return line;
+}
+function show3dErrorBanner(stage, message) {
+  const el = $('webglError');
+  if (!el) return;
+  const reason = stage === 'webgl'
+    ? 'Trình duyệt/thiết bị này chưa bật WebGL nên không vẽ được cảnh 3D.'
+    : stage === 'model-load'
+      ? 'Không tải được file nhân vật 3D trong repo (' + message + ').'
+      : stage === 'js-error'
+        ? 'Game gặp lỗi JavaScript khi khởi động (' + message + ').'
+        : 'Không tải được thư viện Three.js trong repo (' + message + ').';
+  const b = el.querySelector('b');
+  if (b) b.textContent = '⚠️ 3D tạm thời không mở được — vẫn chơi được bản chữ bên dưới.';
+  const s = el.querySelector('span');
+  if (s) s.textContent = reason + ' Bạn vẫn vào thăm idol, chat, tặng quà, chơi mini-game bình thường. Bấm “Thử lại 3D” để tải lại trang.';
+  el.hidden = false;
+}
+// Lỗi JS top-level / promise chưa bắt: ghi lại stage thật để lần test sau đọc được.
+// (Bỏ qua lỗi tải tài nguyên — chúng không có e.message, chỉ lỗi JS mới có.)
+window.addEventListener('error', (e) => {
+  if (window.__thamtu3DError) return;
+  if (e && !e.message && e.target && e.target !== window) return;
+  const msg = (e && e.message) ? e.message : 'unknown error';
+  window.__thamtu3DError = { stage: 'js-error', message: String(msg) };
+  bootLog('js-error', msg);
+  if (window.__thamtuStarted !== true) show3dErrorBanner('js-error', msg);
+});
+window.addEventListener('unhandledrejection', (e) => {
+  if (window.__thamtu3DError) return;
+  const msg = (e && e.reason && e.reason.message) ? e.reason.message : String((e && e.reason) || 'unhandled rejection');
+  window.__thamtu3DError = { stage: 'js-error', message: msg };
+  bootLog('js-error', msg);
+});
+
+/* Banner lỗi nhỏ ở đầu khung game, KHÔNG che nút, vẫn chơi bản chữ */
 function enterNo3D(stage, message) {
   state.no3d = true;
   window.__thamtuStarted = true; // logic phi-3D vẫn chạy -> không hiện lỗi toàn màn hình nữa
   window.__thamtu3DError = { stage, message: String(message || '') };
+  bootLog('no3d:' + stage, String(message || ''));
   console.error('[thamtu 3D]', stage, message);
-  const el = $('webglError');
-  if (el) {
-    el.hidden = false;
-    const reason = stage === 'webgl'
-      ? 'Trình duyệt/thiết bị này chưa bật WebGL nên không vẽ được cảnh 3D.'
-      : stage === 'model-load'
-        ? 'Không tải được file nhân vật 3D trong repo (' + message + ').'
-        : 'Không tải được thư viện Three.js trong repo (' + message + ').';
-    el.querySelector('b').textContent = '⚠️ 3D tạm thời không mở được — vẫn chơi được bản chữ bên dưới.';
-    el.querySelector('span').textContent = reason + ' Bạn vẫn vào thăm idol, chat, tặng quà, chơi mini-game bình thường. Bấm “Thử lại 3D” để tải lại trang.';
-  }
-  const gc = $('gameContainer'); if (gc) gc.classList.add('no3d');
+  show3dErrorBanner(stage, message);
+  const gc = $('gameContainer');
+  // Chỉ ẩn canvas khi KHÔNG có renderer (webgl/three-load lỗi). Nếu chỉ lỗi
+  // tải model thì giữ canvas để sảnh 3D vẫn hiện (camera quay chậm quanh sảnh).
+  if (gc && stage !== 'model-load') gc.classList.add('no3d');
   toast('⚠️ 3D không mở được — vẫn chơi bản chữ: chọn idol ở dưới để vào thăm.');
 }
 
@@ -194,25 +240,37 @@ async function boot() {
   if (document.readyState === 'loading') {
     await new Promise((r) => document.addEventListener('DOMContentLoaded', r, { once: true }));
   }
+  // Hiển thị NGAY số liệu đã lưu (điểm / đã thăm / nhiệm vụ) từ localStorage,
+  // trước khi 3D khởi động — để top bar không hiện số 0 tĩnh trong HTML rồi
+  // mới nhảy số sau khi bấm BẮT ĐẦU (gây hiểu lầm là bấm Bắt đầu đã tính thăm).
+  bootLog('init', 'Đang khởi động game…');
+  updateHeader(); renderIdols(); renderMissions(); renderLeaderboard();
   // 1) Kiểm tra WebGL TRƯỚC khi tạo renderer — phân biệt rõ nguyên nhân lỗi
+  bootLog('webgl-check', 'Đang kiểm tra WebGL…');
   if (!webglAvailable()) {
     enterNo3D('webgl', 'getContext(webgl2/webgl) trả về null');
     bindInput(); updateHeader(); renderIdols(); renderMissions(); renderLeaderboard();
     return;
   }
-  // 2) Tải Three.js LOCAL trong repo (./vendor/), không phụ thuộc CDN
+  // 2) Tải Three.js LOCAL trong repo (./vendor/), không phụ thuộc CDN — có timeout
+  // (dynamic import không hủy được, nhưng race timeout giúp boot không đứng
+  // chờ mãi khi mạng chậm; module về muộn cũng không dùng nữa).
+  bootLog('three-load', 'Đang tải Three.js trong repo (vendor/)…');
   try {
-    const threeMod = await import('./vendor/three.module.js');
+    const withTimeout = (p, ms, label) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout sau ' + (ms / 1000) + 's khi tải ' + label)), ms))]);
+    const threeMod = await withTimeout(import('./vendor/three.module.js'), 20000, 'three.module.js');
     THREE = threeMod;
-    const loaderMod = await import('./vendor/addons/loaders/GLTFLoader.js');
+    const loaderMod = await withTimeout(import('./vendor/addons/loaders/GLTFLoader.js'), 20000, 'GLTFLoader.js');
     GLTFLoaderClass = loaderMod.GLTFLoader;
-    const skelMod = await import('./vendor/addons/utils/SkeletonUtils.js');
+    const skelMod = await withTimeout(import('./vendor/addons/utils/SkeletonUtils.js'), 20000, 'SkeletonUtils.js');
     cloneSkinned = skelMod.clone;
+    loader = new GLTFLoaderClass();
   } catch (err) {
     enterNo3D('three-load', err && err.message ? err.message : String(err));
     bindInput(); updateHeader(); renderIdols(); renderMissions(); renderLeaderboard();
     return;
   }
+  bootLog('scene', 'Đang vẽ sảnh 3D…');
   try {
     initThree();
   } catch (err) {
@@ -225,23 +283,53 @@ async function boot() {
   bindInput();
   bumpStreak();
   updateHeader(); renderIdols(); renderMissions(); renderLeaderboard();
-  // 3) Tải nhân vật GLB — từng file độc lập, file nào lỗi thì dùng model khác thay thế
-  const ok = await loadAllModels();
+  bootLog('scene-ready', 'Sảnh đã vẽ xong — đang tải nhân vật…');
+  // 3) CHẠY VÒNG LẶP RENDER NGAY — sảnh hiện lên tức thì, không chờ nhân vật.
+  tick();
+  // 4) Tải nhân vật ƯU TIÊN (người chơi + 4 idol) — từng file có timeout 20s,
+  // file nào lỗi thì dùng model khác thay thế, không đứng chờ cả lô.
+  let ok = false;
+  try {
+    ok = await loadPriorityModels();
+  } catch (err) {
+    console.error('[thamtu] loadPriorityModels lỗi:', err);
+    ok = false;
+  }
   if (!ok) {
     enterNo3D('model-load', 'không tải được nhân vật 3D nào trong models/');
-    // vẫn giữ scene sảnh (đã vẽ) + logic bản chữ; chỉ không có nhân vật
+    // vẫn giữ scene sảnh (đã vẽ, camera quay chậm) + logic bản chữ; chỉ không có nhân vật
+  } else {
+    bootLog('ready', '✅ 3D sẵn sàng — WASD di chuyển, tới gần ô kính bấm E để vào thăm.');
   }
-  tick();
+  // 5) Tải LAZY phần còn lại (người ngồi chờ ở ô kính + 6 NPC) — chạy nền,
+  // rig tạo rải ra từng frame để không nghẽn main thread.
+  loadLazyModels().catch((err) => console.warn('[thamtu] loadLazyModels lỗi:', err));
 }
 
 /* ================= RIG NHÂN VẬT GLB — AnimationMixer + crossfade thật ================= */
 const modelCache = {};
 const normCache = {};
-async function loadModel(key) {
-  if (modelCache[key]) return modelCache[key];
-  const gltf = await loader.loadAsync(MODEL_URLS[key]);
-  modelCache[key] = gltf;
-  return gltf;
+const pendingLoads = {};
+const MODEL_TIMEOUT_MS = 20000;
+function loadModel(key) {
+  // Dùng chung 1 promise cho mỗi file: file về muộn vẫn được cache để dùng sau.
+  if (modelCache[key]) return Promise.resolve(modelCache[key]);
+  if (!pendingLoads[key]) {
+    pendingLoads[key] = loader.loadAsync(MODEL_URLS[key]).then((gltf) => {
+      modelCache[key] = gltf;
+      return gltf;
+    });
+    pendingLoads[key].catch(() => { delete pendingLoads[key]; }); // cho phép thử lại
+  }
+  return pendingLoads[key];
+}
+function loadModelWithTimeout(key, ms) {
+  // Race timeout: file chậm quá 20s thì bỏ qua, không đứng chờ cả lô (bản v3
+  // dùng Promise.allSettled không timeout nên 1 file kẹt là boot đứng >12s).
+  return Promise.race([
+    loadModel(key),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout sau ' + (((ms || MODEL_TIMEOUT_MS)) / 1000) + 's: ' + MODEL_URLS[key])), ms || MODEL_TIMEOUT_MS))
+  ]);
 }
 function findBone(group, names) {
   let found = null;
@@ -444,14 +532,32 @@ function buildHall() {
   });
 }
 
-/* Tải tất cả model cần dùng; file nào lỗi thì thay bằng model đã tải được */
-async function loadAllModels() {
-  loader = new GLTFLoaderClass();
-  const keys = ['sam', 'matt', 'shaun', 'soldierMale', 'knight', 'lis', 'casualF', 'soldierF'];
-  const results = await Promise.allSettled(keys.map((k) => loadModel(k)));
+/* Hàng đợi tạo rig: mỗi frame chỉ tạo tối đa 2 rig để không nghẽn main thread
+   (bản v3 tạo ~31 rig đồng bộ ngay sau khi tải model — gây treo trang khi bấm nút). */
+const rigQueue = [];
+function processRigQueue(maxPerFrame) {
+  let n = 0;
+  while (rigQueue.length && n < (maxPerFrame || 2)) {
+    const job = rigQueue.shift();
+    try { job(); } catch (e) { console.warn('[thamtu] tạo rig lỗi:', e); }
+    n++;
+  }
+  return rigQueue.length;
+}
+
+/* Tải ƯU TIÊN: người chơi + 4 idol (5 file). File nào lỗi thì thay bằng model đã tải được. */
+async function loadPriorityModels() {
+  const keys = ['sam', 'matt', 'shaun', 'soldierMale', 'knight'];
+  bootLog('models-priority', 'Đang tải nhân vật chính 0/' + keys.length + ' (người chơi + 4 idol)…');
+  let done = 0;
+  const results = await Promise.allSettled(keys.map((k) => loadModelWithTimeout(k, MODEL_TIMEOUT_MS).then((g) => {
+    done++;
+    bootLog('models-priority', 'Đã tải nhân vật chính ' + done + '/' + keys.length + ' (' + k + ')');
+    return g;
+  })));
   const failed = [];
   results.forEach((r, i) => { if (r.status === 'rejected') failed.push(keys[i] + ': ' + (r.reason && r.reason.message ? r.reason.message : r.reason)); });
-  if (failed.length) console.warn('[thamtu] model tải lỗi:', failed);
+  if (failed.length) console.warn('[thamtu] model ưu tiên tải lỗi:', failed);
   const loaded = keys.filter((k) => modelCache[k]);
   if (!loaded.length) return false;
   const fallbackKey = loaded[0];
@@ -460,7 +566,7 @@ async function loadAllModels() {
   playerRig = makeRigFromGLTF(pick(state.playerModel || 'sam'), modelCache[pick(state.playerModel || 'sam')], { height: 1.76, name: 'player' });
   playerRig.group.position.set(0, 0, 5);
   attachAccessory(playerRig, 'cap');
-  addNameTag(playerRig, 'Bạn');
+  addNameTag(playerRig, state.playerName || 'Bạn');
   scene.add(playerRig.group);
   player = playerRig.group;
   setAnim(playerRig, 'idle');
@@ -478,37 +584,57 @@ async function loadAllModels() {
     idolRigs[d.id] = { rig, boothX: b.x, boothZ: b.z };
     setAnim(rig, 'idle');
   });
-  // Người thường ngồi sau kính ở ô không có idol
+  if (failed.length) toast('⚠️ Một số nhân vật tải lỗi, đã thay bằng nhân vật khác: ' + failed.map((f) => f.split(':')[0]).join(', '));
+  return true;
+}
+
+function makeOccupantRig(b, pick) {
+  // Người thường ngồi sau kính ở ô không có idol.
   const occKeys = ['lis', 'casualF', 'soldierF'];
+  const key = pick(occKeys[(b._occIdx || 0) % occKeys.length]);
+  const rig = makeRigFromGLTF(key, modelCache[key], { height: 1.72, name: 'occ' });
+  const px = b.rotY ? b.x + (b.x < 0 ? -1.1 : 1.1) : b.x;
+  const pz = b.rotY ? b.z : b.z + (b.z > 0 ? 1.1 : -1.1);
+  rig.group.position.set(px, 0, pz);
+  rig.group.rotation.y = b.z > 0 ? Math.PI : (b.x < 0 ? Math.PI / 2 : (b.x > 0 ? -Math.PI / 2 : 0));
+  scene.add(rig.group);
+  setAnim(rig, 'sit');
+  return rig;
+}
+function makeNpcRig(d, i, pick) {
+  const key = pick(d.model);
+  const rig = makeRigFromGLTF(key, modelCache[key], { height: d.height, name: 'npc' + i });
+  const x = -9 + i * 3.6, z = -2 + (i % 3) * 3;
+  rig.group.position.set(x, 0, z);
+  addNameTag(rig, d.name, rig.height + 0.4);
+  scene.add(rig.group);
+  npcs.push({ rig, name: d.name, target: new THREE.Vector3(x, 0, z), wait: Math.random() * 2 });
+  setAnim(rig, 'idle');
+  return rig;
+}
+
+/* Tải LAZY (chạy nền, không await): người ngồi chờ ở ô kính + 6 NPC đi lại.
+   Rig được xếp hàng đợi, mỗi frame tạo tối đa 2 rig — sảnh đầy dần mà không giật. */
+async function loadLazyModels() {
+  const keys = ['lis', 'casualF', 'soldierF'];
+  bootLog('models-lazy', 'Đang tải nhân vật phụ (người ngồi chờ + NPC)…');
+  const results = await Promise.allSettled(keys.map((k) => loadModelWithTimeout(k, MODEL_TIMEOUT_MS)));
+  const failed = [];
+  results.forEach((r, i) => { if (r.status === 'rejected') failed.push(keys[i] + ': ' + (r.reason && r.reason.message ? r.reason.message : r.reason)); });
+  if (failed.length) console.warn('[thamtu] model phụ tải lỗi:', failed);
+  const loaded = keys.filter((k) => modelCache[k]);
+  const fallbackKey = loaded[0] || Object.keys(modelCache)[0];
+  if (!fallbackKey) { bootLog('models-lazy', 'Không tải được nhân vật phụ nào — sảnh chỉ có người chơi + 4 idol.'); return; }
+  const pick = (k) => (modelCache[k] ? k : fallbackKey);
   let oi = 0;
-  booths.filter((b) => !b.idolId).forEach((b) => {
-    const key = pick(occKeys[oi % occKeys.length]); oi++;
-    const rig = makeRigFromGLTF(key, modelCache[key], { height: 1.72, name: 'occ' });
-    const px = b.rotY ? b.x + (b.x < 0 ? -1.1 : 1.1) : b.x;
-    const pz = b.rotY ? b.z : b.z + (b.z > 0 ? 1.1 : -1.1);
-    rig.group.position.set(px, 0, pz);
-    rig.group.rotation.y = b.z > 0 ? Math.PI : (b.x < 0 ? Math.PI / 2 : (b.x > 0 ? -Math.PI / 2 : 0));
-    scene.add(rig.group);
-    setAnim(rig, 'sit');
-  });
-  // 6 NPC đi lại trong sảnh
+  booths.filter((b) => !b.idolId).forEach((b) => { b._occIdx = oi++; rigQueue.push(() => makeOccupantRig(b, pick)); });
   const npcDefs = [
     { name: 'Bà Tư', model: 'lis', height: 1.68 }, { name: 'Anh Ba', model: 'matt', height: 1.78 },
     { name: 'Chị Lan', model: 'casualF', height: 1.7 }, { name: 'Sinh viên', model: 'sam', height: 1.76 },
     { name: 'Ông Sáu', model: 'shaun', height: 1.8 }, { name: 'Bé An', model: 'soldierF', height: 1.66 }
   ];
-  npcDefs.forEach((d, i) => {
-    const key = pick(d.model);
-    const rig = makeRigFromGLTF(key, modelCache[key], { height: d.height, name: 'npc' + i });
-    const x = -9 + i * 3.6, z = -2 + (i % 3) * 3;
-    rig.group.position.set(x, 0, z);
-    addNameTag(rig, d.name, rig.height + 0.4);
-    scene.add(rig.group);
-    npcs.push({ rig, name: d.name, target: new THREE.Vector3(x, 0, z), wait: Math.random() * 2 });
-    setAnim(rig, 'idle');
-  });
-  if (failed.length) toast('⚠️ Một số nhân vật tải lỗi, đã thay bằng nhân vật khác: ' + failed.map((f) => f.split(':')[0]).join(', '));
-  return true;
+  npcDefs.forEach((d, i) => rigQueue.push(() => makeNpcRig(d, i, pick)));
+  bootLog('models-lazy', 'Đã xếp ' + rigQueue.length + ' nhân vật phụ vào hàng đợi — sẽ hiện dần trong sảnh.');
 }
 
 function initThree() {
@@ -680,6 +806,9 @@ function updateNearPrompt() {
   el.dataset.boothId = b.idolId || '';
 }
 function enterGame() {
+  // LƯU Ý (v3.1): nút BẮT ĐẦU chỉ mở màn hình chơi — KHÔNG cộng điểm,
+  // KHÔNG tính "đã thăm" idol nào. "Đã thăm" chỉ tăng trong openVisit()
+  // khi người chơi THỰC SỰ vào ô thăm (bấm E gần ô kính / nút "Vào thăm").
   const name = ($('playerNameInput').value || '').trim();
   if (name) state.playerName = name;
   $('startScreen').hidden = true;
@@ -694,7 +823,10 @@ function enterGame() {
 }
 
 /* ================= THĂM NUÔI ================= */
-function openVisit(idolId) {
+/* Mở phòng thăm. source chỉ nhận 2 hành động rõ ràng của người chơi:
+   'booth' (bấm E / nút Vào thăm khi đứng gần ô kính) và 'card' (nút "Vào thăm"
+   trên thẻ idol). Không nguồn nào khác được phép gọi hàm này để tính thăm. */
+function openVisit(idolId, source) {
   const idol = IDOLS.find((d) => d.id === idolId);
   if (!idol) return;
   if (!state.started) { enterGame(); }
@@ -903,7 +1035,7 @@ function renderIdols() {
       '<button class="btn primary visit-btn">' + (state.visited.has(d.id) ? '✅ Đã thăm — Thăm lại' : '🚪 Vào thăm') + '</button>';
     card.addEventListener('click', () => {
       if (!state.started) enterGame();
-      if (state.no3d || !player) { openVisit(d.id); return; }
+      if (state.no3d || !player) { openVisit(d.id, 'card'); return; }
       const b = booths.find((x) => x.idolId === d.id);
       if (b) { state.autoWalkTo = { x: b.x, z: b.frontZ }; toast('🏃 Nhân vật đang chạy tới ô ' + d.name + '… tới gần thì bấm E để vào thăm.'); }
     });
@@ -1303,7 +1435,7 @@ function takePhoto() {
 function interactNear() {
   if (!state.started) return;
   const b = nearestBooth();
-  if (b && b.idolId) openVisit(b.idolId);
+  if (b && b.idolId) openVisit(b.idolId, 'booth');
   else if (b) toast('🪟 Ô này đang trống — chọn ô có idol để vào thăm nhé!');
   else toast('🚶 Đi tới gần ô kính có tên idol rồi bấm E nhé!');
 }
@@ -1433,26 +1565,43 @@ function bindInput() {
   drawMinimap();
   updateHudBars();
 }
+let idleYaw = 0;
+function updateCameraIdle(dt) {
+  // Khi chỉ lỗi tải model: giữ sảnh 3D sống động bằng camera quay chậm quanh sảnh.
+  if (!camera) return;
+  idleYaw += dt * 0.06;
+  const r = 12;
+  camera.position.set(Math.sin(idleYaw) * r, 5.5, Math.cos(idleYaw) * r);
+  camera.lookAt(0, 1.2, 0);
+}
 function tick() {
   requestAnimationFrame(tick);
   const dt = clock ? Math.min(0.05, clock.getDelta()) : 0.016;
-  if (state.threeReady && !state.no3d) {
-    updatePlayer(dt);
-    updateCamera(dt);
-    updateNPCs(dt);
-    for (const r of allRigs) r.mixer.update(dt);
-    for (let i = flyItems.length - 1; i >= 0; i--) {
-      const f = flyItems[i];
-      const p = (performance.now() - f.startTime) / 900;
-      if (p >= 1) { scene.remove(f.mesh); flyItems.splice(i, 1); }
-      else {
-        f.mesh.position.lerpVectors(f.start, f.target, p);
-        f.mesh.position.y += Math.sin(p * Math.PI) * 1.2;
-        f.mesh.rotation.y += dt * 6;
+  if (state.threeReady) {
+    if (!state.no3d) {
+      updatePlayer(dt);
+      updateCamera(dt);
+      updateNPCs(dt);
+      for (const r of allRigs) r.mixer.update(dt);
+      for (let i = flyItems.length - 1; i >= 0; i--) {
+        const f = flyItems[i];
+        const p = (performance.now() - f.startTime) / 900;
+        if (p >= 1) { scene.remove(f.mesh); flyItems.splice(i, 1); }
+        else {
+          f.mesh.position.lerpVectors(f.start, f.target, p);
+          f.mesh.position.y += Math.sin(p * Math.PI) * 1.2;
+          f.mesh.rotation.y += dt * 6;
+        }
       }
+      updateNearPrompt();
+      checkProximityDialog();
+    } else {
+      // Chỉ lỗi tải model: sảnh vẫn render, camera quay chậm, rig nào có thì vẫn động.
+      updateCameraIdle(dt);
+      for (const r of allRigs) r.mixer.update(dt);
     }
-    updateNearPrompt();
-    checkProximityDialog();
+    // Tạo rig phụ rải ra từng frame (tối đa 2/frame) để không nghẽn main thread.
+    processRigQueue(2);
     renderer.render(scene, camera);
     fpsFrames++; fpsTime += dt;
     if (fpsTime >= 1) {
