@@ -447,9 +447,21 @@ const flyItems = [];
 const allRigs = [];
 let raycaster = null, pointerNDC = null;
 const keys = {};
-const cam = { yaw: 0, pitch: 0.26, dist: 7.5 }; // v5.2: lùi camera thêm 1.5 (v5.1: 6) + nâng lên (pitch 0.26, ty 2.6) — v5.1 đầu/tóc nhân vật che ~1/4 màn hình vì camera quá gần + thấp
+const cam = { yaw: 0, pitch: 0.26, dist: 7.5, snap: false }; // v5.2: lùi camera thêm 1.5 (v5.1: 6) + nâng lên (pitch 0.26, ty 2.6) — v5.1 đầu/tóc nhân vật che ~1/4 màn hình vì camera quá gần + thấp
+// v5.5: cam.snap=true → lần updateCamera tới ĐẶT THẲNG camera vào vị trí đích,
+// KHÔNG damp từ vị trí cũ (xem updateCamera). Đặt snap ở mọi lần chuyển cảnh
+// (vào sảnh / vào thăm / về sảnh) để camera không lerp mất 3–10 giây ở FPS thấp.
 const joy = { active: false, x: 0, y: 0, id: null };
 let fpsFrames = 0, fpsLastT = 0; // v5.3: đo FPS bằng thời gian THẬT (performance.now), KHÔNG dùng dt đã kẹp — xem tick()
+// v5.5 — ĐỘ PHÂN GIẢI THÍCH ỨNG (dynamic resolution, kỹ thuật game chuẩn):
+// máy test không GPU (SwiftShader) chỉ chạy 1–3 FPS ở 1080p với 11 đèn —
+// mỗi pixel tính 11 đèn bằng phần mềm, không phải do draw calls (phòng thăm
+// chỉ 40 DC vẫn 1–3 FPS). Đo FPS thật theo cửa sổ 2 giây: < 25 thì hạ bậc
+// pixel ratio (1.0 → 0.75 → 0.6 → 0.5 → 0.4), > 45 sustained thì tăng lại
+// 1 bậc. Pixel ít đi theo bình phương tỉ lệ nên FPS hồi lên thấy rõ; trên
+// máy có GPU thật thì FPS cao sẵn, độ phân giải giữ nguyên 1.0.
+const RES_LEVELS = [1.0, 0.75, 0.6, 0.5, 0.4];
+let resLevel = 0, resEvalT = 0, resFpsSum = 0, resFpsN = 0, resCooldownUntil = 0;
 let jumpV = 0, playerJumpY = 0;
 
 function webglAvailable() {
@@ -867,12 +879,17 @@ function buildHall() {
     // chiếu thẳng mặt idol (target = đầu idol, KHÔNG đổ bóng nên không
     // thêm shadow pass). Lưu ý: đèn chỉ là phụ — nguyên nhân gốc mặt đen
     // là material 'Skin' gần như đen (xem fixDarkSkinMaterials).
+    // v5.5: đèn ngang MẶT idol cao nhất (Khánh Sky 2.23m, mặt ~2.0) — trước
+    // đây fill y=1.7 / spot target y=1.85 là ngang ngực idol cao, mặt nhận
+    // ít sáng nhất; ô 04 (Khánh Sky, cao nhất) tối nhất trong sảnh (test
+    // v5.4). Fill y=1.9, spot target y=1.95: mặt cả 4 idol (1.9–2.05) đều
+    // nhận sáng trực diện, đèn vẫn cách mặt ~1.45m nên không chói.
     const face = new THREE.PointLight(0xffe9a8, 12, 8, 1.6);
-    face.position.set(b.x, 1.7, b.z + 1.1);
+    face.position.set(b.x, 1.9, b.z + 1.1);
     scene.add(face);
     const spot = new THREE.SpotLight(0xffe9a8, 10, 6, 0.45, 0.6, 1.6);
     spot.position.set(b.x, 2.6, b.z + 1.6);
-    spot.target.position.set(b.x, 1.85, b.z - 0.35);
+    spot.target.position.set(b.x, 1.95, b.z - 0.35);
     scene.add(spot); scene.add(spot.target);
   });
 }
@@ -1054,6 +1071,16 @@ function resize() {
   renderer.setSize(w, h, false);
   camera.aspect = w / h; camera.updateProjectionMatrix();
 }
+// v5.5 — áp dụng bậc độ phân giải thích ứng: setPixelRatio TRƯỚC rồi mới
+// setSize (resize) để backing store đổi theo. Canvas CSS không đổi nên khung
+// game giữ nguyên kích thước, chỉ ảnh render mờ hơn khi hạ bậc — đổi lại FPS
+// hồi lên được trên máy yếu (SwiftShader). Gọi từ tick() (xem khối đo FPS).
+function applyResLevel() {
+  if (!renderer) return;
+  renderer.setPixelRatio(RES_LEVELS[resLevel]);
+  resize();
+  bootLog('res', 'Độ phân giải ' + Math.round(RES_LEVELS[resLevel] * 100) + '% (bậc ' + resLevel + '/' + (RES_LEVELS.length - 1) + ')');
+}
 
 /* ================= DI CHUYỂN — third-person controller ================= */
 function movePlayerTo(x, z, dt) {
@@ -1145,11 +1172,20 @@ function updateCamera(dt) {
     const bx = info ? info.boothX : 0;
     // v5: camera thăm lại gần hơn (cách idol ~4m, ngang vai) để thấy rõ toàn
     // thân idol sau kính thay vì chỉ thấy đầu nhỏ từ xa như v4.
+    // v5.5: aim vào ĐẦU idol (y 1.9 thay vì 1.5 ngực) — idol cao 2.14–2.23m,
+    // mặt ở ~1.9–2.05; aim ngực làm mặt lệch lên mép trên khung, ở FPS thấp
+    // camera còn lerp dở thì mặt ra ngoài khung hẳn (test v5.4).
+    // Đã tính bằng node (FOV 58°, cam (bx+0.4,1.7,-6.6), look (bx,1.9,-10.8)):
+    // đỉnh đầu +4.9°, mặt +1.6°, thân -9.9°, chân -26° so với tâm khung —
+    // toàn thân lọt khung (nửa FOV 29°).
     const target = new THREE.Vector3(bx + 0.4, 1.7, -HALL.z + 2.4);
-    camera.position.x = damp(camera.position.x, target.x, 4, dt);
-    camera.position.y = damp(camera.position.y, target.y, 4, dt);
-    camera.position.z = damp(camera.position.z, target.z, 4, dt);
-    const look = new THREE.Vector3(bx, 1.5, -HALL.z - 1.8);
+    if (cam.snap) { camera.position.copy(target); cam.snap = false; }
+    else {
+      camera.position.x = damp(camera.position.x, target.x, 4, dt);
+      camera.position.y = damp(camera.position.y, target.y, 4, dt);
+      camera.position.z = damp(camera.position.z, target.z, 4, dt);
+    }
+    const look = new THREE.Vector3(bx, 1.9, -HALL.z - 1.8);
     camera.lookAt(look);
     return;
   }
@@ -1160,9 +1196,19 @@ function updateCamera(dt) {
   const tx = player.position.x + Math.sin(cam.yaw) * cd;
   const tz = player.position.z + Math.cos(cam.yaw) * cd;
   const ty = 2.6 + Math.sin(cam.pitch) * cd;
-  camera.position.x = damp(camera.position.x, tx, 8, dt);
-  camera.position.y = damp(camera.position.y, ty, 8, dt);
-  camera.position.z = damp(camera.position.z, tz, 8, dt);
+  // v5.5: SNAP khi chuyển cảnh (cam.snap=true) — damp từ vị trí camera chờ
+  // (quay vòng ở màn hồ sơ) về sau lưng người chơi mất 3–10 giây ở FPS 1–3
+  // vì dt bị kẹp (xem tick): lúc mới vào chỉ thấy sàn + lưng nhân vật + NPC,
+  // dãy ô kính chưa lọt khung (test v5.4). Sau snap, damp chỉ bám theo mượt.
+  // Đã tính bằng node (FOV 58°, cam (0,4.53,11.5), lookAt (0,1.6,4)): đỉnh ô
+  // +18.3°, mặt idol +14.8°, chân ô +9.5° so với tâm khung — cả dãy 4 ô
+  // (ngang ±25.8° < nửa FOV ngang 44.6° ở tỉ lệ 16:9) lọt khung ngay khi vào.
+  if (cam.snap) { camera.position.set(tx, ty, tz); cam.snap = false; }
+  else {
+    camera.position.x = damp(camera.position.x, tx, 8, dt);
+    camera.position.y = damp(camera.position.y, ty, 8, dt);
+    camera.position.z = damp(camera.position.z, tz, 8, dt);
+  }
   // v5.2: kẹp camera trong sảnh (tường trong ở x ±15.8, z ±11.8) — không chui
   // qua tường khi người chơi đứng sát mép sảnh.
   camera.position.x = clamp(camera.position.x, -15.5, 15.5);
@@ -1257,7 +1303,9 @@ function enterGame() {
   // v5.4: reset camera về góc chuẩn nhìn thẳng dãy ô kính — camera chờ ở màn
   // hồ sơ quay chậm vòng quanh (updateCameraIdle) nên lúc bấm NHẬN VÉ yaw là
   // ngẫu nhiên, cột trụ có thể rơi đúng giữa khung (giống endVisit()).
-  cam.yaw = 0; cam.pitch = 0.26; cam.dist = 7.5;
+  // v5.5: + cam.snap=true — đặt thẳng camera vào vị trí đích ngay frame đầu,
+  // không damp từ vị trí quay vòng (xem updateCamera).
+  cam.yaw = 0; cam.pitch = 0.26; cam.dist = 7.5; cam.snap = true;
   // Hiện HUD THĂM NUÔI 1999 (v5): vé thăm + bảng gọi số/minimap + nhật ký + khay.
   ['questTracker', 'callBoard', 'ticketCard', 'quickIdolBar', 'bottomHud'].forEach((id) => { const el = $(id); if (el) el.hidden = false; });
   renderQuickIdolBar();
@@ -1286,6 +1334,7 @@ function openVisit(idolId, source) {
   hideRpgDialog(); // hộp thoại chào còn sót thì đóng — không để nó nằm sau lớp phủ phòng thăm
   state.currentIdol = idolId;
   state.visitMode = true;
+  cam.snap = true; // v5.5: đặt thẳng camera thăm vào vị trí đích ngay frame đầu (xem updateCamera) — không damp từ vị trí sảnh.
   state.visitSeconds = 180;
   state.visitPoints = 0;
   state.sentCount = 0;
@@ -1365,7 +1414,9 @@ function closeVisitToLobby(msg) {
   if (playerRig && playerRig.anim !== 'idle') setAnim(playerRig, 'idle');
   // v5.1: camera quay về hướng dãy ô kính phía bắc (yaw 0 = camera phía nam
   // nhìn về bắc), không quay vào vách tối như v5.
-  cam.yaw = 0; cam.pitch = 0.26; cam.dist = 7.5;
+  // v5.5: + cam.snap=true — đặt thẳng camera về sau lưng người chơi ngay
+  // frame đầu, không damp từ vị trí trong buồng thăm.
+  cam.yaw = 0; cam.pitch = 0.26; cam.dist = 7.5; cam.snap = true;
   document.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
   // Đứng ngay trước ô kính vừa thăm: chặn hộp thoại chào tự bật lại 8 giây
   // (không thì vừa về sảnh đã bị thoại che màn hình).
@@ -1396,7 +1447,8 @@ function showVisitSummary(msg) {
     '<li><span>⭐ Điểm buổi thăm</span><b>+' + pts + ' điểm</b></li>' +
     '<li><span>🎁 Quà đã tặng</span><b>' + sent + ' món</b></li>' +
     '<li><span>💬 Đã chat</span><b>' + state.visitChatCount + ' câu</b></li>' +
-    '<li><span>🏅 Cấp / danh hiệu</span><b>Cấp ' + levelBefore + ' ' + rankBefore + ' → Cấp ' + levelAfter + ' ' + rankAfter + '</b></li>' +
+    '<li><span>🏅 Cấp</span><b>Cấp ' + levelBefore + ' → Cấp ' + levelAfter + '</b></li>' +
+    '<li><span>🎖️ Danh hiệu</span><b>' + (rankAfter === rankBefore ? rankAfter : '↑ ' + rankAfter) + '</b></li>' +
     '<li><span>⚡ Năng lượng đã dùng</span><b>−' + (energyStart - energyEnd) + '% (' + energyStart + '% → ' + energyEnd + '%)</b></li>' +
     '<li><span>🔋 Hồi năng lượng</span><b>Về lại 100% khi về sảnh</b></li>';
   drawCert('summaryCertCanvas');
@@ -1407,7 +1459,7 @@ function showVisitSummary(msg) {
   state.visitMode = false;
   state.currentIdol = null;
   if (playerRig && playerRig.anim !== 'idle') setAnim(playerRig, 'idle');
-  cam.yaw = 0; cam.pitch = 0.26; cam.dist = 7.5;
+  cam.yaw = 0; cam.pitch = 0.26; cam.dist = 7.5; cam.snap = true; // v5.5: snap camera về sảnh ngay frame đầu (xem updateCamera).
   state.dialogUntil = Date.now() + 8000;
 }
 function endVisit(msg) { showVisitSummary(msg); }
@@ -1751,13 +1803,17 @@ function drawMinimap() {
   // chấm NPC nên không bị che.
   // v5.4: viền đổi từ trắng (#FFF6E8) sang nâu đậm #594538 — viền trắng dày
   // làm đĩa vàng bị trắng lóa, nhìn nhạt như vòng kem ở kích thước nhỏ.
+  // v5.5: vàng ĐẬM bão hòa #C69A50 (vàng đồng thương hiệu) thay cho vàng nhạt
+  // #E8C268 (232,194,104) — test v5.4 vẫn đọc tâm đĩa nhạt như trắng dù code
+  // đã đúng; vàng đậm trên nền minimap tối không thể đọc nhầm thành trắng.
+  // Chấm to hơn r=13, viền mỏng 2px.
   booths.forEach((b) => {
     if (!b.idolId) return;
     const x = px(b.x), y = pz(b.z);
-    ctx.fillStyle = '#E8C268';
-    ctx.beginPath(); ctx.arc(x, y, 11, 0, 7); ctx.fill();
-    ctx.strokeStyle = '#594538'; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.arc(x, y, 11, 0, 7); ctx.stroke();
+    ctx.fillStyle = '#C69A50';
+    ctx.beginPath(); ctx.arc(x, y, 13, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#594538'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(x, y, 13, 0, 7); ctx.stroke();
   });
   if (player) {
     const x = px(player.position.x), y = pz(player.position.z);
@@ -2019,7 +2075,8 @@ function drawCert(canvasId) {
   ctx.fillText('GIẤY CHỨNG NHẬN THĂM NUÔI', 320, 80);
   ctx.fillStyle = '#233B37'; ctx.font = '22px system-ui, sans-serif';
   const idol = IDOLS.find((d) => d.id === state.currentIdol);
-  ctx.fillText('Chứng nhận bạn ' + (state.playerName || 'Bạn') + ' đã vào thăm', 320, 140);
+  const who = (state.playerName && state.playerName !== 'Bạn') ? state.playerName : '';
+  ctx.fillText(who ? 'Chứng nhận bạn ' + who + ' đã vào thăm' : 'Chứng nhận bạn đã vào thăm', 320, 140);
   ctx.font = 'bold 30px system-ui, sans-serif'; ctx.fillStyle = '#8A6A34';
   ctx.fillText(idol ? idol.emoji + ' ' + idol.name : 'Idol', 320, 185);
   ctx.font = '20px system-ui, sans-serif'; ctx.fillStyle = '#233B37';
@@ -2348,7 +2405,11 @@ function tick() {
   if (document.hidden) { tickRunning = false; return; }
   tickRunning = true;
   requestAnimationFrame(tick);
-  const dt = clock ? Math.min(0.05, clock.getDelta()) : 0.016;
+  // v5.5: nới kẹp dt 0.05 → 0.1 — ở FPS 1–3 (frame thật 0.3–1s) dt kẹp 0.05
+  // làm mọi damp/di chuyển chạy chậm rì (camera chuyển cảnh mất 3–10 giây,
+  // test v5.4). Kẹp 0.1 vẫn chống nhảy vọt khi chuyển tab, nhưng chuyển động
+  // nhanh gấp đôi ở FPS thấp. Đo FPS vẫn dùng thời gian tường thật (dưới).
+  const dt = clock ? Math.min(0.1, clock.getDelta()) : 0.016;
   if (state.threeReady) {
     if (!state.no3d) {
       if (!state.started && playerRig) {
@@ -2403,9 +2464,29 @@ function tick() {
       if (renderer) { calls = renderer.info.render.calls; tris = renderer.info.render.triangles; }
       // Không còn đếm shadowCasters bằng scene.traverse mỗi giây (duyệt
       // toàn cảnh chỉ để báo cáo) — đỡ 1 lần nghẽn main thread/giây.
-      window.__thamtuPerf = { fps, calls, triangles: tris, mixers: activeMixers };
+      // v5.5 — ĐÁNH GIÁ ĐỘ PHÂN GIẢI THÍCH ỨNG mỗi 2 giây (trung bình 2 lần
+      // đo 1 giây): FPS < 25 → hạ 1 bậc pixel ratio; FPS > 45 → tăng lại
+      // 1 bậc (chỉ tăng khi hết thời gian chờ sau lần hạ, tránh dao động
+      // lên–xuống). Chip FPS hiện luôn % độ phân giải khi < 100% để lần
+      // test sau nhìn là biết cơ chế có chạy không.
+      const resScale = RES_LEVELS[resLevel];
+      window.__thamtuPerf = { fps, calls, triangles: tris, mixers: activeMixers, resScale };
       const fc = $('fpsChip');
-      if (fc) fc.textContent = fps + ' FPS • ' + calls + ' DC';
+      if (fc) fc.textContent = fps + ' FPS • ' + calls + ' DC' + (resScale < 1 ? ' • ' + Math.round(resScale * 100) + '%' : '');
+      resFpsSum += fps; resFpsN++;
+      if (!resEvalT) resEvalT = nowMs;
+      if (nowMs - resEvalT >= 2000 && resFpsN > 0) {
+        const avg = resFpsSum / resFpsN;
+        if (avg < 25 && resLevel < RES_LEVELS.length - 1) {
+          resLevel++;
+          applyResLevel();
+          resCooldownUntil = nowMs + 4000; // vừa hạ xong: chờ 4s mới được tăng lại
+        } else if (avg > 45 && resLevel > 0 && nowMs >= resCooldownUntil) {
+          resLevel--;
+          applyResLevel();
+        }
+        resFpsSum = 0; resFpsN = 0; resEvalT = nowMs;
+      }
       fpsFrames = 0; fpsLastT = nowMs;
     }
   }
