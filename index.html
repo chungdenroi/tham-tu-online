@@ -41,9 +41,10 @@
   <section class="game-wrap">
     <div id="gameContainer" class="game-container" aria-label="Sảnh thăm nuôi 3D">
       <canvas id="gameCanvas"></canvas>
+      <div id="bootLog" class="boot-log" aria-live="polite">⏳ Đang khởi động game…</div>
       <div id="webglError" class="webgl-error" hidden>
-        <b>Không mở được 3D trên trình duyệt này.</b>
-        <span>Hãy dùng Chrome/Safari bản mới, bật WebGL rồi tải lại trang.</span>
+        <b>⏳ Đang tải 3D…</b>
+        <span>Nếu mạng chậm, cảnh 3D có thể mất vài giây. Bạn vẫn chơi được bản chữ bên dưới.</span>
         <button class="btn primary" id="reloadBtn">🔄 Tải lại trang</button>
         <button class="btn" id="retry3dBtn">⚔️ Thử lại 3D</button>
         <button class="btn" id="dismiss3dBtn">📜 Chơi bản chữ</button>
@@ -236,13 +237,22 @@
 
 <script type="module" src="app.js"></script>
 <script>
-  // Nếu module app.js không chạy được (lỗi cú pháp / file thiếu), chỉ hiện banner lỗi nhỏ —
-  // TUYỆT ĐỐI không che màn hình vào game (đó là lỗi của bản v2).
+  // Nếu sau 12s boot vẫn chưa xong VÀ chưa ghi được lỗi cụ thể: chỉ hiện banner
+  // nhỏ ở đầu khung game với đúng bước đang kẹt (đọc từ window.__thamtuBootStage)
+  // — TUYỆT ĐỐI không che màn hình vào game, không tự kết luận lỗi WebGL.
   setTimeout(function () {
-    if (!window.__thamtuStarted && !window.__thamtu3DError) {
-      var el = document.getElementById('webglError');
-      if (el) el.hidden = false;
+    if (window.__thamtuStarted || window.__thamtu3DError) return;
+    var stage = window.__thamtuBootStage || 'init';
+    var el = document.getElementById('webglError');
+    if (el) {
+      var b = el.querySelector('b');
+      if (b) b.textContent = '⏳ 3D đang tải chậm — vẫn chơi được bản chữ bên dưới.';
+      var s = el.querySelector('span');
+      if (s) s.textContent = 'Đang kẹt ở bước: ' + stage + '. Có thể mạng chậm hoặc file nhân vật lớn. Bấm “Thử lại 3D” để tải lại trang.';
+      el.hidden = false;
     }
+    var log = document.getElementById('bootLog');
+    if (log) log.textContent = '⏳ 3D tải chậm, đang kẹt ở bước: ' + stage;
   }, 12000);
 </script>
 </body>
