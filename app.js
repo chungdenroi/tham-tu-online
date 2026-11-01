@@ -1,8 +1,9 @@
-/* Vào Tù Thăm Idol — GAME 3D v4: UI MOBA Dark Gold + Champion Select + Mobile dọc.
-   - Tách UI khỏi 3D: bindInput() chạy ngay khi DOMContentLoaded, boot3D() chạy nền sau.
-     Nút bấm được ngay cả khi GLB chưa tải xong (lỗi gốc v3: bindInput chỉ chạy cuối boot).
+/* Vào Tù Thăm Idol — GAME 3D v5: THĂM NUÔI 1999 (Vietnamese Retro Institutional RPG).
+   - Màn hình "HỒ SƠ NGƯỜI THĂM": nhân vật 3D toàn thân thật đứng trong sảnh phía
+     sau lớp phủ trong suốt; portrait danh sách render thật từ model GLB.
+   - Tách UI khỏi 3D (v4): bindInput() chạy ngay khi DOMContentLoaded, boot3D() nền sau.
    - Three.js 0.160.0 bundle trong ./vendor/ (không phụ thuộc CDN).
-   - Nhân vật là file GLB rigged có skeleton + clip animation thật (Quaternius CC0,
+   - Nhân vật là file GLB rigged có skeleton + clip animation thật (Quaternius CC0),
      Mixamo XBot/Soldier), KHÔNG còn nhân vật ghép hộp/sphere.
    - GLB tải bằng fetch + AbortController (timeout 12s) + loader.parse, tối đa 2 file
      đồng thời, theo giai đoạn P0 player → P1 idol → P2 còn lại + NPC nền.
@@ -99,28 +100,100 @@ const MODEL_URLS = {
   lis: 'models/lis.glb', casualF: 'models/casual-female.glb', soldierF: 'models/soldier-female.glb'
 };
 
-/* Nhân vật chọn được (Champion Select) — chỉ số hiển thị ở màn hình chọn tướng */
+/* Nhân vật chọn được (Hồ sơ người thăm) — chỉ số hiển thị ở màn hình chọn */
 const CHAMPS = {
-  sam: { name: 'Sam', emoji: '🧑‍🦱', role: 'Nhanh nhẹn', speed: 88, stamina: 68, skill: 74,
+  sam: { name: 'Sam', role: 'Nhanh nhẹn', speed: 88, stamina: 68, skill: 74,
     desc: 'Sam chạy nhanh nhất sảnh — hợp với người thích đi thăm nhiều ô kính trong thời gian ngắn.' },
-  matt: { name: 'Matt', emoji: '🧑', role: 'Cân bằng', speed: 76, stamina: 80, skill: 75,
+  matt: { name: 'Matt', role: 'Cân bằng', speed: 76, stamina: 80, skill: 75,
     desc: 'Matt cân bằng mọi chỉ số — lựa chọn an toàn cho người mới chơi lần đầu.' },
-  shaun: { name: 'Shaun', emoji: '👨', role: 'Bền bỉ', speed: 64, stamina: 95, skill: 70,
+  shaun: { name: 'Shaun', role: 'Bền bỉ', speed: 64, stamina: 95, skill: 70,
     desc: 'Shaun bền bỉ nhất — đi dạo cả buổi không mệt, hợp với người thích ngắm sảnh.' }
 };
 function updateChampPreview(key) {
   const c = CHAMPS[key] || CHAMPS.sam;
   const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
-  set('champPreviewEmoji', c.emoji);
   set('champPreviewName', c.name.toUpperCase());
   set('champPreviewTag', c.role + ' • ' + (key === 'sam' ? 'Chạy nhanh nhất sảnh' : key === 'matt' ? 'Cân bằng mọi chỉ số' : 'Bền bỉ nhất sảnh'));
   set('champDesc', c.desc);
-  set('champPickedName', c.name);
+  set('champFileNo', 'HS-1999-' + key.toUpperCase());
+  set('champPreviewMono', c.name.charAt(0));
+  const av = $('playerAvatar');
+  if (av) av.textContent = c.name.charAt(0);
   const bar = (id, valId, v) => { const b = $(id); if (b) b.style.width = v + '%'; set(valId, v); };
   bar('statSpeed', 'statSpeedVal', c.speed);
   bar('statStamina', 'statStaminaVal', c.stamina);
   bar('statSkill', 'statSkillVal', c.skill);
-  set('playerAvatar', c.emoji);
+  // Nhân vật 3D toàn thân đã hiện trong sảnh phía sau (preview camera) → ẩn
+  // khung chờ khi rig người chơi đã tải xong.
+  const fb = $('champPreviewFallback');
+  if (fb) fb.style.display = (playerRig && state.threeReady) ? 'none' : '';
+}
+
+/* ================= PORTRAIT 3D THẬT (v5) =================
+   Portrait danh sách nhân vật + thẻ idol được render THẬT từ model GLB bằng
+   một renderer phụ (canvas 160x200, offscreen), không dùng emoji làm ảnh đại
+   diện chính. Chụp 1 lần/model rồi cache dataURL; lỗi thì giữ chữ cái monogram. */
+const portraitCache = {};
+let portraitRenderer = null;
+function snapshotPortrait(key, height) {
+  if (portraitCache[key]) return portraitCache[key];
+  const gltf = modelCache[key];
+  if (!gltf || !THREE || !cloneSkinned) return null;
+  try {
+    if (!portraitRenderer) {
+      const pc = document.createElement('canvas');
+      pc.width = 160; pc.height = 200;
+      portraitRenderer = new THREE.WebGLRenderer({ canvas: pc, antialias: true, alpha: true, preserveDrawingBuffer: true });
+      portraitRenderer.outputColorSpace = THREE.SRGBColorSpace;
+    }
+    const sc = new THREE.Scene();
+    sc.add(new THREE.HemisphereLight(0xfff2d0, 0x233b37, 1.4));
+    const dl = new THREE.DirectionalLight(0xffe9a8, 1.8);
+    dl.position.set(2, 4, 3); sc.add(dl);
+    const grp = new THREE.Group();
+    const clone = cloneSkinned(gltf.scene);
+    grp.add(clone);
+    const box = new THREE.Box3().setFromObject(grp);
+    const size = new THREE.Vector3(); box.getSize(size);
+    const ctr = new THREE.Vector3(); box.getCenter(ctr);
+    const s = (height || 1.78) / Math.max(size.y, 0.01);
+    grp.scale.setScalar(s);
+    clone.position.set(-ctr.x, -box.min.y, -ctr.z);
+    sc.add(grp);
+    // Dáng đứng tự nhiên: phát clip Idle một lúc rồi mới chụp.
+    try {
+      const mixer = new THREE.AnimationMixer(grp);
+      const idle = (gltf.animations || []).find((a) => /idle/i.test(a.name));
+      if (idle) { mixer.clipAction(idle, grp).play(); mixer.update(0.6); }
+    } catch (e) { /* dáng mặc định vẫn dùng được */ }
+    const cam2 = new THREE.PerspectiveCamera(38, 160 / 200, 0.1, 20);
+    cam2.position.set(0, 1.15, 3.4);
+    cam2.lookAt(0, 0.95, 0);
+    portraitRenderer.render(sc, cam2);
+    const url = portraitRenderer.domElement.toDataURL('image/png');
+    portraitCache[key] = url;
+    return url;
+  } catch (e) {
+    console.warn('[thamtu] chụp portrait lỗi:', key, e);
+    return null;
+  }
+}
+function applyPortraits() {
+  document.querySelectorAll('img[data-portrait]').forEach((img) => {
+    const key = img.dataset.portrait;
+    const url = snapshotPortrait(key, 1.78);
+    if (url) { img.src = url; img.hidden = false; }
+  });
+}
+/* Vé thăm: điền ngày/giờ hiện tại vào vé + bảng gọi số */
+function updateTicketTimes() {
+  const d = new Date();
+  const dateTxt = String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
+  const timeTxt = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
+  set('ticketDate', dateTxt); set('ticketTime', timeTxt);
+  set('ticketStubDate', dateTxt); set('ticketStubTime', timeTxt);
+  set('hudClock', timeTxt);
 }
 
 /* Gợi ý theo ngữ cảnh: mỗi lúc chỉ 1 gợi ý, tự biến mất sau ~3.5s */
@@ -212,12 +285,14 @@ function updateHeader() {
   $('pointsTotal').textContent = state.points.toLocaleString('vi-VN');
   const lv = $('playerLevel');
   if (lv) lv.textContent = 'Cấp ' + (Math.floor(state.points / 100) + 1);
-  const pn = $('playerNameHud');
-  if (pn) pn.textContent = state.playerName || 'Bạn';
   const ms = $('menuStreak');
   if (ms) ms.textContent = state.streak;
   const mv = $('menuVisited');
   if (mv) mv.textContent = state.visited.size + '/4';
+  // Bảng gọi số (HUD góc phải trên) — số liệu minh họa, cố định theo vé A-014.
+  const hc = $('hudCalling'); if (hc) hc.textContent = 'A-014';
+  const hn = $('hudNext'); if (hn) hn.textContent = 'A-015';
+  const hcl = $('hudCells'); if (hcl) hcl.textContent = '15/24';
   updateHudBars();
 }
 let toastTimer = null;
@@ -389,6 +464,9 @@ async function boot3D() {
     bootLog('ready', '✅ 3D sẵn sàng — WASD di chuyển, tới gần ô kính bấm E để vào thăm.');
     bootState.player = 'ok'; bootState.idol = 'ok';
     setTimeout(() => { const bl = $('bootLog'); if (bl) bl.style.display = 'none'; }, 4000);
+    // v5: chụp portrait 3D thật cho danh sách nhân vật + thẻ idol (chạy nền,
+    // không chặn game — ảnh nào xong thì hiện ảnh đó, chưa xong thì giữ monogram).
+    setTimeout(() => { try { applyPortraits(); } catch (e) { console.warn('[thamtu] applyPortraits lỗi:', e); } }, 600);
   }
   // 5) Tải LAZY phần còn lại (người ngồi chờ ở ô kính + 6 NPC) — chạy nền,
   // rig tạo rải ra từng frame để không nghẽn main thread.
@@ -494,7 +572,7 @@ function makeRigFromGLTF(key, gltf, opts) {
   const clips = {};
   (gltf.animations || []).forEach((a) => { clips[a.name] = a; });
   const rig = { group, inner, mixer, clips, anim: null, action: null, oneShotTimer: null,
-    speed: 0, targetYaw: 0, height: o.height, key };
+    speed: 0, targetYaw: 0, height: o.height, key, role: o.role || 'npc' };
   group.userData.rig = rig;
   allRigs.push(rig);
   return rig;
@@ -563,12 +641,12 @@ function attachAccessory(rig, kind) {
 function addNameTag(rig, text, y) {
   const c = document.createElement('canvas'); c.width = 512; c.height = 128;
   const ctx = c.getContext('2d');
-  ctx.fillStyle = 'rgba(8,4,18,0.85)';
+  ctx.fillStyle = 'rgba(22,33,31,0.92)';
   ctx.beginPath();
-  if (ctx.roundRect) ctx.roundRect(6, 18, 500, 92, 24); else ctx.rect(6, 18, 500, 92);
+  if (ctx.roundRect) ctx.roundRect(6, 18, 500, 92, 12); else ctx.rect(6, 18, 500, 92);
   ctx.fill();
-  ctx.strokeStyle = '#ffcf3f'; ctx.lineWidth = 5; ctx.stroke();
-  ctx.fillStyle = '#fff'; ctx.font = 'bold 46px system-ui, sans-serif';
+  ctx.strokeStyle = '#C69A50'; ctx.lineWidth = 5; ctx.stroke();
+  ctx.fillStyle = '#E8D9B7'; ctx.font = 'bold 46px system-ui, sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(text, 256, 66);
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
@@ -585,12 +663,12 @@ function mat(color, opts) {
 function textSprite(text, scale) {
   const c = document.createElement('canvas'); c.width = 512; c.height = 128;
   const ctx = c.getContext('2d');
-  ctx.fillStyle = 'rgba(8,4,18,0.85)';
+  ctx.fillStyle = 'rgba(22,33,31,0.92)';
   ctx.beginPath();
-  if (ctx.roundRect) ctx.roundRect(6, 18, 500, 92, 24); else ctx.rect(6, 18, 500, 92);
+  if (ctx.roundRect) ctx.roundRect(6, 18, 500, 92, 12); else ctx.rect(6, 18, 500, 92);
   ctx.fill();
-  ctx.strokeStyle = '#ffcf3f'; ctx.lineWidth = 5; ctx.stroke();
-  ctx.fillStyle = '#fff'; ctx.font = 'bold 46px system-ui, sans-serif';
+  ctx.strokeStyle = '#C69A50'; ctx.lineWidth = 5; ctx.stroke();
+  ctx.fillStyle = '#E8D9B7'; ctx.font = 'bold 46px system-ui, sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(text, 256, 66);
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
@@ -600,24 +678,32 @@ function textSprite(text, scale) {
 }
 
 function buildHall() {
-  const floorMat = new THREE.MeshStandardMaterial({ color: 0x2a1b4d, roughness: 0.9 });
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(HALL.x * 2 + 6, HALL.z * 2 + 6), floorMat);
+  // Sàn: 1 mặt phẳng duy nhất với texture kẻ ô (canvas texture) — v4 dùng ~70
+  // mesh gạch riêng lẻ = ~70 draw call, là 1 trong các nguyên nhân FPS chỉ ~20.
+  const tileCv = document.createElement('canvas'); tileCv.width = 256; tileCv.height = 256;
+  const tctx = tileCv.getContext('2d');
+  tctx.fillStyle = '#2E4038'; tctx.fillRect(0, 0, 256, 256);
+  tctx.fillStyle = '#26362D';
+  tctx.fillRect(0, 0, 128, 128); tctx.fillRect(128, 128, 128, 128);
+  tctx.strokeStyle = '#1F2E29'; tctx.lineWidth = 4;
+  tctx.strokeRect(0, 0, 128, 128); tctx.strokeRect(128, 0, 128, 128);
+  tctx.strokeRect(0, 128, 128, 128); tctx.strokeRect(128, 128, 128, 128);
+  const tileTex = new THREE.CanvasTexture(tileCv);
+  tileTex.wrapS = tileTex.wrapT = THREE.RepeatWrapping;
+  tileTex.repeat.set(8, 6);
+  tileTex.colorSpace = THREE.SRGBColorSpace;
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(HALL.x * 2 + 6, HALL.z * 2 + 6),
+    new THREE.MeshStandardMaterial({ map: tileTex, roughness: 0.9 }));
   floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
-  const tileGeo = new THREE.PlaneGeometry(2, 2);
-  for (let ix = -7; ix < 7; ix++) for (let iz = -5; iz < 5; iz++) {
-    if ((ix + iz) % 2 === 0) continue;
-    const tile = new THREE.Mesh(tileGeo, new THREE.MeshStandardMaterial({ color: 0x352260, roughness: 0.9 }));
-    tile.rotation.x = -Math.PI / 2; tile.position.set(ix * 2 + 1, 0.01, iz * 2 + 1); tile.receiveShadow = true; scene.add(tile);
-  }
-  const wallM = mat(0x3a2a5e);
+  const wallM = mat(0x3D5047);
   const mkWall = (w, h, d, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), wallM); m.position.set(x, y, z); m.receiveShadow = true; scene.add(m); return m; };
   mkWall(HALL.x * 2 + 6, 4.5, 0.4, 0, 2.25, -HALL.z - 3);
   mkWall(HALL.x * 2 + 6, 4.5, 0.4, 0, 2.25, HALL.z + 3);
   mkWall(0.4, 4.5, HALL.z * 2 + 6, -HALL.x - 3, 2.25, 0);
   mkWall(0.4, 4.5, HALL.z * 2 + 6, HALL.x + 3, 2.25, 0);
-  const sign = textSprite('SẢNH THĂM NUÔI 3D', 1.4); sign.position.set(0, 4.1, -HALL.z - 2.7); scene.add(sign);
+  const sign = textSprite('SẢNH THĂM NUÔI • 1999', 1.4); sign.position.set(0, 4.1, -HALL.z - 2.7); scene.add(sign);
   for (const [x, z] of [[-8, -4], [8, -4], [-8, 4], [8, 4]]) {
-    const col = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.4, 4.2, 10), mat(0x6b5a9e));
+    const col = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.4, 4.2, 10), mat(0x594538));
     col.position.set(x, 2.1, z); col.castShadow = true; scene.add(col);
     obstacles.push({ x, z, r: 0.7 });
     const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 10), new THREE.MeshStandardMaterial({ color: 0xffe9a8, emissive: 0xffc93f, emissiveIntensity: 1.4 }));
@@ -633,19 +719,40 @@ function buildHall() {
     const grp = new THREE.Group();
     grp.position.set(b.x, 0, b.z);
     if (b.rotY) grp.rotation.y = b.rotY;
-    const frame = new THREE.Mesh(new THREE.BoxGeometry(3.2, 2.6, 0.18), mat(0x1c1032));
-    frame.position.y = 1.3; frame.castShadow = true; grp.add(frame);
-    const glass = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 2.1),
-      new THREE.MeshPhysicalMaterial({ color: 0x9fd8e8, transparent: true, opacity: 0.28, roughness: 0.1, metalness: 0 }));
+    // v5 P0 — KHUNG Ô KÍNH: v4 dùng 1 tấm hộp ĐẶC (3.2x2.6) làm khung nên idol
+    // đứng sau kính bị tấm khung che kín, chỉ thấy đầu/bóng tối. Giờ khung chỉ
+    // còn 4 thanh viền gỗ + mặt kính trong suốt → idol nhìn thấy rõ qua kính.
+    const woodM = mat(0x594538);
+    const barT = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.28, 0.18), woodM);
+    barT.position.y = 2.55; barT.castShadow = true; grp.add(barT);
+    const barB = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.28, 0.18), woodM);
+    barB.position.y = 0.14; barB.castShadow = true; grp.add(barB);
+    const barL = new THREE.Mesh(new THREE.BoxGeometry(0.28, 2.6, 0.18), woodM);
+    barL.position.set(-1.46, 1.35, 0); barL.castShadow = true; grp.add(barL);
+    const barR = new THREE.Mesh(new THREE.BoxGeometry(0.28, 2.6, 0.18), woodM);
+    barR.position.set(1.46, 1.35, 0); barR.castShadow = true; grp.add(barR);
+    const glass = new THREE.Mesh(new THREE.PlaneGeometry(2.75, 2.1),
+      new THREE.MeshPhysicalMaterial({ color: 0x9fd8e8, transparent: true, opacity: 0.18, roughness: 0.08, metalness: 0 }));
     glass.position.set(0, 1.45, 0.12); grp.add(glass);
+    // Loa liên lạc trên khung phải + đèn huỳnh quang trong buồng (emissive,
+    // không tốn thêm đèn thật — giữ FPS): idol không còn đứng trong bóng tối.
+    const speaker = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.44, 0.12), mat(0x2A2A2A));
+    speaker.position.set(1.28, 2.0, 0.16); grp.add(speaker);
+    const spkDot = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), new THREE.MeshStandardMaterial({ color: 0x7A9A5B, emissive: 0x7A9A5B, emissiveIntensity: 1.2 }));
+    spkDot.position.set(1.28, 2.0, 0.24); grp.add(spkDot);
+    if (b.idol) {
+      const tube = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.09, 0.09),
+        new THREE.MeshStandardMaterial({ color: 0xFFF6DC, emissive: 0xFFE9A8, emissiveIntensity: 1.8 }));
+      tube.position.set(0, 2.42, -0.4); grp.add(tube);
+    }
     const table = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.12, 0.7), mat(0x6b4a2f));
     table.position.set(0, 0.85, 0.35); table.castShadow = true; grp.add(table);
-    const chair = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.5, 0.6), mat(0x4a2d78));
+    const chair = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.5, 0.6), mat(0x33544C));
     chair.position.set(0, 0.25, 0.9); grp.add(chair);
     const num = textSprite(b.idol ? b.idol.name : ('Ô ' + String(idx + 1).padStart(2, '0')), b.idol ? 1 : 0.8);
     num.position.set(0, 3.05, 0.2); grp.add(num);
     scene.add(grp);
-    booths.push({ x: b.x, z: b.z, idolId: b.idol ? b.idol.id : null, frontX: b.x, frontZ: b.rotY ? b.z : (b.z > 0 ? HALL.z - 0.6 : -HALL.z + 1.6), rotY: b.rotY || 0 });
+    booths.push({ x: b.x, z: b.z, idolId: b.idol ? b.idol.id : null, boothNo: idx + 1, frontX: b.x, frontZ: b.rotY ? b.z : (b.z > 0 ? HALL.z - 0.6 : -HALL.z + 1.6), rotY: b.rotY || 0 });
   });
 }
 
@@ -682,19 +789,21 @@ async function loadPriorityModels() {
   const fallbackKey = loaded[0];
   const pick = (k) => (modelCache[k] ? k : fallbackKey);
   // Người chơi: model đã chọn ở màn hình RPG (mặc định Sam)
-  playerRig = makeRigFromGLTF(pick(state.playerModel || 'sam'), modelCache[pick(state.playerModel || 'sam')], { height: 1.76, name: 'player', shadow: true });
+  playerRig = makeRigFromGLTF(pick(state.playerModel || 'sam'), modelCache[pick(state.playerModel || 'sam')], { height: 1.76, name: 'player', shadow: true, role: 'player' });
   playerRig.group.position.set(0, 0, 5);
   attachAccessory(playerRig, 'cap');
   addNameTag(playerRig, state.playerName || 'Bạn');
   scene.add(playerRig.group);
   player = playerRig.group;
   setAnim(playerRig, 'idle');
-  // 4 idol sau vách kính
+  // 4 idol sau vách kính — v5: đứng SÁT kính hơn (z - 0.6 thay vì -1.1) để nhìn
+  // rõ toàn thân qua ô kính đã mở khung; đèn huỳnh quang trong buồng đã thêm
+  // ở buildHall() nên idol không còn chìm trong bóng tối.
   IDOLS.forEach((d) => {
     const key = pick(d.model);
-    const rig = makeRigFromGLTF(key, modelCache[key], { height: d.height, name: d.id, shadow: true });
+    const rig = makeRigFromGLTF(key, modelCache[key], { height: d.height, name: d.id, shadow: true, role: 'idol' });
     const b = booths.find((x) => x.idolId === d.id);
-    rig.group.position.set(b.x, 0, b.z - 1.1);
+    rig.group.position.set(b.x, 0, b.z - 0.6);
     rig.group.rotation.y = 0;
     if (d.tint) tintMaterial(rig, d.tint, 0xff8a3d); // áo tù cam (chỉ vật liệu không texture)
     attachAccessory(rig, d.acc);
@@ -711,7 +820,7 @@ function makeOccupantRig(b, pick) {
   // Người thường ngồi sau kính ở ô không có idol.
   const occKeys = ['lis', 'casualF', 'soldierF'];
   const key = pick(occKeys[(b._occIdx || 0) % occKeys.length]);
-  const rig = makeRigFromGLTF(key, modelCache[key], { height: 1.72, name: 'occ' });
+  const rig = makeRigFromGLTF(key, modelCache[key], { height: 1.72, name: 'occ', role: 'occ' });
   const px = b.rotY ? b.x + (b.x < 0 ? -1.1 : 1.1) : b.x;
   const pz = b.rotY ? b.z : b.z + (b.z > 0 ? 1.1 : -1.1);
   rig.group.position.set(px, 0, pz);
@@ -722,7 +831,7 @@ function makeOccupantRig(b, pick) {
 }
 function makeNpcRig(d, i, pick) {
   const key = pick(d.model);
-  const rig = makeRigFromGLTF(key, modelCache[key], { height: d.height, name: 'npc' + i });
+  const rig = makeRigFromGLTF(key, modelCache[key], { height: d.height, name: 'npc' + i, role: 'npc' });
   const x = -9 + i * 3.6, z = -2 + (i % 3) * 3;
   rig.group.position.set(x, 0, z);
   addNameTag(rig, d.name, rig.height + 0.4);
@@ -756,25 +865,26 @@ async function loadLazyModels() {
 
 function initThree() {
   const canvas = $('gameCanvas');
-  // v4: mobile DPR tối đa 1.25, desktop 1.5; tắt antialias trên mobile;
-  // preserveDrawingBuffer:false (chụp ảnh sẽ render lại riêng rồi mới toDataURL).
+  // v5: mobile DPR tối đa 1.0, desktop 1.25 (FPS ~20 ở v4 → giảm pixel phải vẽ);
+  // tắt antialias trên mobile; preserveDrawingBuffer:false (chụp ảnh render lại riêng).
   renderer = new THREE.WebGLRenderer({ canvas, antialias: !IS_MOBILE, preserveDrawingBuffer: false });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, IS_MOBILE ? 1.25 : 1.5));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, IS_MOBILE ? 1.0 : 1.25));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x140a26);
-  scene.fog = new THREE.Fog(0x140a26, 22, 42);
+  scene.background = new THREE.Color(0x16211F);
+  scene.fog = new THREE.Fog(0x16211F, 22, 42);
   camera = new THREE.PerspectiveCamera(58, 1, 0.1, 100);
   camera.position.set(0, 4, 10);
   clock = new THREE.Clock();
   raycaster = new THREE.Raycaster();
   pointerNDC = new THREE.Vector2();
-  scene.add(new THREE.HemisphereLight(0xcdb8ff, 0x1a0f2e, 0.9));
+  scene.add(new THREE.HemisphereLight(0xFFF2D0, 0x233B37, 1.15));
   const sun = new THREE.DirectionalLight(0xffe9a8, 1.6);
   sun.position.set(8, 12, 6); sun.castShadow = true;
-  sun.shadow.mapSize.set(IS_MOBILE ? 512 : 1024, IS_MOBILE ? 512 : 1024);
+  // v5: shadow map nhỏ lại (512 desktop / 256 mobile) để tăng FPS.
+  sun.shadow.mapSize.set(IS_MOBILE ? 256 : 512, IS_MOBILE ? 256 : 512);
   sun.shadow.camera.left = -18; sun.shadow.camera.right = 18;
   sun.shadow.camera.top = 18; sun.shadow.camera.bottom = -18;
   scene.add(sun);
@@ -876,11 +986,13 @@ function updateCamera(dt) {
   if (state.visitMode && state.currentIdol) {
     const info = idolRigs[state.currentIdol];
     const bx = info ? info.boothX : 0;
-    const target = new THREE.Vector3(bx + 0.6, 1.7, -HALL.z + 5.2);
+    // v5: camera thăm lại gần hơn (cách idol ~4m, ngang vai) để thấy rõ toàn
+    // thân idol sau kính thay vì chỉ thấy đầu nhỏ từ xa như v4.
+    const target = new THREE.Vector3(bx + 0.4, 1.7, -HALL.z + 2.4);
     camera.position.x = damp(camera.position.x, target.x, 4, dt);
     camera.position.y = damp(camera.position.y, target.y, 4, dt);
     camera.position.z = damp(camera.position.z, target.z, 4, dt);
-    const look = new THREE.Vector3(bx, 1.5, -HALL.z - 1);
+    const look = new THREE.Vector3(bx, 1.5, -HALL.z - 1.8);
     camera.lookAt(look);
     return;
   }
@@ -933,7 +1045,9 @@ function updateNearPrompt() {
   if (state.visitMode) { el.hidden = true; setE('THĂM', false); return; }
   const b = nearestBooth();
   if (!b) { el.hidden = true; setE('ĐI TỚI', false); return; }
-  el.hidden = false;
+  // Hộp thoại NPC đang mở thì ẩn nhắc tương tác (tránh 2 khung chồng nhau
+  // cùng chỗ — khung thoại đã mời tương tác rồi); đóng thoại thì nhắc lại hiện.
+  el.hidden = $('rpgDialog').hidden ? false : true;
   if (b.idolId) {
     $('nearPromptText').textContent = 'Ô ' + IDOLS.find((d) => d.id === b.idolId).name + ' — bấm E để vào thăm';
     setE('VÀO THĂM', true);
@@ -944,15 +1058,14 @@ function updateNearPrompt() {
   el.dataset.boothId = b.idolId || '';
 }
 function enterGame() {
-  // LƯU Ý (v3.1): nút CHƠI NGAY chỉ mở màn hình chơi — KHÔNG cộng điểm,
+  // LƯU Ý (v3.1): nút NHẬN VÉ & VÀO SẢNH chỉ mở màn hình chơi — KHÔNG cộng điểm,
   // KHÔNG tính "đã thăm" idol nào. "Đã thăm" chỉ tăng trong openVisit()
   // khi người chơi THỰC SỰ vào ô thăm (bấm E gần ô kính / nút "Vào thăm").
-  const name = ($('playerNameInput').value || '').trim();
-  if (name) state.playerName = name;
+  // v5: bỏ qua tên người chơi — mặc định là "Bạn", không bắt nhập tên.
   $('startScreen').hidden = true;
   state.started = true;
-  // Hiện HUD MOBA + thanh chọn idol nhanh (v4).
-  ['questTracker', 'minimapBox', 'quickIdolBar', 'bottomHud'].forEach((id) => { const el = $(id); if (el) el.hidden = false; });
+  // Hiện HUD THĂM NUÔI 1999 (v5): vé thăm + bảng gọi số/minimap + nhật ký + khay.
+  ['questTracker', 'callBoard', 'ticketCard', 'quickIdolBar', 'bottomHud'].forEach((id) => { const el = $(id); if (el) el.hidden = false; });
   renderQuickIdolBar();
   updateChampPreview(state.playerModel || 'sam');
   if (playerRig) swapPlayerModel(state.playerModel || 'sam');
@@ -1002,6 +1115,11 @@ function openVisit(idolId, source) {
   $('visitScreen').classList.add('active');
   $('visitTitle').textContent = idol.emoji + ' Thăm ' + idol.name;
   $('visitStatus').textContent = idol.status;
+  const vb = $('visitBooth');
+  if (vb) {
+    const bNo = booths.find((x) => x.idolId === idolId);
+    vb.textContent = 'BUỒNG SỐ ' + String(bNo ? bNo.boothNo : '--').padStart(2, '0') + ' • LOA LIÊN LẠC: BẬT • VÉ A-014';
+  }
   $('sentCount').textContent = '0';
   $('visitPoints').textContent = state.visitPoints;
   $('speechBubble').textContent = '"' + idol.lines[0] + '"';
@@ -1172,14 +1290,18 @@ function renderIdols() {
   IDOLS.forEach((d) => {
     const card = document.createElement('div');
     card.className = 'idol-card' + (state.visited.has(d.id) ? ' visited' : '');
-    card.innerHTML = '<div class="idol-emoji">' + d.emoji + '</div><h3>' + d.name + '</h3>' +
+    // Portrait 3D thật (chụp từ model GLB) — monogram chữ cái hiện trước,
+    // ảnh chụp xong thì đè lên. Thăm rồi thì đóng dấu mộc đỏ ĐÃ THĂM.
+    card.innerHTML = '<div class="idol-portrait"><span class="champ-mono">' + d.name.charAt(0) + '</span><img data-portrait="' + d.model + '" alt="' + d.name + '" hidden></div><h3>' + d.name + '</h3>' +
       '<span class="tag">' + d.tag + '</span><p>' + d.desc + '</p>' +
       '<p class="fine">' + d.status + '</p>' +
+      (state.visited.has(d.id) ? '<span class="stamp card-stamp">ĐÃ THĂM</span>' : '') +
       '<button class="btn primary visit-btn">' + (state.visited.has(d.id) ? '✅ Đã thăm — Thăm lại' : '🚪 Vào thăm') + '</button>';
     card.addEventListener('click', () => selectIdolQuick(d.id));
     grid.appendChild(card);
   });
   renderQuickIdolBar();
+  try { applyPortraits(); } catch (e) { /* portrait chụp sau khi model tải xong */ }
 }
 function renderLeaderboard() {
   const rows = [
@@ -1243,9 +1365,9 @@ function refillInventory() {
   renderInventory(); renderGifts();
   toast('🛒 Đã nhận thêm đồ tiếp tế: +1 mỗi món!');
 }
-/* Hộp thoại RPG */
+/* Hộp thoại RPG — avatar là chữ cái đầu tên (monogram), không dùng emoji lớn */
 function showRpgDialog(name, avatar, text, choices) {
-  $('rpgAvatar').textContent = avatar;
+  $('rpgAvatar').textContent = name.charAt(0);
   $('rpgName').textContent = name;
   $('rpgText').textContent = text;
   const box = $('rpgChoices');
@@ -1298,35 +1420,49 @@ function checkProximityDialog() {
   }
   state.dialogKey = null;
 }
-/* Minimap sảnh */
+/* Minimap sảnh — v5: chấm idol TO, viền trắng, vẽ sau ô kính để luôn nổi;
+   trước đây idol chỉ là ô vàng 8x6px lẫn với ô kính nên nhìn như không có. */
 function drawMinimap() {
   const cv = $('minimap');
   if (!cv || !cv.getContext) return;
   const ctx = cv.getContext('2d');
   const W = cv.width, H = cv.height;
-  ctx.fillStyle = '#0f0820'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#16211F'; ctx.fillRect(0, 0, W, H);
   const px = (x) => ((x + 17) / 34) * W;
   const pz = (z) => ((z + 12.5) / 25) * H;
-  ctx.strokeStyle = '#4a2d78'; ctx.lineWidth = 2;
+  ctx.strokeStyle = '#C69A50'; ctx.lineWidth = 2;
   ctx.strokeRect(px(-HALL.x), pz(-HALL.z), px(HALL.x) - px(-HALL.x), pz(HALL.z) - pz(-HALL.z));
   booths.forEach((b) => {
-    ctx.fillStyle = b.idolId ? '#ffcf3f' : '#6b5a9e';
-    ctx.fillRect(px(b.x) - 4, pz(b.z) - 3, 8, 6);
+    if (b.idolId) return; // ô idol vẽ riêng ở dưới, to và nổi hơn
+    ctx.fillStyle = '#668D87';
+    ctx.fillRect(px(b.x) - 3, pz(b.z) - 2, 6, 4);
   });
   npcs.forEach((n) => {
-    ctx.fillStyle = '#3fe0d0';
+    ctx.fillStyle = '#3FE0D0';
     ctx.beginPath(); ctx.arc(px(n.rig.group.position.x), pz(n.rig.group.position.z), 3, 0, 7); ctx.fill();
+  });
+  // Chấm idol: vòng tròn vàng đồng lớn + viền trắng — không lẫn với ô kính.
+  booths.forEach((b) => {
+    if (!b.idolId) return;
+    const x = px(b.x), y = pz(b.z);
+    ctx.fillStyle = '#C69A50';
+    ctx.beginPath(); ctx.arc(x, y, 7, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#FFF6E8'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(x, y, 7, 0, 7); ctx.stroke();
+    ctx.fillStyle = '#16211F';
+    ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('★', x, y + 0.5);
   });
   if (player) {
     const x = px(player.position.x), y = pz(player.position.z);
     const a = Math.atan2(Math.sin(player.rotation.y), Math.cos(player.rotation.y));
-    ctx.fillStyle = '#ff5da2';
+    ctx.fillStyle = '#FF5DA2';
     ctx.beginPath();
-    ctx.moveTo(x + Math.sin(a) * 8, y + Math.cos(a) * 8);
-    ctx.lineTo(x + Math.sin(a + 2.5) * 6, y + Math.cos(a + 2.5) * 6);
-    ctx.lineTo(x + Math.sin(a - 2.5) * 6, y + Math.cos(a - 2.5) * 6);
+    ctx.moveTo(x + Math.sin(a) * 10, y + Math.cos(a) * 10);
+    ctx.lineTo(x + Math.sin(a + 2.5) * 7, y + Math.cos(a + 2.5) * 7);
+    ctx.lineTo(x + Math.sin(a - 2.5) * 7, y + Math.cos(a - 2.5) * 7);
     ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
   }
 }
 /* Thanh máu/XP/vàng + đồng hồ nhiệm vụ — v4: chỉ ghi DOM khi chỉ số đổi
@@ -1352,6 +1488,8 @@ function updateHudBars() {
   if (gc) gc.textContent = '🪙 ' + p.toLocaleString('vi-VN') + ' vàng';
   const qc = $('questClock');
   if (qc) qc.textContent = clockTxt;
+  const hc2 = $('hudClock');
+  if (hc2) hc2.textContent = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
 }
 /* Đổi nhân vật người chơi (chọn ở màn hình RPG) */
 function swapPlayerModel(key) {
@@ -1361,7 +1499,7 @@ function swapPlayerModel(key) {
   scene.remove(playerRig.group);
   const idx = allRigs.indexOf(playerRig);
   if (idx >= 0) allRigs.splice(idx, 1);
-  playerRig = makeRigFromGLTF(key, modelCache[key], { height: 1.76, name: 'player', shadow: true });
+  playerRig = makeRigFromGLTF(key, modelCache[key], { height: 1.76, name: 'player', shadow: true, role: 'player' });
   playerRig.group.position.copy(pos);
   playerRig.group.rotation.y = yaw;
   playerRig.targetYaw = yaw;
@@ -1558,21 +1696,29 @@ function startTapGame(area) {
 function drawCert() {
   const c = $('certCanvas');
   const ctx = c.getContext('2d');
-  ctx.fillStyle = '#fff8e1'; ctx.fillRect(0, 0, 640, 400);
-  ctx.strokeStyle = '#b8860b'; ctx.lineWidth = 8; ctx.strokeRect(10, 10, 620, 380);
-  ctx.strokeStyle = '#ffcf3f'; ctx.lineWidth = 2; ctx.strokeRect(22, 22, 596, 356);
-  ctx.fillStyle = '#7a2e1d'; ctx.font = 'bold 34px system-ui, sans-serif'; ctx.textAlign = 'center';
+  ctx.fillStyle = '#FFF6E8'; ctx.fillRect(0, 0, 640, 400);
+  ctx.strokeStyle = '#C69A50'; ctx.lineWidth = 8; ctx.strokeRect(10, 10, 620, 380);
+  ctx.strokeStyle = '#A84238'; ctx.lineWidth = 2; ctx.strokeRect(22, 22, 596, 356);
+  ctx.fillStyle = '#A84238'; ctx.font = 'bold 34px system-ui, sans-serif'; ctx.textAlign = 'center';
   ctx.fillText('GIẤY CHỨNG NHẬN THĂM NUÔI', 320, 80);
-  ctx.fillStyle = '#333'; ctx.font = '22px system-ui, sans-serif';
+  ctx.fillStyle = '#233B37'; ctx.font = '22px system-ui, sans-serif';
   const idol = IDOLS.find((d) => d.id === state.currentIdol);
   ctx.fillText('Chứng nhận bạn ' + (state.playerName || 'Bạn') + ' đã vào thăm', 320, 140);
-  ctx.font = 'bold 30px system-ui, sans-serif'; ctx.fillStyle = '#b8860b';
+  ctx.font = 'bold 30px system-ui, sans-serif'; ctx.fillStyle = '#8A6A34';
   ctx.fillText(idol ? idol.emoji + ' ' + idol.name : 'Idol', 320, 185);
-  ctx.font = '20px system-ui, sans-serif'; ctx.fillStyle = '#333';
+  ctx.font = '20px system-ui, sans-serif'; ctx.fillStyle = '#233B37';
   ctx.fillText('Ngày ' + new Date().toLocaleDateString('vi-VN') + ' • Điểm buổi thăm: ' + state.visitPoints, 320, 235);
   ctx.fillText('Parody giải trí hư cấu — không phải buổi thăm thật', 320, 280);
-  ctx.font = 'bold 20px system-ui, sans-serif'; ctx.fillStyle = '#7a2e1d';
-  ctx.fillText('★ VÀO TÙ THĂM IDOL — GAME NHẬP VAI 3D ★', 320, 340);
+  ctx.font = 'bold 20px system-ui, sans-serif'; ctx.fillStyle = '#A84238';
+  ctx.fillText('★ VÀO TÙ THĂM IDOL — THĂM NUÔI 1999 ★', 320, 340);
+  // Dấu mộc đỏ ĐÃ DUYỆT đóng chéo góc phải (phong cách THĂM NUÔI 1999).
+  ctx.save();
+  ctx.translate(500, 300); ctx.rotate(-0.18);
+  ctx.strokeStyle = '#A84238'; ctx.lineWidth = 4;
+  ctx.strokeRect(-78, -26, 156, 52);
+  ctx.fillStyle = '#A84238'; ctx.font = 'bold 28px system-ui, sans-serif';
+  ctx.fillText('ĐÃ DUYỆT', 0, 10);
+  ctx.restore();
 }
 function downloadCert() {
   drawCert();
@@ -1657,7 +1803,8 @@ function bindInput() {
   });
   window.addEventListener('keyup', (e) => { keys[e.code] = false; });
   $('enterGameBtn').addEventListener('click', enterGame);
-  $('playerNameInput').addEventListener('change', (e) => { state.playerName = e.target.value.trim() || 'Bạn'; store.set('playerName', state.playerName); updateHeader(); });
+  updateTicketTimes();
+  setInterval(updateTicketTimes, 30000); // vé + đồng hồ cập nhật mỗi 30 giây
   document.querySelectorAll('.champion-option').forEach((b) => {
     b.addEventListener('click', () => {
       document.querySelectorAll('.champion-option').forEach((x) => x.classList.remove('selected'));
@@ -1787,6 +1934,8 @@ function bindInput() {
 let tickRunning = false;
 let minimapAccum = 0;
 let idleYaw = 0;
+let previewAngle = 0;
+let tickFrame = 0;
 function updateCameraIdle(dt) {
   // Khi chỉ lỗi tải model: giữ sảnh 3D sống động bằng camera quay chậm quanh sảnh.
   if (!camera) return;
@@ -1795,18 +1944,40 @@ function updateCameraIdle(dt) {
   camera.position.set(Math.sin(idleYaw) * r, 5.5, Math.cos(idleYaw) * r);
   camera.lookAt(0, 1.2, 0);
 }
+function updatePreviewCamera(dt) {
+  // v5: màn hình HỒ SƠ NGƯỜI THĂM — camera quay chậm quanh nhân vật người chơi
+  // (toàn thân, có animation Idle) để người chơi thấy model 3D thật ngay từ
+  // màn hình chọn, thay vì emoji như v4. Lớp phủ giữa màn hình trong suốt.
+  if (!camera || !player) return;
+  previewAngle += dt * 0.12;
+  const px = player.position.x, pz = player.position.z;
+  camera.position.set(px + Math.sin(previewAngle) * 3.4, 1.35, pz + Math.cos(previewAngle) * 3.4);
+  camera.lookAt(px, 1.05, pz);
+}
 function tick() {
   // Tab ẩn: dừng render hẳn (không chạy rAF nền) — quay lại tab thì resume.
   if (document.hidden) { tickRunning = false; return; }
   tickRunning = true;
   requestAnimationFrame(tick);
   const dt = clock ? Math.min(0.05, clock.getDelta()) : 0.016;
+  tickFrame++;
   if (state.threeReady) {
     if (!state.no3d) {
-      updatePlayer(dt);
-      updateCamera(dt);
+      if (!state.started && playerRig) {
+        // Chưa vào sảnh: preview nhân vật 3D toàn thân ở màn hình hồ sơ.
+        updatePreviewCamera(dt);
+        if (playerRig.anim !== 'idle') setAnim(playerRig, 'idle');
+      } else {
+        updatePlayer(dt);
+        updateCamera(dt);
+      }
       updateNPCs(dt);
-      for (const r of allRigs) r.mixer.update(dt);
+      // v5 FPS: player + idol cập nhật animation mỗi frame; NPC/người ngồi chờ
+      // (xa camera, ít quan trọng) chỉ cập nhật frame chẵn — giảm tải mixer.
+      for (const r of allRigs) {
+        if (r.role === 'npc' || r.role === 'occ') { if (tickFrame % 2 === 0) r.mixer.update(dt * 2); }
+        else r.mixer.update(dt);
+      }
       for (let i = flyItems.length - 1; i >= 0; i--) {
         const f = flyItems[i];
         const p = (performance.now() - f.startTime) / 900;
