@@ -36,7 +36,7 @@ const IDOLS = [
     color: 0xff8a3d, pants: 0x2b2b3d, hair: 0x111111, acc: 'fan', model: 'matt', height: 1.78,
     lines: ['Múa quạt nè! Quạt này quạt cho mát, không quạt cho ai nóng!', 'Con đi không sao đâu, rồi con sẽ về!', 'Ở đây anh em đều ngoan, chỉ thiếu mỗi quạt thôi!', 'Nhớ nhà thì múa một bài cho đỡ nhớ!'],
     chat: [
-      { keys: ['làm', 'an', 'ăn'], reply: 'Chỉ có làm thì mới có ăn… à nhầm, câu đó của anh Huấn. Anh thì chỉ có múa thì mới có quạt!' },
+      { keys: ['làm', 'ăn'], reply: 'Chỉ có làm thì mới có ăn… à nhầm, câu đó của anh Huấn. Anh thì chỉ có múa thì mới có quạt!' },
       { keys: ['tiền'], reply: 'Tiền thì anh không rủ ai đánh bạc nữa đâu. Giờ anh chỉ đếm… nhịp múa thôi.' },
       { keys: ['ra tù', 'về'], reply: 'Anh hứa ra tù sẽ làm công dân tốt. Giờ thì múa tiếp cho qua ngày!' },
       { keys: ['nhớ nhà', 'nhớ mẹ'], reply: 'Anh cũng nhớ nhà lắm. Nhưng mà múa một bài là thấy đỡ nhớ hơn một tí.' },
@@ -49,7 +49,7 @@ const IDOLS = [
     color: 0xf5f5f5, pants: 0x1f2a44, hair: 0x222222, acc: 'rose', model: 'shaun', height: 1.8,
     lines: ['Chỉ có làm thì mới có ăn, không làm mà đòi có ăn thì… thôi, tự hiểu nhé!', 'Các em vào đây thăm thầy là thầy vui rồi!', 'Đạo lý thì nhiều, nhưng quan trọng là phải làm!', 'Thầy ở đây vẫn ổn, các em ở ngoài nhớ làm ăn chân chính nhé!'],
     chat: [
-      { keys: ['làm', 'an', 'ăn'], reply: 'Chỉ có làm thì mới có ăn! Không làm mà đòi có ăn thì chỉ có ăn… đòn thôi!' },
+      { keys: ['làm', 'ăn'], reply: 'Chỉ có làm thì mới có ăn! Không làm mà đòi có ăn thì chỉ có ăn… đòn thôi!' },
       { keys: ['tiền'], reply: 'Tiền kiếm bằng mồ hôi mới bền. Tiền nhanh thì đi cũng nhanh lắm em ạ.' },
       { keys: ['ra tù', 'về'], reply: 'Thầy đang chờ xử lý, chưa có bản án. Các em cứ sống tốt đi, đừng học theo thầy đoạn này.' },
       { keys: ['nhớ nhà', 'nhớ'], reply: 'Nhớ nhà thì gọi về cho bố mẹ đi em. Đừng để tới lúc muốn gọi mà không được.' },
@@ -62,7 +62,7 @@ const IDOLS = [
     color: 0x8a6d3b, pants: 0x333333, hair: 0x111111, acc: 'bowl', model: 'soldierMale', height: 1.82, tint: 'Main',
     lines: ['Có đồ ăn không em? Cho anh xin một miếng!', 'Anh ở đây vẫn khỏe, chỉ thèm bát mì tôm thôi!', 'Ngày xưa anh hay đi ăn chực, giờ thì… vẫn thèm ăn!', 'Cảm ơn em đã vào thăm, nhớ mang theo xúc xích nhé!'],
     chat: [
-      { keys: ['làm', 'an', 'ăn'], reply: 'Ăn thì anh rành lắm! Nhưng mà ăn chực hoài cũng không tốt, các em đừng học anh!' },
+      { keys: ['làm', 'ăn'], reply: 'Ăn thì anh rành lắm! Nhưng mà ăn chực hoài cũng không tốt, các em đừng học anh!' },
       { keys: ['tiền'], reply: 'Tiền thì anh không có, nhưng đồ ăn thì anh xin một miếng được không?' },
       { keys: ['ra tù', 'về'], reply: 'Án anh còn dài lắm. Các em ở ngoài nhớ sống tử tế, đừng dính vào ma túy nhé.' },
       { keys: ['nhớ nhà', 'nhớ'], reply: 'Anh nhớ Nam Định lắm. Nhớ cả những bữa cơm nhà nữa…' },
@@ -84,7 +84,7 @@ const IDOLS = [
     // to, zombie = mặt zombie, knight bạc = mũ kín) — không có model nào hợp.
     lines: ['Livestream của anh lúc nào cũng đông, giờ trong này cũng đông!', 'Các em bấm follow cho anh nhé, dù anh đang… nghỉ livestream dài hạn!', 'Anh xin lỗi mọi người, giờ anh chỉ muốn sống yên ổn thôi!', 'View tăng nhanh thế, các em bấm nhiệt tình quá!'],
     chat: [
-      { keys: ['làm', 'an', 'ăn'], reply: 'Làm livestream thì phải có trách nhiệm với lời nói của mình, em ạ. Anh giờ mới hiểu.' },
+      { keys: ['làm', 'ăn'], reply: 'Làm livestream thì phải có trách nhiệm với lời nói của mình, em ạ. Anh giờ mới hiểu.' },
       { keys: ['tiền'], reply: 'Tiền view thì nhanh, nhưng cái giá phải trả cũng không rẻ đâu em.' },
       { keys: ['ra tù', 'về'], reply: 'Anh đang chờ xử lý, chưa có bản án. Mong mọi người đừng chửi bới nhau nữa.' },
       { keys: ['nhớ nhà', 'nhớ'], reply: 'Anh nhớ nhà, nhớ mẹ lắm. Ở đây anh mới có thời gian nghĩ lại.' },
@@ -177,6 +177,10 @@ function snapshotPortrait(key, height, acc) {
     const grp = new THREE.Group();
     const clone = cloneSkinned(gltf.scene);
     grp.add(clone);
+    // v5.9: đo Box3 sau khi cập nhật matrixWorld + skeleton (xem makeRigFromGLTF)
+    // — không thì soldier-male đo sai 0.714 thay vì 1.841, portrait méo theo.
+    grp.updateMatrixWorld(true);
+    grp.traverse((o) => { if (o.isSkinnedMesh) o.skeleton.update(); });
     const box = new THREE.Box3().setFromObject(grp);
     const size = new THREE.Vector3(); box.getSize(size);
     const ctr = new THREE.Vector3(); box.getCenter(ctr);
@@ -683,6 +687,16 @@ function makeRigFromGLTF(key, gltf, opts) {
   // tính RIÊNG cho từng rig từ o.height.
   let raw = normCache[key];
   if (!raw) {
+    // v5.9 — ĐO ĐÚNG CHIỀU CAO RIG (nguyên nhân gốc Trường Con cao gấp đôi):
+    // Box3.setFromObject trên SkinnedMesh dùng getVertexPosition, mà hàm này
+    // tính từ bone.matrixWorld hiện tại. Lúc clone mới tạo, matrixWorld của
+    // xương chưa được cập nhật nên soldier-male đo được sizeY=0.714 (sai)
+    // thay vì 1.841 → scale 3.12x → cao 5.75m, đầu ở ~4.09m (đúng bảng debug
+    // test v5.8). Đã kiểm chứng bằng three.js thật (node, /tmp/measure_rigs2.mjs):
+    // updateMatrixWorld(true) + skeleton.update() trước khi đo → soldier-male
+    // 1.841, sam/matt/shaun 1.751 (không đổi). Đo xong mới cache số thô.
+    group.updateMatrixWorld(true);
+    group.traverse((o) => { if (o.isSkinnedMesh) o.skeleton.update(); });
     const box = new THREE.Box3().setFromObject(group);
     const size = new THREE.Vector3(); box.getSize(size);
     const center = new THREE.Vector3(); box.getCenter(center);
@@ -699,7 +713,8 @@ function makeRigFromGLTF(key, gltf, opts) {
   const clips = {};
   (gltf.animations || []).forEach((a) => { clips[a.name] = a; });
   const rig = { group, inner, mixer, clips, anim: null, action: null, oneShotTimer: null,
-    speed: 0, targetYaw: 0, height: o.height, key, role: o.role || 'npc' };
+    speed: 0, targetYaw: 0, height: o.height, key, role: o.role || 'npc',
+    boxHeight: raw.sizeY * normScale, normScale };
   group.userData.rig = rig;
   allRigs.push(rig);
   return rig;
@@ -824,11 +839,14 @@ function textSprite(text, scale) {
 // v5.8 — BIỂN Ô IDOL 2 DÒNG: TÊN (to, trên) + SỐ Ô (nhỏ, dưới). Test v5.7:
 // biển 3D chỉ ghi "Ô 01"–"Ô 04", ở cảnh mở đầu không đọc được tên idol nào
 // (tên chỉ có trên thẻ tên gắn trên rig, nhỏ + bị khung ô che một phần).
-// Canvas 1024×256, font tên 92px — chữ cao ~0.26m, đọc được từ camera cảnh
-// mở đầu (13.2m, ~12px) và từ điểm spawn (10m, ~16px). Ô trống giữ textSprite.
+// v5.9: số ô TO HƠN + SÁNG HƠN — test v5.8 đọc được tên ("KHÁ BẢNH",
+// "KHÁNH SKY") nhưng KHÔNG đọc được "Ô 01–04" nào: chữ số 58px vàng mờ
+// #D9B36A chỉ ~7px ở 13.2m nên chìm hẳn. Giờ canvas 1024×320, tên 100px,
+// số ô 76px vàng tươi #FFD34D + vạch ngăn cách, sprite 3.0×0.94 — số ô
+// ~11px ở 13.2m, ~14px ở điểm spawn (10m), đọc được.
 function boothSignSprite(name, label) {
   const c = document.createElement('canvas');
-  c.width = 1024; c.height = 256;
+  c.width = 1024; c.height = 320;
   const ctx = c.getContext('2d');
   ctx.fillStyle = 'rgba(22,33,31,0.92)';
   ctx.beginPath();
@@ -836,13 +854,15 @@ function boothSignSprite(name, label) {
   ctx.fill();
   ctx.strokeStyle = '#C69A50'; ctx.lineWidth = 8; ctx.stroke();
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#E8D9B7'; ctx.font = 'bold 92px system-ui, sans-serif';
-  ctx.fillText(name.toUpperCase(), c.width / 2, 92);
-  ctx.fillStyle = '#D9B36A'; ctx.font = 'bold 58px system-ui, sans-serif';
-  ctx.fillText(label, c.width / 2, 196);
+  ctx.fillStyle = '#E8D9B7'; ctx.font = 'bold 100px system-ui, sans-serif';
+  ctx.fillText(name.toUpperCase(), c.width / 2, 104);
+  ctx.strokeStyle = '#C69A50'; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(140, 178); ctx.lineTo(c.width - 140, 178); ctx.stroke();
+  ctx.fillStyle = '#FFD34D'; ctx.font = 'bold 76px system-ui, sans-serif';
+  ctx.fillText(label, c.width / 2, 248);
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
-  sp.scale.set(2.8, 0.7, 1);
+  sp.scale.set(3.0, 0.94, 1);
   return sp;
 }
 
@@ -1237,8 +1257,9 @@ function updatePlayer(dt) {
   }
 }
 // v5.8 — VỊ TRÍ ĐẦU IDOL THẬT (từ rig đang chạy, không phải điểm tĩnh của ô):
-// tìm bone 'Head' trong rig (tên khớp Quaternius), lấy vị trí thế giới thật;
-// fallback là vị trí rig + 92% chiều cao. Dùng cho bảng debug + chip HEAD.
+// Vị trí MẶT idol thật (dùng cho bảng debug + chip HEAD + camera thăm):
+// tính từ chiều cao rig (88% chiều cao = giữa mặt), KHÔNG dùng xương 'Head'
+// (xem idolHeadWorld — xương Head nằm ở hàm/cổ, thấp hơn mặt thật ~0.5m).
 // Test v5.7 chứng minh chip cũ đo ĐIỂM TĨNH của ô kính (bb.x, 2.0, bb.z-0.35)
 // nên "đúng số mà sai ảnh": camera sau snap cũng tĩnh → HEAD đóng băng ở
 // (-0.42, 0.07) ở cả 2 phòng và cả sau khi rời phòng, trong khi ảnh chụp vẫn
@@ -1256,10 +1277,16 @@ function idolHeadWorld(idolId) {
   const rec = idolRigs[idolId];
   if (!rec || !rec.rig) return null;
   const g = rec.rig.group;
-  let head = null;
-  g.traverse((o) => { if (!head && /head/i.test(o.name || '')) head = o; });
-  if (head) { head.getWorldPosition(_headV); return _headV.clone(); }
-  return new THREE.Vector3(g.position.x, g.position.y + rec.rig.height * 0.92, g.position.z);
+  // v5.9 — VỊ TRÍ MẶT THẬT, KHÔNG PHẢI VỊ TRÍ XƯƠNG 'Head': xương Head của
+  // Quaternius nằm ở HÀM/cổ, không phải giữa mặt — sam: xương ở 1.02m trên
+  // thân 1.75m (58%), soldier-male: 1.20m trên thân 1.84m (65%), trong khi
+  // đỉnh mesh đầu ở 1.48m / 1.84m (đã đo bằng three.js thật, node). Dùng vị
+  // trí xương làm mặt thì camera ngắm thấp hơn mặt thật ~0.5–0.6m (test v5.8:
+  // Trường Con HEAD Y=4.09 nhưng ảnh vẫn chỉ thấy thân — một phần vì rig
+  // cao gấp đôi, một phần vì điểm ngắm đã thấp sẵn). Mặt thật ≈ 88% chiều
+  // cao rig (2.23m → ~1.96m). X/Z lấy từ tâm rig (xương còn lệch ~0.5m về
+  // phía sau so với tâm thân: Head world Z=-0.43 trong khi tâm thân Z=0).
+  return new THREE.Vector3(g.position.x, g.position.y + rec.rig.height * 0.88, g.position.z);
 }
 // v5.8 — NGƯỜI CHƠI CÓ CHẮN TẦM NHÌN TỚI ĐẦU IDOL KHÔNG? So góc giữa
 // hướng camera→đầu idol và camera→người chơi: người chơi ở gần camera hơn
@@ -1302,7 +1329,7 @@ function updateVisitDebug() {
   el.innerHTML =
     'CAM ' + camera.position.x.toFixed(2) + ',' + camera.position.y.toFixed(2) + ',' + camera.position.z.toFixed(2) +
     ' →LOOK ' + look.x.toFixed(2) + ',' + look.y.toFixed(2) +
-    '<br>IDOL ' + (rec ? (rec.rig.group.position.x.toFixed(2) + ',' + rec.rig.group.position.z.toFixed(2)) : '?') +
+    '<br>IDOL ' + (rec ? (rec.rig.group.position.x.toFixed(2) + ',' + rec.rig.group.position.z.toFixed(2) + ' H' + (rec.rig.boxHeight ? rec.rig.boxHeight.toFixed(2) : '?')) : '?') +
     ' HEAD ' + (head ? (head.x.toFixed(2) + ',' + head.y.toFixed(2) + ',' + head.z.toFixed(2)) : '?') +
     ' NDC ' + headNdc +
     '<br>PLAYER ' + (pp ? (pp.x.toFixed(2) + ',' + pp.z.toFixed(2) + ' ' + (playerRig.group.visible ? '👁' : '🙈') + ' ' + (playerRig.anim || '')) : '?') +
@@ -1337,8 +1364,9 @@ function updateCamera(dt) {
     // che từ x≈684) — tệ hơn v5.6. Muốn setViewOffset căn đúng thì vẫn phải
     // lệch lookAt (tới +2.7m) mà ảnh hiện ra Y HỆT offset tay, lại thêm gánh
     // raycast phải đổi hệ NDC — nên GIỮ offset tay, bỏ setViewOffset.
-    // Offset tay đã kiểm chứng đúng: đầu idol ở NDC (-0.42,+0.07) = đúng tâm
-    // dải trái, chân ở -0.94 còn trong khung (kịch bản C của script trên).
+    // v5.9: điểm ngắm ngang giờ tính từ KHE HỞ THẤY ĐƯỢC thật (đo 2 mép panel
+    // bên dưới) thay vì tâm dải 3D trái — đầu idol phải ở NDC x≈-0.12 (giữa
+    // khe, khung 1148px), không còn -0.42 (mép panel trái, test v5.8).
     // v5.8 — CAMERA THĂM LÙI XA + CAO HƠN (biên an toàn): target cũ
     // (bx+0.4, 1.7, -6.6) cách idol chỉ 4.2m, đầu idol ở mép trên khung —
     // test v5.7 phòng Trường Con vẫn chỉ thấy thân/chân, đầu bị cắt hoàn
@@ -1362,19 +1390,45 @@ function updateCamera(dt) {
     // khi anim là idle/wave/bow — KHÔNG ép lúc biểu diễn 'fan' để khỏi đánh
     // nhau với clip múa quạt.
     if (info && info.rig && (info.rig.anim === 'idle' || info.rig.anim === 'wave' || info.rig.anim === 'bow')) info.rig.group.rotation.y = 0;
-    const look = new THREE.Vector3(bx, 2.0, -HALL.z - 1.8);
+    // v5.9 — lookAt y = MẶT IDOL THẬT (idolHeadWorld, ~1.96m), không còn số
+    // cố định 2.0: nếu rig lại sai chiều cao thì camera vẫn bám theo mặt thật.
+    const _head = idolHeadWorld(state.currentIdol);
+    const look = new THREE.Vector3(bx, _head ? _head.y : 2.0, -HALL.z - 1.8);
     if (window.innerWidth > 750) {
-      // Tâm dải 3D trái chỉ đổi khi bề rộng khung đổi → cache theo vw, KHÔNG
-      // gọi getBoundingClientRect mỗi frame (ép layout đồng bộ, tốn FPS).
+      // Tâm khe hở chỉ đổi khi bề rộng khung đổi → cache theo vw, KHÔNG gọi
+      // getBoundingClientRect mỗi frame (ép layout đồng bộ, tốn FPS).
       const vw = ($('gameContainer') || { clientWidth: window.innerWidth }).clientWidth || window.innerWidth;
       if (vw !== visitFraming.vw) {
-        const roomEl = $('visitRoom');
-        const panelW = roomEl ? roomEl.getBoundingClientRect().width + 24 : 464;
-        const visW = Math.max(240, vw - panelW);
-        const ndcX = 2 * (visW / 2 / vw) - 1; // âm: tâm dải trái nằm bên trái giữa màn hình
+        // v5.9 — NGẮM VÀO GIỮA KHE HỞ THẤY ĐƯỢC (đo cả 2 mép thật lúc mở
+        // phòng): v5.6–v5.8 chỉ trừ panel thăm bên phải, mặc định khe bắt đầu
+        // từ mép trái khung (x=0) — nhưng panel vé + nhật ký trái chiếm
+        // ~330px nên đầu idol ở NDC x≈-0.42 rơi đúng mép panel trái, bị che
+        // một nửa (test v5.8: Trường Con NDC -0.42, Khánh Sky -0.45, cả 2 đều
+        // ở mép panel). Giờ mép trái = mép phải xa nhất của cụm vé/nhật ký,
+        // mép phải = mép trái xa nhất của panel thăm/bảng gọi số; ngắm đầu
+        // vào GIỮA khe đó (khung 1148px: khe ~330–684 → tâm ~507px → NDC
+        // ≈ -0.12, nằm hẳn trong vùng nhìn thấy).
+        const gc = $('gameContainer');
+        const gcRect = gc ? gc.getBoundingClientRect() : null;
+        const toGcX = (r) => (gcRect ? r.left - gcRect.left : r.left);
+        let leftEdge = 0, rightEdge = vw;
+        ['ticketCard', 'questTracker'].forEach((id) => {
+          const el = $(id);
+          if (!el || el.hidden) return;
+          const r = el.getBoundingClientRect();
+          if (r.width > 0) leftEdge = Math.max(leftEdge, toGcX(r) + r.width);
+        });
+        ['visitRoom', 'callBoard'].forEach((id) => {
+          const el = $(id);
+          if (!el || el.hidden) return;
+          const r = el.getBoundingClientRect();
+          if (r.width > 0) rightEdge = Math.min(rightEdge, toGcX(r));
+        });
+        const gapC = Math.max(0, Math.min(vw, (leftEdge + rightEdge) / 2));
+        const ndcX = 2 * (gapC / vw) - 1;
         const halfH = Math.atan(Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.aspect);
         const ang = Math.atan(Math.tan(halfH) * ndcX);
-        visitFraming = { vw, offsetX: Math.tan(-ang) * 5.4 }; // v5.8: dz camera→mặt phẳng ngắm = 5.4m (camera mới z=-5.4, ngắm z=-10.8; cũ 4.2m)
+        visitFraming = { vw, offsetX: Math.tan(-ang) * 5.4 }; // dz camera→mặt phẳng ngắm = 5.4m (camera z=-5.4, ngắm z=-10.8)
       }
       look.x = bx + visitFraming.offsetX;
     } else {
@@ -1551,6 +1605,16 @@ function endEstablishing() {
   cam.snap = true; // về camera bám theo bình thường: snap ngay frame đầu
   const gc = $('gameContainer');
   if (gc) gc.classList.remove('estab');
+  // v5.9 — GỢI Ý WASD HIỆN KHI HẾT CẢNH MỞ ĐẦU (không hiện trong 2.5s quay):
+  // hintBar ở giữa màn hình (bottom:340px) che mất 2 biển ô giữa trong lúc
+  // quay cảnh — test v5.8 chỉ đọc được 2 biển bìa trong 2.5s đầu. enterGame
+  // đã nhường việc hiện gợi ý cho hàm này khi cảnh mở đầu đang chạy.
+  if (state.started && !state.no3d) {
+    if (!playerRig) showHint('⏳ Đang tải nhân vật 3D… chờ một chút rồi di chuyển nhé!');
+    else showHint(IS_TOUCH
+      ? '🎮 Kéo joystick để di chuyển, chạm 1 idol phía trên để tự chạy tới ô kính!'
+      : '🎮 WASD di chuyển • tới gần ô kính bấm E để vào thăm. Chạm 1 idol phía trên để tự chạy tới!');
+  }
 }
 function enterGame() {
   // LƯU Ý (v3.1): nút NHẬN VÉ & VÀO SẢNH chỉ mở màn hình chơi — KHÔNG cộng điểm,
@@ -1575,6 +1639,10 @@ function enterGame() {
     showHint('🎮 Đang chơi bản chữ — chạm 1 idol ở thanh phía trên để vào thăm.');
     return;
   }
+  // v5.9: cảnh mở đầu đang chạy thì KHÔNG hiện gợi ý ngay (che biển ô giữa)
+  // — endEstablishing() sẽ hiện khi hết cảnh. Không có cảnh mở đầu (vd bản
+  // chữ đã return ở trên) thì hiện luôn như cũ.
+  if (cam.estab) return;
   if (!playerRig) { showHint('⏳ Đang tải nhân vật 3D… chờ một chút rồi di chuyển nhé!'); }
   else {
     showHint(IS_TOUCH
@@ -1596,6 +1664,7 @@ function openVisit(idolId, source) {
   state.visitMode = true;
   cam.snap = true; // v5.5: đặt thẳng camera thăm vào vị trí đích ngay frame đầu (xem updateCamera) — không damp từ vị trí sảnh.
   cam.snapFrames = 3; // v5.8: snap 3 frame đầu (xem updateCamera)
+  visitFraming.vw = 0; // v5.9: đo lại khe hở thấy được với bố cục lúc thăm (panel thăm đã hiện) — cache cũ tính lúc ở sảnh sẽ sai mép phải.
   // v5.8 — ẨN NGƯỜI CHƠI TRONG LÚC THĂM: người chơi ngồi xổm ở (bx, frontZ),
   // cách camera 0.8–2.0m — dù tính toán cho thấy đầu ngồi ở dưới khung hình,
   // ảnh test v5.7 vẫn chỉ thấy thân/chân; ẩn hẳn người chơi để loại trừ mọi
@@ -1661,8 +1730,9 @@ function openVisit(idolId, source) {
   if (summ) summ.hidden = true;
   // v4: phòng thăm là overlay trong khung game — KHÔNG scrollIntoView (không cuộn trang mobile).
   showHint('🎁 Chọn quà bên dưới để tặng ' + idol.name + '!');
-  const gr = $('giftsRow');
-  if (gr) gr.scrollIntoView({ block: 'nearest' });
+  // v5.9: BỎ gr.scrollIntoView() — nó cuộn cả trang (không chỉ panel), làm
+  // trang nhảy khỏi vị trí lúc người chơi vừa bấm vào phòng thăm; panel đã
+  // cuộn về đầu (room.scrollTop = 0) ở trên là đủ.
   const greetBtn = $('greetIdolBtn');
   if (greetBtn) greetBtn.textContent = '👋 Chào ' + idol.name;
   clearInterval(state.timerId);
@@ -2194,9 +2264,19 @@ function sendChat(text) {
   state.chatCount++;
   state.visitChatCount++;
   const low = text.toLowerCase();
+  // v5.9 — KHỚP CHỦ ĐỀ ĐÚNG (nguyên nhân gốc câu trả lời lệch): trước đây
+  // low.includes(k) lấy mẫu ĐẦU TIÊN khớp chuỗi con — khóa 'an' (đã bỏ)
+  // khớp cả trong "anh"/"bạn" nên hỏi "Anh có nhớ nhà không?" lại nhận mẫu
+  // ăn uống (test v5.8). Giờ: chỉ khớp ở RANH GIỚI TỪ (không khớp trong
+  // lòng từ khác) + ƯU TIÊN KHÓA DÀI NHẤT (cụm "nhớ nhà" thắng từ ngắn).
+  const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   let reply = idol.lines[Math.floor(Math.random() * idol.lines.length)];
+  let bestLen = 0;
   for (const c of idol.chat) {
-    if (c.keys.some((k) => low.includes(k))) { reply = c.reply; break; }
+    for (const k of c.keys) {
+      const re = new RegExp('(^|[^\\p{L}0-9])' + esc(k) + '([^\\p{L}0-9]|$)', 'iu');
+      if (re.test(low) && k.length > bestLen) { bestLen = k.length; reply = c.reply; }
+    }
   }
   setTimeout(() => {
     addChatMsg('idol', idol.name + ': ' + reply);
@@ -2260,7 +2340,11 @@ function startGame() {
         state.gameActive = false;
       }
       restoreBtn();
-    }, 30);
+      // v5.9: nhãn "Đang chuẩn bị…" phải HIỆN ĐỦ LÂU ĐỂ NHÌN THẤY — trước đây
+      // phần nặng chạy sau 30ms nên nhãn chỉ tồn tại ~30ms, ảnh chụp test
+      // không bao giờ bắt được (test v5.8 tưởng nhãn không đổi dù game vẫn
+      // chạy). 250ms vẫn nhanh với người chơi nhưng đủ để mắt thấy phản hồi.
+    }, 250);
   } catch (err) {
     console.error('[thamtu] startGame failed', err);
     toast('⚠️ Mini-game lỗi: ' + (err && err.message ? err.message : err));
@@ -2427,11 +2511,14 @@ function downloadCert(canvasId) {
   a.click();
   toast('📜 Đã tải giấy chứng nhận!');
 }
+let photoBusy = false; // v5.9: chống bấm chụp ảnh dồn — render + toDataURL trên máy render phần mềm tốn hàng giây, bấm 2 lần là 2 lần render nặng chồng nhau (test v5.8: nút chụp phải bấm lần 2 mới nhận).
 function takePhoto() {
   if (state.no3d || !renderer) {
     toast('📸 Bản chữ không chụp được ảnh 3D — dùng giấy chứng nhận bên dưới nhé!');
     return;
   }
+  if (photoBusy) return; // đang chụp dở thì bỏ qua cú bấm mới
+  photoBusy = true;
   // v5.7: KHÔNG làm việc nặng đồng bộ trong handler click — trước đây render +
   // toDataURL 1080p chạy NGAY trong click; trên máy render phần mềm (SwiftShader)
   // toDataURL tốn hàng giây nên trình duyệt báo "trang không phản hồi" và thao
@@ -2469,6 +2556,7 @@ function takePhoto() {
       if (fb) { fb.hidden = false; fb.textContent = '📸 Đã chụp ảnh — xem trước bên dưới, bấm "⬇️ Tải ảnh" để lưu về máy!'; }
       toast('📸 Đã chụp ảnh kỷ niệm!');
     } catch (e) { toast('📸 Không chụp được ảnh: ' + e.message); }
+    photoBusy = false;
   });
 }
 
@@ -2491,6 +2579,12 @@ function doIdolPerform() {
 }
 function interactNear() {
   if (!state.started) return;
+  // v5.9 — ĐANG THĂM THÌ PHÍM E/NÚT THĂM KHÔNG LÀM GÌ: trước đây bấm E trong
+  // lúc thăm (vd focus rơi khỏi ô chat rồi gõ chữ E) gọi lại openVisit() →
+  // reset toàn bộ buổi thăm (chatLog, đồng hồ, điểm buổi thăm) — đó là một
+  // đường làm mất chữ đang gõ ngoài handler keydown (test v5.8 gõ tay thất
+  // bại). Trong phòng thăm đã có nút riêng (Chào/Tặng/Chat/Mini-game).
+  if (state.visitMode) return;
   const b = nearestBooth();
   if (b && b.idolId) { openVisit(b.idolId, 'booth'); return; }
   // Chưa đứng gần ô idol nào: bấm E / nút THĂM là tự đi tới ô idol gần nhất
@@ -2526,7 +2620,16 @@ function bindInput() {
     // nhân gốc vụ gõ tay chat thất bại 2 lần ở test v5.7 (câu hỏi mẫu gửi được
     // vì không gõ phím nào). Enter trên chatInput có listener riêng nên không
     // bị ảnh hưởng.
+    // v5.9 — CHẶN PHÍM GAME CẢ KHI FOCUS ĐANG Ở Ô NHẬP DÙ SỰ KIỆN ĐI TỚI
+    // BODY: test v5.8 gõ tay vẫn thất bại 4/4 cách dù v5.8 đã chặn theo
+    // e.target — công cụ test gửi phím không phải lúc nào cũng đặt target là
+    // ô input (có khi target là body trong khi ô vẫn đang focus). Kiểm tra
+    // thêm document.activeElement thì mọi đường gõ đều an toàn. Cộng thêm
+    // interactNear() giờ tự chặn khi đang thăm (xem hàm đó) nên phím E lạc
+    // cũng không reset được buổi thăm nữa.
     if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+    const ae = document.activeElement;
+    if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) return;
     keys[e.code] = true;
     if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) endEstablishing(); // v5.6: bấm di chuyển là hết cảnh mở đầu
     if (e.code === 'Space' && e.target && e.target.tagName !== 'INPUT') e.preventDefault();
@@ -2684,7 +2787,9 @@ function bindInput() {
   gc.addEventListener('wheel', (e) => {
     e.preventDefault();
     endEstablishing(); // v5.6: lăn zoom là hết cảnh mở đầu
-    cam.dist = clamp(cam.dist + e.deltaY * 0.01, 4, 12);
+    // v5.9: zoom gần nhất 5.5m (cũ 4m) — ở 4m đầu nhân vật choán gần nửa khung
+    // hình (test v5.8: lúc về sảnh, đầu Sam che gần hết nửa trái khung hình).
+    cam.dist = clamp(cam.dist + e.deltaY * 0.01, 5.5, 12);
   }, { passive: false });
   // v5.4: cuộn/chạm trong panel HUD và overlay (nhật ký, bảng gọi số, vé,
   // khay đồ, màn hồ sơ, menu, phòng thăm, hộp thoại) KHÔNG được lọt xuống
@@ -2819,7 +2924,12 @@ function tick() {
       updateMixers(dt);
     }
     // Tạo rig phụ theo ngân sách ~3ms/frame (mobile 1 rig/frame) để không nghẽn main thread.
-    processRigQueue(IS_MOBILE ? 1 : 2, 3);
+    // v5.9 — TẠM DỪNG TẠO RIG NỀN TRONG LÚC THĂM: 1 rig (cloneSkinned + đo Box3
+    // trên hàng chục nghìn đỉnh) tốn 100–500ms trên máy yếu — đúng lúc người
+    // chơi đang gõ chat/bấm nút trong phòng thăm thì main thread nghẽn, công
+    // cụ test báo page_unresponsive và nuốt cú bấm (test v5.8: gõ tay 4/4 cách
+    // đều treo, nút chụp phải bấm lần 2). NPC/người ngồi chờ tạo sau cũng được.
+    if (!state.visitMode) processRigQueue(IS_MOBILE ? 1 : 2, 3);
     perfSum.update += performance.now() - tU0; // v5.6: ms cập nhật logic/frame
     const tR0 = performance.now(); // v5.6: đo ms render WebGL (xem perfSum)
     renderer.render(scene, camera);
@@ -2875,7 +2985,7 @@ function tick() {
       // v5.7: hiện luôn 3 số ms NGAY TRÊN chip FPS (công cụ test không có
       // console nên __thamtuPerf không đọc được — đọc bằng mắt thường).
       // Trong lúc thăm thêm HEAD:x,y để kiểm chứng framing (đầu idol phải
-      // ở x≈-0.42 desktop / y≈+0.6 mobile).
+      // ở x≈-0.12 desktop (giữa khe hở thấy được, v5.9) / y≈+0.6 mobile).
       if (fc) fc.textContent = fps + ' FPS • ' + calls + ' DC' + (resScale < 1 ? ' • ' + Math.round(resScale * 100) + '%' : '') + ' • R:' + msR + ' U:' + msU + ' M:' + msM + (headNdc ? ' • HEAD:' + headNdc[0] + ',' + headNdc[1] : '');
       resFpsSum += fps; resFpsN++;
       if (!resEvalT) resEvalT = nowMs;
