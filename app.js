@@ -467,6 +467,11 @@ const cam = { yaw: 0, pitch: 0.26, dist: 7.5, snap: false, snapFrames: 0, estab:
 // đầu rơi vào NDC +0.67 (sau tấm panel phải). Offset lookAt tay là đúng hình
 // học, đã kiểm chứng bằng three.js thật (/tmp/verify_framing.mjs).
 let visitFraming = { vw: 0, offsetX: 0 };
+// v5.11 — ZOOM TRONG PHÒNG THĂM: khoảng cách camera→idol (mặc định 4.15m
+// như v5.10), lăn chuột đổi 3.2–5.5m (xem handler wheel ở bindInput).
+// Test v5.10 lăn chuột không đổi camera vì handler cũ chỉ đổi cam.dist
+// (camera sảnh), nhánh thăm không dùng cam.dist.
+let visitDist = 4.15;
 // v5.5: cam.snap=true → lần updateCamera tới ĐẶT THẲNG camera vào vị trí đích,
 // KHÔNG damp từ vị trí cũ (xem updateCamera). Đặt snap ở mọi lần chuyển cảnh.
 // v5.6: cam.estab — cảnh mở đầu 2.5s sau khi vào sảnh (xem startEstablishing):
@@ -810,6 +815,90 @@ function attachAccessory(rig, kind) {
     cap.position.y = 0.15; head.add(cap);
   }
 }
+// v5.11 — NÉT MẶT VẼ THÊM (mắt/lông mày/mũi/miệng): file GLB gốc KHÔNG CÓ
+// mắt/mũi/miệng — atlas 512×512 của sam/matt/shaun chỉ là các mảng màu phẳng,
+// tấm 'Face' của soldier-male là tấm trắng trơn (đo bằng three.js thật:
+// /tmp/face_head_v511.mjs — chỉ lấy đỉnh chịu ảnh hưởng của xương Head,
+// skinWeight > 0.25). Không đổi file model; gắn geometry nhỏ lên xương Head
+// (theo đầu khi idol quay/vẫy tay), đặt theo tâm mặt đo thật từng model
+// (80% chiều cao rig, xem idolHeadWorld). Kích thước tính cho khoảng cách
+// thăm 4.15m (mặt ~75px ngang): mắt Ø~0.056m ≈ 8px, miệng rộng ~0.08m ≈
+// 12px — đủ đọc; zoom thăm 3.2m thì mắt ~11px. Tọa độ tâm mặt (unscaled,
+// tọa độ inner): sam/matt/shaun mặt hướng -Z trong tư thế bind (đầu nằm sau
+// tâm thân ~0.47m); soldier-male lấy tâm tấm Face (mặt trước z=0.163).
+const FACE_U = {
+  sam:         { x: -0.014, y: 1.401, z: -0.245 },
+  matt:        { x: -0.012, y: 1.401, z: -0.252 },
+  shaun:       { x: -0.013, y: 1.401, z: -0.101 },
+  soldierMale: { x: -0.055, y: 1.465, z: 0.163 },
+};
+// Mặt trước z TẠI TỪNG NÉT (unscaled, tọa độ inner) — đo thật bằng three.js
+// (/tmp/face_surface2_v511.mjs: z lớn nhất của đỉnh đầu trong cửa sổ ±0.05
+// quanh nét). Mặt nghiêng trong tư thế bind nên má lùi sau chóp mũi khác
+// nhau từng nét (matt mắt -0.285, shaun miệng -0.225); dùng chung mặt phẳng
+// chóp mũi (FACE_U.z) sẽ làm mắt/miệng lơ lửng 3–15cm trước mặt. soldier-male:
+// tấm Face là mesh phẳng riêng, mặt trước z=0.163 cho mọi nét.
+const FACE_SURF = {
+  sam:         { eyeL: -0.260, eyeR: -0.260, browL: -0.260, browR: -0.260, nose: -0.246, mouth: -0.246 },
+  matt:        { eyeL: -0.285, eyeR: -0.285, browL: -0.303, browR: -0.318, nose: -0.275, mouth: -0.252 },
+  shaun:       { eyeL: -0.103, eyeR: -0.104, browL: -0.103, browR: -0.104, nose: -0.101, mouth: -0.225 },
+  soldierMale: { eyeL: 0.163, eyeR: 0.163, browL: 0.163, browR: 0.163, nose: 0.163, mouth: 0.163 },
+};
+function attachFace(rig) {
+  if (!rig || !rig.group || !rig.inner) return false;
+  const head = findBone(rig.group, ['Head']);
+  const fu = FACE_U[rig.key];
+  const fs = FACE_SURF[rig.key];
+  if (!head || !fu || !fs) return false;
+  // Cập nhật matrix xương (bind pose) rồi mới đo — giống v5.9 (Box3 đo sai
+  // khi matrixWorld chưa cập nhật). Gắn lúc rig vừa tạo, trước khi setAnim
+  // nên xương còn ở bind pose; nét mặt là con của xương Head nên theo đầu
+  // qua mọi animation (idle/wave/bow) sau đó.
+  rig.group.updateMatrixWorld(true);
+  rig.group.traverse((o) => { if (o.isSkinnedMesh) o.skeleton.update(); });
+  rig.group.updateMatrixWorld(true);
+  const s = rig.normScale || 1;
+  const ip = rig.inner.position; // offset (-cx,-minY,-cz), unscaled
+  // Căn trục nét mặt theo world (xương Head lệch ~5–9° so với rig — không
+  // căn thì lông mày/miệng bị nghiêng theo xương). fwd = hướng nhìn của mặt
+  // (trục +Z local của xương Head, theo world) — nét mặt lồi ra đúng hướng
+  // mặt, không lồi theo +Z world khi đầu nghiêng.
+  const hq = new THREE.Quaternion(); head.getWorldQuaternion(hq);
+  const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(hq);
+  hq.invert();
+  const dark = new THREE.MeshStandardMaterial({ color: 0x2a1a12, roughness: 0.55 });
+  const mouthMat = new THREE.MeshStandardMaterial({ color: 0x8a3a2e, roughness: 0.6 });
+  const noseMat = new THREE.MeshStandardMaterial({ color: 0xc68e5a, roughness: 0.7 });
+  // dx/dy: offset world (m) quanh tâm mặt; surfZ: mặt má tại đúng nét đó
+  // (unscaled, xem FACE_SURF); protrude: lồi ra theo hướng mặt (m) — nửa
+  // sau của nét chìm vào mặt nên không lơ lửng, không chìm hẳn.
+  const add = (mesh, dx, dy, surfZ, protrude, rz) => {
+    const local = new THREE.Vector3(fu.x + dx / s + ip.x, fu.y + dy / s + ip.y, surfZ + ip.z);
+    const wp = rig.group.localToWorld(local);
+    wp.addScaledVector(fwd, protrude);
+    mesh.position.copy(head.worldToLocal(wp));
+    // Căn trục theo world + góc xoay riêng (miệng cười cần xoay 180° quanh Z
+    // trong khung world — KHÔNG set mesh.rotation trước vì quaternion dưới
+    // đây ghi đè nó).
+    mesh.quaternion.copy(hq);
+    if (rz) mesh.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), rz));
+    mesh.castShadow = false; mesh.receiveShadow = false;
+    head.add(mesh);
+  };
+  [-1, 1].forEach((side) => {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.028, 10, 8), dark);
+    eye.scale.set(1, 1, 0.55); // hơi dẹt, ôm sát mặt (nửa sau chìm vào mặt)
+    add(eye, side * 0.10, 0.035, side < 0 ? fs.eyeL : fs.eyeR, 0.010);
+    const brow = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.014, 0.012), dark);
+    add(brow, side * 0.10, 0.078, side < 0 ? fs.browL : fs.browR, 0.004);
+  });
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.020, 8, 8), noseMat);
+  nose.scale.set(0.9, 1.25, 0.6);
+  add(nose, 0, -0.008, fs.nose, 0.006);
+  const mouth = new THREE.Mesh(new THREE.TorusGeometry(0.032, 0.0075, 8, 16, Math.PI), mouthMat);
+  add(mouth, 0, -0.062, fs.mouth, 0.006, Math.PI); // nửa dưới vòng tròn = nụ cười (∪)
+  return true;
+}
 function addNameTag(rig, text, y, big) {
   const c = document.createElement('canvas');
   // v5.7: thẻ tên idol TO HƠN để đọc được từ camera cảnh mở đầu (cách 13.2m):
@@ -1061,6 +1150,7 @@ async function loadPriorityModels() {
   // khỏi trục ngắm nên ngoài khung hình, nhìn thẳng ra cả 4 ô idol.
   playerRig.group.position.set(0, 0, 4);
   attachAccessory(playerRig, 'cap');
+  attachFace(playerRig); // v5.11: nét mặt (xem attachFace)
   addNameTag(playerRig, state.playerName || 'Bạn');
   scene.add(playerRig.group);
   player = playerRig.group;
@@ -1080,6 +1170,7 @@ async function loadPriorityModels() {
     rig.group.rotation.y = 0;
     if (d.tint) tintMaterial(rig, d.tint, 0xff8a3d); // áo tù cam (chỉ vật liệu không texture)
     attachAccessory(rig, d.acc);
+    attachFace(rig); // v5.11: nét mặt idol (xem attachFace)
     addNameTag(rig, d.name, rig.height + 0.4, true); // v5.7: thẻ tên idol to (xem addNameTag)
     scene.add(rig.group);
     idolRigs[d.id] = { rig, boothX: b.x, boothZ: b.z };
@@ -1425,7 +1516,12 @@ function updateCamera(dt) {
     // toàn thân còn trong khung; mobile mặt ở 28% từ đỉnh (dải thấy được
     // 0–48%), không đổi look.y=0.63. Hệ số offsetX dưới đây đổi theo
     // khoảng cách mới (5.4 → 4.15).
-    const target = new THREE.Vector3(bx + 0.4, 1.9, -HALL.z + 2.6);
+    // v5.11 — CAMERA THĂM THEO visitDist (zoom lăn chuột, xem bindInput):
+    // idolZ = vị trí idol (b.z-0.35); mặc định visitDist=4.15m → z=-6.4
+    // như v5.10. Zoom gần nhất 3.2m vẫn còn toàn thân trong khung, xa nhất
+    // 5.5m mặt vẫn ~57px (kiểm chứng bằng three.js thật, /tmp/verify_v511.mjs).
+    const idolZ = b ? b.z - 0.35 : -10.55;
+    const target = new THREE.Vector3(bx + 0.4, 1.9, idolZ + visitDist);
     // v5.8 — SNAP 3 FRAME ĐẦU: snap 1 lần (v5.5) có thể bị nhánh khác nuốt mất
     // (vd updateCamera chạy trước khi openVisit set xong trạng thái); ép snap
     // liên tiếp 3 frame sau khi mở phòng để camera chắc chắn đứng đúng chỗ.
@@ -1449,7 +1545,7 @@ function updateCamera(dt) {
       // Tâm khe hở chỉ đổi khi bề rộng khung đổi → cache theo vw, KHÔNG gọi
       // getBoundingClientRect mỗi frame (ép layout đồng bộ, tốn FPS).
       const vw = ($('gameContainer') || { clientWidth: window.innerWidth }).clientWidth || window.innerWidth;
-      if (vw !== visitFraming.vw) {
+      if (vw !== visitFraming.vw || visitDist !== visitFraming.dist) {
         // v5.9 — NGẮM VÀO GIỮA KHE HỞ THẤY ĐƯỢC (đo cả 2 mép thật lúc mở
         // phòng): v5.6–v5.8 chỉ trừ panel thăm bên phải, mặc định khe bắt đầu
         // từ mép trái khung (x=0) — nhưng panel vé + nhật ký trái chiếm
@@ -1479,7 +1575,7 @@ function updateCamera(dt) {
         const ndcX = 2 * (gapC / vw) - 1;
         const halfH = Math.atan(Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.aspect);
         const ang = Math.atan(Math.tan(halfH) * ndcX);
-        visitFraming = { vw, offsetX: Math.tan(-ang) * 4.15 }; // v5.10: dz camera→mặt phẳng ngắm = 4.15m (camera z=-6.4, ngắm z=-10.8) — v5.9 là 5.4m
+        visitFraming = { vw, dist: visitDist, offsetX: Math.tan(-ang) * visitDist }; // v5.11: dz camera→mặt phẳng idol = visitDist (v5.10 cố định 4.15m); cache tính lại khi đổi khoảng cách zoom
       }
       look.x = bx + visitFraming.offsetX;
     } else {
@@ -1716,6 +1812,11 @@ function openVisit(idolId, source) {
   cam.snap = true; // v5.5: đặt thẳng camera thăm vào vị trí đích ngay frame đầu (xem updateCamera) — không damp từ vị trí sảnh.
   cam.snapFrames = 3; // v5.8: snap 3 frame đầu (xem updateCamera)
   visitFraming.vw = 0; // v5.9: đo lại khe hở thấy được với bố cục lúc thăm (panel thăm đã hiện) — cache cũ tính lúc ở sảnh sẽ sai mép phải.
+  visitDist = 4.15; // v5.11: mỗi buổi thăm bắt đầu ở khoảng cách mặc định (zoom tay lần trước không mang sang buổi sau).
+  // v5.11: mở phòng mới thì tắt cờ tổng kết (trường hợp vào thăm lại từ màn
+  // tổng kết — lúc đó quick bar/call-board đang bị ẩn, xem showVisitSummary).
+  const gc1 = $('gameContainer');
+  if (gc1) gc1.classList.remove('show-summary');
   // v5.8 — ẨN NGƯỜI CHƠI TRONG LÚC THĂM: người chơi ngồi xổm ở (bx, frontZ),
   // cách camera 0.8–2.0m — dù tính toán cho thấy đầu ngồi ở dưới khung hình,
   // ảnh test v5.7 vẫn chỉ thấy thân/chân; ẩn hẳn người chơi để loại trừ mọi
@@ -1802,6 +1903,18 @@ function openVisit(idolId, source) {
     if (ir.bottom > rr.bottom) room.scrollTop += ir.bottom - rr.bottom + 12;
     else if (ir.top < rr.top) room.scrollTop -= rr.top - ir.top + 12;
   }
+  // v5.11 — NÚT MINI-GAME HIỆN NGAY TỪ ĐẦU (desktop): test v5.10 lần bấm
+  // đầu thất bại vì nút còn ngoài vùng nhìn (phải cuộn bảng mới thấy).
+  // Cuộn thêm vừa đủ để nút hiện, nhưng không đẩy ô chat ra khỏi khung
+  // (cả 2 cùng thấy trên desktop; mobile panel quá ngắn nên giữ ưu tiên
+  // ô chat như v5.10 — rect đo lại sau lần cuộn chat ở trên).
+  const gb = $('gameStartBtn');
+  if (room && gb && ci && window.innerWidth > 750) {
+    const rr2 = room.getBoundingClientRect(), gr2 = gb.getBoundingClientRect(), cr2 = ci.getBoundingClientRect();
+    const need = gr2.bottom - rr2.bottom + 12;
+    const maxScroll = cr2.top - rr2.top - 12;
+    if (need > 0 && maxScroll > 0) room.scrollTop += Math.min(need, maxScroll);
+  }
   if (summ) summ.hidden = true;
   // v4: phòng thăm là overlay trong khung game — KHÔNG scrollIntoView (không cuộn trang mobile).
   showHint('🎁 Chọn quà bên dưới để tặng ' + idol.name + '!');
@@ -1836,6 +1949,9 @@ function closeVisitToLobby(msg) {
   state.visitMode = false;
   state.currentIdol = null;
   stopGame();
+  // v5.11: hiện lại HUD sảnh đã ẩn trong lúc tổng kết mở (xem showVisitSummary).
+  const gc0 = $('gameContainer');
+  if (gc0) gc0.classList.remove('show-summary');
   // v5.8: hiện lại người chơi đã ẩn trong lúc thăm (openVisit) + ẩn bảng debug.
   if (playerRig) playerRig.group.visible = true;
   const dbg = $('visitDebug');
@@ -1893,6 +2009,12 @@ function showVisitSummary(msg) {
   const room = $('visitRoom'), summ = $('visitSummary');
   if (room) room.hidden = true;
   if (summ) { summ.hidden = false; summ.scrollTop = 0; }
+  // v5.11 — TỔNG KẾT KHÔNG CHE HUD SẢNH: panel tổng kết là cột phải
+  // full-height trên desktop nên đè lên phần phải của thanh chọn nhanh (chip
+  // Khánh Sky) + bảng gọi số (test v5.10) — nhìn thì bấm được mà bấm không ăn.
+  // Ẩn 2 HUD đó trong lúc tổng kết mở (hiện lại ở closeVisitToLobby/openVisit).
+  const gc = $('gameContainer');
+  if (gc) gc.classList.add('show-summary');
   if (msg) toast(msg);
   state.visitMode = false;
   state.currentIdol = null;
@@ -2316,6 +2438,7 @@ function swapPlayerModel(key) {
   playerRig.group.rotation.y = yaw;
   playerRig.targetYaw = yaw;
   attachAccessory(playerRig, 'cap');
+  attachFace(playerRig); // v5.11: nét mặt (xem attachFace)
   addNameTag(playerRig, state.playerName || 'Bạn');
   scene.add(playerRig.group);
   player = playerRig.group;
@@ -2784,6 +2907,7 @@ function bindInput() {
   $('downloadCertBtn').addEventListener('click', () => downloadCert());
   $('summaryCertBtn').addEventListener('click', () => downloadCert('summaryCertCanvas'));
   $('summaryLobbyBtn').addEventListener('click', () => { closeVisitToLobby(); });
+  $('summaryLobbyBtnTop').addEventListener('click', () => { closeVisitToLobby(); }); // v5.11: nút Về sảnh ở đầu bảng tổng kết (xem index.html)
   $('photoVisitBtn').addEventListener('click', takePhoto);
   $('refillInvBtn').addEventListener('click', refillInventory);
   $('refillInvBtn2').addEventListener('click', refillInventory);
@@ -2874,6 +2998,16 @@ function bindInput() {
   gc.addEventListener('wheel', (e) => {
     e.preventDefault();
     endEstablishing(); // v5.6: lăn zoom là hết cảnh mở đầu
+    if (state.visitMode && state.currentIdol) {
+      // v5.11 — ZOOM TRONG PHÒNG THĂM: test v5.10 lăn chuột không đổi camera
+      // vì nhánh thăm bỏ qua cam.dist. Giờ lăn đổi visitDist 3.2–5.5m (mặc
+      // định 4.15m): tiến lại gần xem mặt idol, lùi ra xem toàn thân. Làm
+      // tròn 0.01 để cache visitFraming không tính lại vô ích mỗi frame.
+      // (Wheel trên panel thăm đã bị chặn stopPropagation để panel tự cuộn
+      // — chỉ lăn trên vùng 3D hở mới tới đây, đúng như ý đồ.)
+      visitDist = Math.round(clamp(visitDist + e.deltaY * 0.005, 3.2, 5.5) * 100) / 100;
+      return;
+    }
     // v5.9: zoom gần nhất 5.5m (cũ 4m) — ở 4m đầu nhân vật choán gần nửa khung
     // hình (test v5.8: lúc về sảnh, đầu Sam che gần hết nửa trái khung hình).
     cam.dist = clamp(cam.dist + e.deltaY * 0.01, 5.5, 12);
