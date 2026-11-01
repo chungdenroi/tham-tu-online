@@ -266,7 +266,11 @@ const state = {
   currentIdol: null, visitSeconds: 180, visitPoints: 0, sentCount: 0,
   timerId: null, gameTimerId: null, gameActive: false, gameScore: 0,
   ticket: null, queueNum: 14, started: false, visitMode: false,
-  autoWalkTo: null, targetBooth: null, no3d: false, threeReady: false
+  autoWalkTo: null, targetBooth: null, no3d: false, threeReady: false,
+  // v5.2: lastMoveAt — lần cuối người chơi thực sự di chuyển (để hộp thoại NPC
+  // chỉ bật khi người chơi chủ động tới gần); dialogDismissedFor — ô idol đã
+  // bấm "Tiếp tục" ở hộp thoại chào (không bật lại khi còn đứng đó).
+  lastMoveAt: 0, dialogDismissedFor: null
 };
 function save() {
   store.set('points', state.points);
@@ -408,7 +412,7 @@ const flyItems = [];
 const allRigs = [];
 let raycaster = null, pointerNDC = null;
 const keys = {};
-const cam = { yaw: 0, pitch: 0.22, dist: 6 }; // v5.1: camera mặc định gần + thấp hơn (v5: 0.32/7.5), hướng về dãy ô kính
+const cam = { yaw: 0, pitch: 0.26, dist: 7.5 }; // v5.2: lùi camera thêm 1.5 (v5.1: 6) + nâng lên (pitch 0.26, ty 2.6) — v5.1 đầu/tóc nhân vật che ~1/4 màn hình vì camera quá gần + thấp
 const joy = { active: false, x: 0, y: 0, id: null };
 let fpsFrames = 0, fpsTime = 0;
 let jumpV = 0, playerJumpY = 0;
@@ -730,8 +734,11 @@ function buildHall() {
   mkWall(0.4, 4.5, HALL.z * 2 + 6, HALL.x + 3, 2.25, 0);
   const sign = textSprite('SẢNH THĂM NUÔI • 1999', 1.4); sign.position.set(0, 4.1, -HALL.z - 2.7); scene.add(sign);
   for (const [x, z] of [[-8, -4], [8, -4], [-8, 4], [8, 4]]) {
+    // v5.2 FPS: cột KHÔNG đổ bóng nữa — v5.1 có ~124 mesh tĩnh (cột + thanh
+    // khung + bàn của 24 buồng) trong shadow pass; giờ shadow pass chỉ còn
+    // người chơi + 4 idol (~25-30 mesh).
     const col = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.4, 4.2, 10), mat(0x594538));
-    col.position.set(x, 2.1, z); col.castShadow = true; scene.add(col);
+    col.position.set(x, 2.1, z); scene.add(col);
     obstacles.push({ x, z, r: 0.7 });
     const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 10), new THREE.MeshStandardMaterial({ color: 0xffe9a8, emissive: 0xffc93f, emissiveIntensity: 1.4 }));
     lamp.position.set(x, 3.9, z); scene.add(lamp);
@@ -751,15 +758,17 @@ function buildHall() {
     // còn 4 thanh viền gỗ + mặt kính trong suốt → idol nhìn thấy rõ qua kính.
     const woodM = mat(0x594538);
     const barT = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.28, 0.18), woodM);
-    barT.position.y = 2.55; barT.castShadow = true; grp.add(barT);
+    barT.position.y = 2.55; grp.add(barT);
     const barB = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.28, 0.18), woodM);
-    barB.position.y = 0.14; barB.castShadow = true; grp.add(barB);
+    barB.position.y = 0.14; grp.add(barB);
     const barL = new THREE.Mesh(new THREE.BoxGeometry(0.28, 2.6, 0.18), woodM);
-    barL.position.set(-1.46, 1.35, 0); barL.castShadow = true; grp.add(barL);
+    barL.position.set(-1.46, 1.35, 0); grp.add(barL);
     const barR = new THREE.Mesh(new THREE.BoxGeometry(0.28, 2.6, 0.18), woodM);
-    barR.position.set(1.46, 1.35, 0); barR.castShadow = true; grp.add(barR);
+    barR.position.set(1.46, 1.35, 0); grp.add(barR);
+    // v5.2 FPS: kính dùng MeshStandardMaterial thay cho MeshPhysicalMaterial
+    // (shader physical đắt nhất, 24 tấm kính = 24 lần tính physical/frame).
     const glass = new THREE.Mesh(new THREE.PlaneGeometry(2.75, 2.1),
-      new THREE.MeshPhysicalMaterial({ color: 0x9fd8e8, transparent: true, opacity: 0.18, roughness: 0.08, metalness: 0 }));
+      new THREE.MeshStandardMaterial({ color: 0x9fd8e8, transparent: true, opacity: 0.18, roughness: 0.08, metalness: 0 }));
     glass.position.set(0, 1.45, 0.12); grp.add(glass);
     // Loa liên lạc trên khung phải + đèn huỳnh quang trong buồng (emissive,
     // không tốn thêm đèn thật — giữ FPS): idol không còn đứng trong bóng tối.
@@ -775,13 +784,22 @@ function buildHall() {
       tube.position.set(0, 2.42, -0.4); grp.add(tube);
     }
     const table = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.12, 0.7), mat(0x6b4a2f));
-    table.position.set(0, 0.85, 0.35); table.castShadow = true; grp.add(table);
+    table.position.set(0, 0.85, 0.35); grp.add(table);
     const chair = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.5, 0.6), mat(0x33544C));
     chair.position.set(0, 0.25, 0.9); grp.add(chair);
     const num = textSprite(b.idol ? b.idol.name : ('Ô ' + String(idx + 1).padStart(2, '0')), b.idol ? 1 : 0.8);
     num.position.set(0, 3.05, 0.2); grp.add(num);
     scene.add(grp);
     booths.push({ x: b.x, z: b.z, idolId: b.idol ? b.idol.id : null, boothNo: idx + 1, frontX: b.x, frontZ: b.rotY ? b.z : (b.z > 0 ? HALL.z - 0.6 : -HALL.z + 1.6), rotY: b.rotY || 0 });
+  });
+  // v5.2: đèn fill RIÊNG trước mặt từng idol (ngang mặt, trong buồng) — đèn
+  // chung 1 cái trước dãy ô (v5.1) tới 2 idol bìa quá xa (hơn 10m, decay 1.7)
+  // nên mặt vẫn tối; đèn huỳnh quang emissive trên đầu chỉ sáng đỉnh đầu.
+  booths.forEach((b) => {
+    if (!b.idolId) return;
+    const face = new THREE.PointLight(0xffe9a8, 5, 5, 1.6);
+    face.position.set(b.x, 1.7, b.z + 1.1);
+    scene.add(face);
   });
 }
 
@@ -834,9 +852,9 @@ async function loadPriorityModels() {
     const d = IDOLS.find((x) => x.model === modelKey);
     if (!d || idolRigs[d.id]) return;
     const key = pick(d.model);
-    // v5.1: idol to hơn 15% + đứng sát kính hơn (z - 0.35 thay vì -0.6) để nhìn
-    // rõ toàn thân qua ô kính; đèn buồng + đèn chung trước dãy ô đã thêm.
-    const rig = makeRigFromGLTF(key, modelCache[key], { height: d.height * 1.15, name: d.id, shadow: true, role: 'idol' });
+    // v5.2: idol to hơn nữa (×1.2 thay vì ×1.15) để nhìn rõ mặt cả khi đứng
+    // xa trong sảnh; đứng sát kính hơn (z - 0.35 thay vì -0.6).
+    const rig = makeRigFromGLTF(key, modelCache[key], { height: d.height * 1.2, name: d.id, shadow: true, role: 'idol' });
     const b = booths.find((x) => x.idolId === d.id);
     rig.group.position.set(b.x, 0, b.z - 0.35);
     rig.group.rotation.y = 0;
@@ -907,7 +925,11 @@ function initThree() {
   // tắt antialias trên mobile; preserveDrawingBuffer:false (chụp ảnh render lại riêng).
   // v5.1 FPS: tắt antialias hẳn (SwiftShader/software render rất tốn với MSAA),
   // DPR tối đa 1.0 cả desktop (v5: 1.25) — số pixel phải vẽ giảm ~36% so với v5.
-  renderer = new THREE.WebGLRenderer({ canvas, antialias: false, preserveDrawingBuffer: false });
+  // v5.2: kiểm tra exposure/tonemapping TRƯỚC khi tăng sáng vô tội vạ:
+  // renderer đang dùng tonemapping mặc định (NoToneMapping) + output sRGB,
+  // nên mặt idol tối là do THIẾU ĐÈN đặt đúng chỗ (xem đèn fill từng buồng
+  // trong buildHall), không phải do exposure. Chỉ tăng nhẹ hemisphere.
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: false, preserveDrawingBuffer: false, powerPreference: 'high-performance' });
   renderer.setPixelRatio(1.0);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -920,7 +942,7 @@ function initThree() {
   clock = new THREE.Clock();
   raycaster = new THREE.Raycaster();
   pointerNDC = new THREE.Vector2();
-  scene.add(new THREE.HemisphereLight(0xFFF2D0, 0x233B37, 1.35));
+  scene.add(new THREE.HemisphereLight(0xFFF2D0, 0x233B37, 1.5));
   const sun = new THREE.DirectionalLight(0xffe9a8, 1.6);
   sun.position.set(8, 12, 6); sun.castShadow = true;
   // v5.1: shadow map nhỏ lại nữa (256 desktop / 128 mobile, v5: 512/256),
@@ -930,10 +952,9 @@ function initThree() {
   sun.shadow.camera.top = 14; sun.shadow.camera.bottom = -14;
   scene.add(sun);
   const warm = new THREE.PointLight(0xff8a3d, 25, 18, 1.8); warm.position.set(0, 3.6, -6); scene.add(warm);
-  // v5.1: 1 đèn chung trước dãy ô kính idol (0, 2.6, -8.2) — soi sáng cả 4 idol
-  // sau kính mà chỉ tốn 1 point light (không đặt 1 đèn/buồng).
-  const boothLight = new THREE.PointLight(0xffe9a8, 30, 16, 1.7);
-  boothLight.position.set(0, 2.6, -8.2); scene.add(boothLight);
+  // v5.2: BỎ đèn chung trước dãy ô kính (v5.1: 1 PointLight ở (0,2.6,-8.2),
+  // tới 2 idol bìa hơn 10m nên mặt vẫn tối) — thay bằng 4 đèn fill riêng
+  // trước mặt từng idol trong buildHall. Tổng đèn: hemi + sun + warm + 4 fill = 7.
   buildHall();
   resize();
   window.addEventListener('resize', resize);
@@ -1047,11 +1068,16 @@ function updateCamera(dt) {
   // idol bị che sau lưng người chơi, đi tới ô kính thì camera chui qua tường.
   const tx = player.position.x + Math.sin(cam.yaw) * cd;
   const tz = player.position.z + Math.cos(cam.yaw) * cd;
-  const ty = 2.2 + Math.sin(cam.pitch) * cd;
+  const ty = 2.6 + Math.sin(cam.pitch) * cd;
   camera.position.x = damp(camera.position.x, tx, 8, dt);
   camera.position.y = damp(camera.position.y, ty, 8, dt);
   camera.position.z = damp(camera.position.z, tz, 8, dt);
-  camera.lookAt(player.position.x, 1.5, player.position.z);
+  // v5.2: kẹp camera trong sảnh (tường trong ở x ±15.8, z ±11.8) — không chui
+  // qua tường khi người chơi đứng sát mép sảnh.
+  camera.position.x = clamp(camera.position.x, -15.5, 15.5);
+  camera.position.y = clamp(camera.position.y, 1.4, 9);
+  camera.position.z = clamp(camera.position.z, -11.5, 11.5);
+  camera.lookAt(player.position.x, 1.6, player.position.z);
 }
 function updateNPCs(dt) {
   for (const n of npcs) {
@@ -1232,7 +1258,7 @@ function endVisit(msg) {
   if (playerRig && playerRig.anim !== 'idle') setAnim(playerRig, 'idle');
   // v5.1: camera quay về hướng dãy ô kính phía bắc (yaw 0 = camera phía nam
   // nhìn về bắc), không quay vào vách tối như v5.
-  cam.yaw = 0; cam.pitch = 0.22; cam.dist = 6;
+  cam.yaw = 0; cam.pitch = 0.26; cam.dist = 7.5;
   document.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
   // v4: overlay chỉ ẩn đi, không cuộn trang — người chơi ở lại đúng chỗ trong sảnh.
   showHint(IS_TOUCH ? 'Chạm 1 idol phía trên để thăm người tiếp theo!' : 'Chọn idol khác ở thanh phía trên để thăm tiếp!');
@@ -1301,7 +1327,7 @@ function flyGift(g, rig) {
 /* ================= RPG: túi đồ, nhiệm vụ, bảng vàng, hộp thoại, minimap ================= */
 const MISSIONS = [
   { id: 'visit', text: 'Thăm 1 idol trong ngày', reward: 20 },
-  { id: 'greet', text: 'Chào 1 idol (nút 👋 hoặc bấm vào idol)', reward: 5 },
+  { id: 'greet', text: 'Chào 1 idol (nút 👋 / bấm idol)', reward: 5 },
   { id: 'gift', text: 'Tặng 1 món đồ thăm nuôi', reward: 10 },
   { id: 'chat', text: 'Chat với idol 3 câu', reward: 15 },
   { id: 'game', text: 'Chơi 1 mini-game', reward: 15 }
@@ -1361,7 +1387,9 @@ function renderMissions() {
     html.push('<li class="' + (done ? 'done' : '') + '">' + (done ? '✅ ' : '🔲 ') + m.text + ' <span class="reward">+' + m.reward + 'đ</span></li>');
   });
   const doneCount = MISSIONS.filter((m) => state.missions.done[m.id]).length;
-  html.push('<li>🎯 Đã thăm <b>' + state.visited.size + '/4</b> idol • Hoàn thành <b>' + doneCount + '/' + MISSIONS.length + '</b> nhiệm vụ • Reset 00:00</li>');
+  // v5.2: dòng tổng kết ngắn lại cho vừa 1 dòng trong nhật ký (không quấn
+  // 2 dòng làm nhật ký tràn + cắt nửa dòng).
+  html.push('<li>🎯 Đã thăm <b>' + state.visited.size + '/4</b> • Xong <b>' + doneCount + '/' + MISSIONS.length + '</b> • Reset 00:00</li>');
   ['missionsList', 'menuMissionsList'].forEach((id) => {
     const ul = $(id);
     if (ul) ul.innerHTML = html.join('');
@@ -1469,9 +1497,24 @@ function showRpgDialog(name, avatar, text, choices) {
   $('rpgDialog').hidden = false;
 }
 function hideRpgDialog() {
+  // v5.2: hộp thoại chào idol chỉ hiện 1 lần/ô — bấm "Tiếp tục" thì ghi nhớ ô
+  // đã chào, không bật lại khi người chơi còn đứng đó; chỉ hiện lại khi đã
+  // rời ô rồi quay lại (dialogDismissedFor được xóa khi nearestBooth() trống).
+  // Bấm "Tiếp tục" xong thì khung nhắc tương tác (nút VÀO THĂM) hiện lại
+  // qua updateNearPrompt() — không bật lại hộp thoại.
+  if (state.dialogKey && state.dialogKey.indexOf('idol:') === 0) {
+    state.dialogDismissedFor = state.dialogKey.slice(5);
+  }
   $('rpgDialog').hidden = true;
   state.dialogKey = null;
   state.dialogUntil = Date.now() + 8000;
+}
+function openNpcDialog(n) {
+  showRpgDialog(n.name, '🧑', NPC_LINES[Math.floor(Math.random() * NPC_LINES.length)], [
+    { label: 'Chào bạn!', reply: 'Chào bạn! Chúc bạn thăm idol vui vẻ nhé!' },
+    { label: 'Bạn đang chờ ai vậy?', reply: 'Tôi chờ thăm người thân. Sảnh này đông lắm, lấy số rồi ngồi chờ thôi!' }
+  ]);
+  state.dialogKey = 'npc:' + n.name;
 }
 function checkProximityDialog() {
   if (!state.started || state.visitMode || Date.now() < state.dialogUntil) return;
@@ -1480,9 +1523,14 @@ function checkProximityDialog() {
   if (state.autoWalkTo) return;
   if (!$('rpgDialog').hidden) return;
   const b = nearestBooth();
+  // Rời khỏi mọi ô kính thì cho phép chào lại khi quay lại ô đó.
+  if (!b || !b.idolId) state.dialogDismissedFor = null;
   if (b && b.idolId) {
     const d = IDOLS.find((x) => x.id === b.idolId);
     const key = 'idol:' + d.id;
+    // v5.2: đã bấm "Tiếp tục" ở ô này rồi thì KHÔNG bật lại (phải bấm E /
+    // nút VÀO THĂM để vào phòng thăm) — v5.1: hết cooldown 8s là bật lại.
+    if (state.dialogDismissedFor === d.id) return;
     if (state.dialogKey !== key) {
       showRpgDialog(d.name, d.emoji, d.lines[0], DIALOG_CHOICES[d.id]);
       state.dialogKey = key;
@@ -1490,25 +1538,36 @@ function checkProximityDialog() {
     return;
   }
   if (player) {
+    // v5.2: hộp thoại NPC CHỈ bật khi người chơi CHỦ ĐỘNG tới gần: vừa di
+    // chuyển trong 2 giây qua + đang đối mặt NPC + khoảng cách vừa thu hẹp
+    // từ ngoài 2.5m vào trong 2m. v5.1: NPC đi ngang qua người đang đứng yên
+    // cũng bật thoại (vd NPC Chị Lan).
+    if (Date.now() - (state.lastMoveAt || 0) >= 2000) return;
+    const fx = Math.sin(player.rotation.y), fz = Math.cos(player.rotation.y);
     for (const n of npcs) {
-      const dd = Math.hypot(n.rig.group.position.x - player.position.x, n.rig.group.position.z - player.position.z);
-      if (dd < 2) {
-        const key = 'npc:' + n.name;
-        if (state.dialogKey !== key) {
-          showRpgDialog(n.name, '🧑', NPC_LINES[Math.floor(Math.random() * NPC_LINES.length)], [
-            { label: 'Chào bạn!', reply: 'Chào bạn! Chúc bạn thăm idol vui vẻ nhé!' },
-            { label: 'Bạn đang chờ ai vậy?', reply: 'Tôi chờ thăm người thân. Sảnh này đông lắm, lấy số rồi ngồi chờ thôi!' }
-          ]);
-          state.dialogKey = key;
-        }
-        return;
-      }
+      const dx = n.rig.group.position.x - player.position.x;
+      const dz = n.rig.group.position.z - player.position.z;
+      const dd = Math.hypot(dx, dz);
+      // Đánh dấu "đã từng ở xa": chỉ bật thoại khi người chơi ĐI TỪ ngoài
+      // 2.5m vào trong 2m (không bật khi đã đứng sát NPC từ trước).
+      if (dd > 2.5) { n._wasFar = true; continue; }
+      if (dd >= 2 || !n._wasFar) continue;
+      if ((dx * fx + dz * fz) / Math.max(dd, 0.01) < 0.2) continue; // NPC phải ở phía trước mặt (chưa đối mặt thì giữ _wasFar để quay lại vẫn bật)
+      n._wasFar = false;
+      const key = 'npc:' + n.name;
+      if (state.dialogKey !== key) openNpcDialog(n);
+      return;
     }
   }
   state.dialogKey = null;
 }
-/* Minimap sảnh — v5: chấm idol TO, viền trắng, vẽ sau ô kính để luôn nổi;
-   trước đây idol chỉ là ô vàng 8x6px lẫn với ô kính nên nhìn như không có. */
+/* Minimap sảnh — v5.2: vẽ lại thứ tự + tọa độ (v5.1 test vẫn không thấy chấm
+   idol vàng — nguyên nhân: chấm r=7 quá nhỏ, ngôi sao ĐEN phủ gần hết đĩa
+   vàng nên nhìn như 4 vòng tròn rỗng; ô idol ở z=-10.2 nằm NGOÀI khung sảnh
+   đã vẽ nên chấm trôi lẻ loi trên mép minimap).
+   - Vẽ vành đai buồng (bao cả 2 dãy ô kính z ±10.2) + khung sảnh bên trong.
+   - Ô idol: ô nền vàng đồng TRƯỚC, chấm idol ĐẶC to r=9 + viền trắng + sao
+     TRẮNG vẽ SAU ô kính và SAU chấm NPC, người chơi (tam giác hồng) vẽ cuối. */
 function drawMinimap() {
   const cv = $('minimap');
   if (!cv || !cv.getContext) return;
@@ -1517,10 +1576,18 @@ function drawMinimap() {
   ctx.fillStyle = '#16211F'; ctx.fillRect(0, 0, W, H);
   const px = (x) => ((x + 17) / 34) * W;
   const pz = (z) => ((z + 12.5) / 25) * H;
+  // Vành đai buồng (bao dãy ô kính bắc/nam + 2 bên) rồi mới tới khung sảnh.
+  ctx.strokeStyle = '#4E6E63'; ctx.lineWidth = 1;
+  ctx.strokeRect(px(-14.6), pz(-11.4), px(14.6) - px(-14.6), pz(11.4) - pz(-11.4));
   ctx.strokeStyle = '#C69A50'; ctx.lineWidth = 2;
   ctx.strokeRect(px(-HALL.x), pz(-HALL.z), px(HALL.x) - px(-HALL.x), pz(HALL.z) - pz(-HALL.z));
   booths.forEach((b) => {
-    if (b.idolId) return; // ô idol vẽ riêng ở dưới, to và nổi hơn
+    if (b.idolId) {
+      // Ô có idol: ô nền vàng đồng để phân biệt với ô trống, chấm vẽ sau.
+      ctx.fillStyle = '#8A6A34';
+      ctx.fillRect(px(b.x) - 5, pz(b.z) - 3.5, 10, 7);
+      return;
+    }
     ctx.fillStyle = '#668D87';
     ctx.fillRect(px(b.x) - 3, pz(b.z) - 2, 6, 4);
   });
@@ -1528,16 +1595,17 @@ function drawMinimap() {
     ctx.fillStyle = '#3FE0D0';
     ctx.beginPath(); ctx.arc(px(n.rig.group.position.x), pz(n.rig.group.position.z), 3, 0, 7); ctx.fill();
   });
-  // Chấm idol: vòng tròn vàng đồng lớn + viền trắng — không lẫn với ô kính.
+  // Chấm idol: hình tròn ĐẶC vàng đồng to + viền trắng + sao trắng — vẽ sau
+  // ô kính và sau chấm NPC nên không bị che; không dùng sao đen nữa.
   booths.forEach((b) => {
     if (!b.idolId) return;
     const x = px(b.x), y = pz(b.z);
-    ctx.fillStyle = '#C69A50';
-    ctx.beginPath(); ctx.arc(x, y, 7, 0, 7); ctx.fill();
-    ctx.strokeStyle = '#FFF6E8'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(x, y, 7, 0, 7); ctx.stroke();
-    ctx.fillStyle = '#16211F';
-    ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#D9B36A';
+    ctx.beginPath(); ctx.arc(x, y, 9, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#FFF6E8'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(x, y, 9, 0, 7); ctx.stroke();
+    ctx.fillStyle = '#FFF6E8';
+    ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('★', x, y + 0.5);
   });
   if (player) {
@@ -1564,7 +1632,9 @@ function updateHudBars() {
   const base = p >= 500 ? 500 : p >= 200 ? 200 : p >= 80 ? 80 : 0;
   const pct = clamp(((p - base) / (next - base)) * 100, 0, 100);
   const d = new Date();
-  const clockTxt = '🕐 ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ' • reset 00:00';
+  // v5.2: đồng hồ nhật ký chỉ còn giờ:phút (bỏ "• reset 00:00" — thông tin
+  // reset đã có ở dòng tổng kết cuối nhật ký; giữ tiêu đề nhật ký 1 dòng).
+  const clockTxt = '🕐 ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
   const sig = energy + '|' + p + '|' + next + '|' + pct.toFixed(1) + '|' + clockTxt;
   if (sig === hudSig) return;
   hudSig = sig;
@@ -1993,6 +2063,21 @@ function bindInput() {
         if (hits.length) greetIdol();
       }
     }
+    // v5.2: bấm vào NPC trong sảnh để CHỦ ĐỘNG bắt chuyện (không chờ NPC tự
+    // bật thoại) — chỉ khi đứng gần (< 4m) và không có hộp thoại nào đang mở.
+    if (moved < 8 && state.threeReady && !state.no3d && !state.visitMode && state.started && player && $('rpgDialog').hidden) {
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointerNDC.set(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
+      raycaster.setFromCamera(pointerNDC, camera);
+      for (const n of npcs) {
+        if (!n.rig) continue;
+        const hits = raycaster.intersectObject(n.rig.group, true);
+        if (!hits.length) continue;
+        const dd = Math.hypot(n.rig.group.position.x - player.position.x, n.rig.group.position.z - player.position.z);
+        if (dd < 4) openNpcDialog(n);
+        break;
+      }
+    }
   });
   gc.addEventListener('pointercancel', (e) => {
     if (e.pointerId === camPointerId) { dragging = false; camPointerId = null; }
@@ -2032,12 +2117,32 @@ let tickRunning = false;
 let minimapAccum = 0;
 let idleYaw = 0;
 let previewAngle = 0;
-let tickFrame = 0;
+let activeMixers = 0;
+/* v5.2 FPS — cập nhật AnimationMixer có chọn lọc, đếm số mixer đang chạy để
+   báo cáo hiệu năng thật:
+   - Người ngồi chờ (occ): clip Sit là LoopOnce — chạy xong là đứng yên hẳn,
+     không update mixer nữa (v5.1 còn update frame chẵn).
+   - NPC: chỉ update khi cách camera ≤ 15m — xa hơn thì đứng yên, lại gần
+     mới chạy tiếp (đi lại thì vẫn cập nhật vị trí trong updateNPCs).
+   - Player + idol: luôn update. */
+function updateMixers(dt) {
+  activeMixers = 0;
+  for (const r of allRigs) {
+    if (!r.action) continue;
+    if (!r.action.isRunning()) continue; // clip LoopOnce đã xong → đứng yên hẳn
+    if (r.role === 'npc' && camera) {
+      const d = Math.hypot(r.group.position.x - camera.position.x, r.group.position.z - camera.position.z);
+      if (d > 15) continue;
+    }
+    r.mixer.update(dt);
+    activeMixers++;
+  }
+}
 function updateCameraIdle(dt) {
   // Khi chỉ lỗi tải model: giữ sảnh 3D sống động bằng camera quay chậm quanh sảnh.
   if (!camera) return;
   idleYaw += dt * 0.06;
-  const r = 12;
+  const r = 11;
   camera.position.set(Math.sin(idleYaw) * r, 5.5, Math.cos(idleYaw) * r);
   camera.lookAt(0, 1.2, 0);
 }
@@ -2057,7 +2162,6 @@ function tick() {
   tickRunning = true;
   requestAnimationFrame(tick);
   const dt = clock ? Math.min(0.05, clock.getDelta()) : 0.016;
-  tickFrame++;
   if (state.threeReady) {
     if (!state.no3d) {
       if (!state.started && playerRig) {
@@ -2065,18 +2169,15 @@ function tick() {
         updatePreviewCamera(dt);
         if (playerRig.anim !== 'idle') setAnim(playerRig, 'idle');
       } else {
+        // v5.2: ghi lại lần cuối người chơi thực sự di chuyển — hộp thoại NPC
+        // chỉ bật khi người chơi chủ động tới gần (xem checkProximityDialog).
+        const px0 = player ? player.position.x : 0, pz0 = player ? player.position.z : 0;
         updatePlayer(dt);
         updateCamera(dt);
+        if (player && Math.hypot(player.position.x - px0, player.position.z - pz0) > 0.01) state.lastMoveAt = Date.now();
       }
       updateNPCs(dt);
-      // v5.1 FPS: bỏ qua mixer của rig mà clip LoopOnce đã chạy xong (người ngồi
-      // chờ ở tư thế ngồi) — v5 update cả ~31 mixer mỗi frame; giờ chỉ còn
-      // player + 4 idol (full) + 6 NPC (nửa tốc) ≈ 8 mixer/frame.
-      for (const r of allRigs) {
-        if (r.action && !r.action.isRunning()) continue;
-        if (r.role === 'npc' || r.role === 'occ') { if (tickFrame % 2 === 0) r.mixer.update(dt * 2); }
-        else r.mixer.update(dt);
-      }
+      updateMixers(dt);
       for (let i = flyItems.length - 1; i >= 0; i--) {
         const f = flyItems[i];
         const p = (performance.now() - f.startTime) / 900;
@@ -2092,15 +2193,23 @@ function tick() {
     } else {
       // Chỉ lỗi tải model: sảnh vẫn render, camera quay chậm, rig nào có thì vẫn động.
       updateCameraIdle(dt);
-      for (const r of allRigs) { if (r.action && !r.action.isRunning()) continue; r.mixer.update(dt); }
+      updateMixers(dt);
     }
     // Tạo rig phụ theo ngân sách ~3ms/frame (mobile 1 rig/frame) để không nghẽn main thread.
     processRigQueue(IS_MOBILE ? 1 : 2, 3);
     renderer.render(scene, camera);
     fpsFrames++; fpsTime += dt;
     if (fpsTime >= 1) {
+      // v5.2: đọc số đo hiệu năng THẬT sau mỗi lần render (draw calls /
+      // triangles / mixer đang chạy / mesh đổ bóng) để lần test sau kiểm
+      // chứng được, không đoán mò. Chip FPS hiện luôn số draw call.
+      const fps = Math.round(fpsFrames / fpsTime);
+      let calls = 0, tris = 0, shadowCasters = 0;
+      if (renderer) { calls = renderer.info.render.calls; tris = renderer.info.render.triangles; }
+      if (scene) scene.traverse((o) => { if (o.castShadow) shadowCasters++; });
+      window.__thamtuPerf = { fps, calls, triangles: tris, mixers: activeMixers, shadowCasters };
       const fc = $('fpsChip');
-      if (fc) fc.textContent = Math.round(fpsFrames / fpsTime) + ' FPS';
+      if (fc) fc.textContent = fps + ' FPS • ' + calls + ' DC';
       fpsFrames = 0; fpsTime = 0;
     }
   }
