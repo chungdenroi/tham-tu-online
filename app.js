@@ -1243,8 +1243,16 @@ function updatePlayer(dt) {
 // nên "đúng số mà sai ảnh": camera sau snap cũng tĩnh → HEAD đóng băng ở
 // (-0.42, 0.07) ở cả 2 phòng và cả sau khi rời phòng, trong khi ảnh chụp vẫn
 // sai. Số đo phải tính từ rig thật, mỗi frame, mới phân xử được.
-const _headV = new THREE.Vector3();
+// v5.8-fix: KHÔNG new THREE.* ở top-level của module. THREE = null cho tới
+// khi boot3D() import xong (dòng 446/519) — bản v5.8 cấp phát vector tạm ngay
+// ở đây nên sập lúc tải trang ("Cannot read properties of null (reading
+// 'Vector3')" ở 0.0s, cả module chết → bindInput không chạy → toàn bộ UI đơ:
+// danh sách idol trống, nút NHẬN VÉ không phản ứng, FPS "—"). Vector tạm chỉ
+// cấp phát lười bên trong idolHeadWorld(), vốn chỉ gọi sau khi THREE đã tải.
+let _headV = null;
 function idolHeadWorld(idolId) {
+  if (!THREE) return null;
+  if (!_headV) _headV = new THREE.Vector3();
   const rec = idolRigs[idolId];
   if (!rec || !rec.rig) return null;
   const g = rec.rig.group;
