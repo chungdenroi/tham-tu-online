@@ -100,11 +100,15 @@ main{max-width:1180px;margin:0 auto;padding:16px}
    v5.2: cấu trúc GRID với hàng riêng biệt (đầu / lưới chọn nhân vật / vé /
    chú thích) — v5.1 dùng flex column: lưới flex:1 co lại dưới nội dung
    (preview min-height:300px) nên phần tràn của lưới vẽ ĐÈ LÊN footer, thẻ vé
-   + dấu duyệt che mất hàng Shaun và chữ Sam. Giờ lưới có hàng minmax(320px,1fr)
+   + dấu duyệt che mất hàng Shaun và chữ Sam. Giờ lưới có hàng minmax(280px,1fr)
    + overflow:hidden nên không gì tràn ra ngoài được; footer là hàng riêng,
-   nền ĐẶC, z-index riêng, vé + dấu chỉ nằm trong footer. */
-.start-screen{position:absolute;inset:0;z-index:var(--z-modal);display:grid;grid-template-rows:auto minmax(320px,1fr) auto auto;padding:20px 24px;overflow-y:auto;background:#16211F;border-bottom:3px solid var(--gold-dark)}
-.champ-head{text-align:center;margin-bottom:10px;flex:none}
+   nền ĐẶC, z-index riêng, vé + dấu chỉ nằm trong footer.
+   v5.4: giảm chiều cao tối thiểu (lưới 320→280px, preview 300→260px) +
+   padding/margin gọn lại để vé + nút vào sảnh vừa trong khung game 640px
+   mà không bị cắt ở mép dưới; khung thấp hơn thì màn hồ sơ cuộn được
+   (overflow-y:auto) + padding dưới 28px để vé không dính sát mép. */
+.start-screen{position:absolute;inset:0;z-index:var(--z-modal);display:grid;grid-template-rows:auto minmax(280px,1fr) auto auto;padding:14px 24px 28px;overflow-y:auto;background:#16211F;border-bottom:3px solid var(--gold-dark)}
+.champ-head{text-align:center;margin-bottom:6px;flex:none}
 .champ-grid{display:grid;grid-template-columns:220px 1fr 300px;gap:20px;min-height:0;overflow:hidden;align-items:stretch}
 .champ-list{display:flex;flex-direction:column;gap:10px;overflow-y:auto;min-height:0;position:relative;z-index:1}
 .champion-option{display:flex;align-items:center;gap:12px;background:rgba(42,69,63,.95);border:2px solid var(--line);border-radius:8px;padding:10px;color:var(--ink);text-align:left;transition:transform .1s ease,border-color .1s ease,box-shadow .1s ease;min-width:0}
@@ -117,7 +121,7 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 .champ-meta{min-width:0}
 .champ-meta b{display:block;font-family:var(--font-title);font-size:1.25rem;letter-spacing:1px}
 .champ-meta small{color:var(--muted)}
-.champ-preview{position:relative;border:1px solid rgba(198,154,80,.55);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;text-align:center;padding:16px;background:radial-gradient(ellipse at 50% 75%,rgba(83,103,123,.35),transparent 65%);min-height:300px;overflow:hidden}
+.champ-preview{position:relative;border:1px solid rgba(198,154,80,.55);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;text-align:center;padding:16px;background:radial-gradient(ellipse at 50% 75%,rgba(83,103,123,.35),transparent 65%);min-height:260px;overflow:hidden}
 .champ-preview-img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;z-index:0;pointer-events:none}
 .champ-preview-fallback{display:flex;flex-direction:column;align-items:center;gap:8px;margin:auto;color:var(--muted);position:relative;z-index:1}
 .champ-preview-fallback p{margin:0;font-size:.9rem}
@@ -130,7 +134,7 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 .stat-bar{flex:1;min-width:0;height:10px;border-radius:999px;background:#16211F;border:1px solid var(--line);overflow:hidden}
 .stat-fill{height:100%;background:linear-gradient(90deg,var(--glass),var(--gold2));border-radius:999px;transition:width .3s ease}
 .stat-row b{width:28px;flex:none;text-align:right;font-family:var(--font-hud);font-size:1.1rem}
-.champ-footer{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:16px;padding:12px 16px;background:#16211F;border:1px solid var(--gold-dark);border-radius:10px;flex:none;flex-wrap:wrap;position:relative;z-index:2;isolation:isolate}
+.champ-footer{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:10px;padding:12px 16px;background:#16211F;border:1px solid var(--gold-dark);border-radius:10px;flex:none;flex-wrap:wrap;position:relative;z-index:2;isolation:isolate}
 .ticket-stub{display:flex;align-items:center;gap:16px;background:var(--paper);color:var(--paper-ink);border-radius:6px;padding:10px 16px;min-width:0;flex:1;border-left:6px solid var(--red);overflow:hidden}
 .ticket-stub .stamp{flex:none}
 .ticket-stub-left{display:flex;flex-direction:column;min-width:0}
@@ -141,7 +145,7 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 .file-line{overflow-wrap:anywhere}
 .file-store{display:block}
 .champ-play{font-size:1.25rem;padding:16px 32px;font-family:var(--font-title);letter-spacing:1px;white-space:nowrap}
-.champ-footnote{text-align:center;margin:10px 0 0;text-shadow:0 1px 4px #000}
+.champ-footnote{text-align:center;margin:8px 0 4px;text-shadow:0 1px 4px #000}
 
 /* ===== Vé thăm (góc trái trên) — tờ vé giấy kem =====
    v5.2: gọn lại (~25px) để nhật ký bên dưới đủ chỗ hiện đủ 5 dòng nhiệm vụ
@@ -195,10 +199,16 @@ main{max-width:1180px;margin:0 auto;padding:16px}
    nhiệm vụ + dòng tổng kết, KHÔNG cắt nửa dòng: dòng nhiệm vụ gọn (padding
    3px, line-height 1.35), chữ đồng hồ chỉ còn giờ:phút, dòng tổng kết ngắn
    lại (xem renderMissions). Panel vẫn cuộn được khi màn hình thấp. */
-/* v5.3: nhật ký dời lên (top 150) + cao hơn (tối đa 300px) để đủ 5 dòng
-   nhiệm vụ + dòng tổng kết không cuộn; mép dưới vẫn trên joystick
-   (ở khung 640px: 150 + 230 = 380 < 388 là mép trên joystick). */
-.quest-tracker{position:absolute;left:12px;top:150px;z-index:var(--z-quest);max-width:300px;max-height:clamp(96px,calc(100% - 410px),300px);overflow-y:auto;pointer-events:auto;scrollbar-width:thin}
+/* v5.4: nhật ký gọn hơn nữa + cuộn ĐƯỢC THẬT (xem bindInput: wheel/touch
+   trong panel đã chặn lan xuống camera). Tính lại bằng số thật: khung game
+   cao min(72vh,640px); joystick cao 120px ở bottom:132px → mép trên joystick
+   ở H-252; tracker top:150px. Nội dung sau khi gọn: tiêu đề ~25 + 6 dòng
+   ×~21 + margin/padding ~22 ≈ 175px. max-height H-380: khung 640 → 260
+   (vừa hết, mép dưới 150+175=325 < 388); khung 576 (viewport cao 800px)
+   → 196 (vừa hết); khung 518 (viewport 720px) → 138 (cuộn được, ~5 dòng
+   hiện, không còn cắt nửa dòng vì dòng đã gọn 1 dòng + cuộn hoạt động).
+   overscroll-behavior:contain để lăn tới mép panel không cuộn tiếp trang. */
+.quest-tracker{position:absolute;left:12px;top:150px;z-index:var(--z-quest);max-width:300px;max-height:clamp(96px,calc(100% - 380px),300px);overflow-y:auto;pointer-events:auto;scrollbar-width:thin;overscroll-behavior:contain}
 .quest-tracker.collapsed .missions{display:none}
 .quest-toggle{flex:none;padding:2px 9px;font-size:.9rem}
 .journal{background:var(--paper);color:var(--paper-ink);border-radius:4px;border-left:6px solid var(--red);box-shadow:0 6px 18px rgba(0,0,0,.45)}
@@ -206,11 +216,11 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 .journal .bar-label{color:var(--red);font-family:var(--font-title);letter-spacing:1px;font-size:1rem;white-space:normal}
 .journal .fine{color:var(--paper-muted)}
 .missions{list-style:none;padding:0;margin:6px 0 0}
-/* v5.3: mỗi dòng nhiệm vụ gọn lại thành đúng 1 dòng (font nhỏ hơn, padding
-   2px, line-height 1.25, nowrap + ellipsis) — không quấn 2 dòng rồi bị
-   cắt nửa dòng ở mép dưới panel như v5.2. */
-.missions li{background:rgba(35,59,55,.06);border:1px solid rgba(35,59,55,.25);border-left:4px solid var(--gold);border-radius:6px;padding:2px 8px;margin-bottom:3px;font-size:.82rem;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--paper-ink)}
-.missions li.done{opacity:.65;text-decoration:line-through;border-left-color:var(--green)}
+/* v5.4: mỗi dòng nhiệm vụ gọn hơn nữa (font .8rem, padding 1px, line-height
+   1.2 → ~21px/dòng) để 5 dòng nhiệm vụ + dòng tổng kết vừa trong panel ở
+   cả khung game 576px (viewport cao 800px), không chỉ khung 640px. */
+.missions li{background:rgba(35,59,55,.06);border:1px solid rgba(35,59,55,.25);border-left:4px solid var(--gold);border-radius:6px;padding:1px 8px;margin-bottom:2px;font-size:.8rem;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--paper-ink)}
+.missions li.done{opacity:1;text-decoration:line-through;text-decoration-color:rgba(35,59,55,.45);text-decoration-thickness:1px;border-left-color:var(--green);background:rgba(122,154,91,.14)}
 .missions .reward{color:var(--red);font-weight:700}
 
 /* ===== HUD dưới: khay tiếp tế (giữa) + nút hành động (phải) ===== */
@@ -259,12 +269,21 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 .menu-section p{margin:.3em 0}
 .mobile-menu-bar{display:none}
 
-/* ===== Phòng thăm — overlay trong khung game, không cuộn trang ===== */
+/* ===== Phòng thăm — tấm đáy trong khung game: phần trên vẫn thấy idol 3D ===== */
 .screen{display:none}
 .screen.active{display:block}
-.visit-overlay{position:absolute;inset:0;z-index:90;overflow-y:auto;background:linear-gradient(180deg,rgba(22,33,31,.10) 0%,rgba(22,33,31,.92) 36%);padding:0}
-.visit-room{margin:32vh 12px 12px}
-.visit-head{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:start}
+.visit-overlay{position:absolute;inset:0;z-index:90;background:linear-gradient(180deg,rgba(22,33,31,0) 0%,rgba(22,33,31,.45) 30%,rgba(22,33,31,.92) 55%);padding:0}
+.visit-overlay.active{display:flex;flex-direction:column;justify-content:flex-end}
+.visit-room{margin:0 12px 12px;max-height:64%;overflow-y:auto}
+.visit-head{position:sticky;top:0;z-index:2;display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:start;background:var(--panel);margin:-16px -16px 8px;padding:12px 16px 8px;border-bottom:1px solid var(--line)}
+/* Màn tổng kết buổi thăm: cùng dạng tấm đáy với phòng thăm */
+.visit-summary{margin:0 12px 12px;max-height:64%;overflow-y:auto;text-align:center}
+.summary-list{list-style:none;padding:0;margin:12px 0;text-align:left}
+.summary-list li{display:flex;justify-content:space-between;gap:12px;padding:8px 4px;border-bottom:1px dashed var(--line);font-size:.95rem}
+.summary-list li b{white-space:nowrap}
+.summary-cert{margin:8px 0}
+#summaryCertBtn{width:100%;font-size:1.15rem;padding:14px 20px}
+.summary-actions{margin-top:12px}
 .timer-box{text-align:right}
 .timer-box b{display:block;font-size:2rem;color:var(--gold2);font-variant-numeric:tabular-nums;font-family:var(--font-hud)}
 .visit-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
@@ -272,6 +291,8 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 .gifts{display:flex;flex-wrap:nowrap;gap:8px;overflow-x:auto;padding-bottom:4px}
 .gift-btn{flex:none;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;color:var(--ink);font-weight:700}
 .gift-btn:hover{border-color:var(--gold2)}
+.gift-btn:active{transform:scale(.96);border-color:var(--gold2)}
+.gift-btn:disabled{opacity:.55}
 .chat-log{height:170px;overflow-y:auto;background:#16211F;border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:10px}
 .chat-msg{margin:6px 0;max-width:88%;padding:8px 12px;border-radius:8px}
 .chat-msg.you{margin-left:auto;background:var(--red);color:#FFF6E8}
@@ -290,6 +311,7 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 .tap-big{font-size:1.4rem;padding:18px 26px;border-radius:10px;background:linear-gradient(90deg,var(--red),#7A2E1D);color:#FFF6E8;border:none;font-weight:800}
 .report-btn{position:absolute;background:#B91C1C;color:#fff;border:none;border-radius:8px;padding:8px 12px}
 #certCanvas{width:100%;height:auto;border-radius:8px;border:1px solid var(--gold);background:#FFF6E8}
+#summaryCertCanvas{width:100%;height:auto;border-radius:8px;border:1px solid var(--gold);background:#FFF6E8;margin:8px 0}
 
 /* ===== Lobby panels (desktop) ===== */
 .lobby-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;margin-top:16px}
@@ -412,7 +434,8 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 40px;color:var(--muted);
   .champ-footer{flex-direction:column;gap:10px}
   .ticket-stub{width:100%;justify-content:space-between}
   .champ-play{width:100%}
-  .visit-room{margin:28vh 8px 8px}
+  .visit-room{margin:0 8px 8px;max-height:66%}
+  .visit-summary{margin:0 8px 8px;max-height:66%}
   .menu-panel{max-height:88%}
 }
 /* Màn hình nhỏ ≤380px: thu nhỏ minimap/joystick/nút */
