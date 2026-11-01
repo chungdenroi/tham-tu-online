@@ -84,6 +84,12 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 .hud-layer{pointer-events:none}
 .hud-layer button,.hud-layer input,.hud-layer .inv-slot{pointer-events:auto}
 .boot-log{position:absolute;left:12px;top:12px;z-index:var(--z-toast);max-width:72%;font-family:var(--font-mono);font-size:.75rem;color:var(--muted);background:rgba(22,33,31,.85);border:1px solid var(--line);border-radius:6px;padding:4px 8px;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* v5.8 — BẢNG DEBUG PHÒNG THĂM: chỉ hiện khi đang thăm, góc dưới trái vùng 3D,
+   chữ mono nhỏ, nền mờ, không nhận click (pointer-events:none) — đọc từ ảnh
+   chụp là biết camera thật đang làm gì (test v5.7: chip HEAD đóng băng vì đo
+   điểm tĩnh của ô). Mobile: tấm đáy che nửa dưới nên dời lên góc trên trái,
+   dưới dòng boot-log. */
+.visit-debug{position:absolute;left:12px;bottom:12px;z-index:15;max-width:min(520px,54%);font-family:var(--font-mono);font-size:.72rem;line-height:1.5;color:#D8F0E0;background:rgba(10,18,16,.82);border:1px solid var(--line);border-radius:8px;padding:6px 10px;pointer-events:none;white-space:pre-wrap;word-break:break-word}
 .webgl-error{position:absolute;top:0;left:0;right:0;z-index:var(--z-toast);display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;text-align:center;padding:10px 14px;background:rgba(60,20,10,.96);border-bottom:2px solid var(--orange);font-size:.9rem;pointer-events:none}
 .webgl-error button{pointer-events:auto}
 .webgl-error b{color:#FFD34D}
@@ -294,7 +300,14 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 .visit-overlay .visit-room,.visit-overlay .visit-summary{pointer-events:auto}
 .visit-overlay.active{display:flex;flex-direction:column;justify-content:flex-end}
 .visit-room{margin:0 12px 12px;max-height:64%;overflow-y:auto}
-.visit-head{position:sticky;top:0;z-index:2;display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:start;background:var(--panel);margin:-16px -16px 8px;padding:12px 16px 8px;border-bottom:1px solid var(--line)}
+.visit-head{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:start;background:var(--panel);margin:-16px -16px 8px;padding:12px 16px 8px;border-bottom:1px solid var(--line)}
+/* v5.8 — Nút "Về sảnh" / "Kết thúc buổi thăm" luôn bấm được: test v5.7 có 1 lần
+   nút Về sảnh bị che không bấm được (bấm lại thì được). Header đã sticky nhưng
+   z-index cũ chỉ 2 — nâng lên 5, nút có position riêng để không element nào
+   trong panel đè lên được (toast/bong bóng thoại đều pointer-events:none nên
+   không phải thủ phạm; khả năng cao là cú bấm rơi đúng lúc trang đơ — nút vẫn
+   phải ở lớp trên cùng để lần sau không bị che dù là nguyên nhân gì). */
+#backToLobbyBtn,#endVisitBtn{position:relative;z-index:3}
 /* Màn tổng kết buổi thăm: cùng dạng tấm đáy với phòng thăm */
 .visit-summary{margin:0 12px 12px;max-height:64%;overflow-y:auto;text-align:center}
 .summary-list{list-style:none;padding:0;margin:12px 0;text-align:left}
@@ -365,6 +378,9 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 .leaderboard li:first-child{border-color:var(--gold);background:rgba(198,154,80,.18)}
 .share-row{display:flex;flex-wrap:wrap;gap:8px}
 .feedback{color:var(--green);font-weight:700}
+/* v5.8 — ẢNH CHỤP XEM TRƯỚC trong panel thăm (thay cho tự tải file trong rAF). */
+.photo-preview{display:block;max-width:100%;border:1px solid var(--line);border-radius:8px;margin:8px 0}
+#photoDownloadBtn{margin-bottom:8px}
 .help-list{margin:0;padding-left:20px}
 .help-list li{margin-bottom:8px}
 .inventory-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
@@ -471,6 +487,9 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 40px;color:var(--muted);
      chỗ cho mặt idol — camera thăm mobile aim mặt lên ~20% từ đỉnh (xem
      updateCamera). Panel vẫn cuộn được, không vỡ bố cục. */
   .visit-room{margin:0 8px 8px;max-height:52%}
+  /* v5.8 — bảng debug trên mobile: tấm đáy che nửa dưới khung game nên dời
+     lên góc trên trái, dưới dòng boot-log (top:12px). */
+  .visit-debug{top:52px;bottom:auto;max-width:88%;font-size:.68rem}
   .visit-summary{margin:0 8px 8px;max-height:52%}
   .menu-panel{max-height:88%}
 }
