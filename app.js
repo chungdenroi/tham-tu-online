@@ -1,11 +1,17 @@
-/* Vào Tù Thăm Idol — GAME 3D v3: nhân vật RIGGED THẬT (GLB) + Three.js bundle local.
+/* Vào Tù Thăm Idol — GAME 3D v4: UI MOBA Dark Gold + Champion Select + Mobile dọc.
+   - Tách UI khỏi 3D: bindInput() chạy ngay khi DOMContentLoaded, boot3D() chạy nền sau.
+     Nút bấm được ngay cả khi GLB chưa tải xong (lỗi gốc v3: bindInput chỉ chạy cuối boot).
    - Three.js 0.160.0 bundle trong ./vendor/ (không phụ thuộc CDN).
    - Nhân vật là file GLB rigged có skeleton + clip animation thật (Quaternius CC0,
      Mixamo XBot/Soldier), KHÔNG còn nhân vật ghép hộp/sphere.
+   - GLB tải bằng fetch + AbortController (timeout 12s) + loader.parse, tối đa 2 file
+     đồng thời, theo giai đoạn P0 player → P1 idol → P2 còn lại + NPC nền.
    - Nếu WebGL/Three/model tải lỗi: KHÔNG chặn UI — hiện banner lỗi nhỏ ở đầu khung
      game (không che nút), vẫn chơi được ở bản chữ (chọn idol, thăm, chat, quà, game).
    Parody giải trí hư cấu. Mọi số liệu online/bảng vàng đều là mô phỏng, đã ghi rõ. */
 const $ = (id) => document.getElementById(id);
+const IS_TOUCH = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+const IS_MOBILE = IS_TOUCH || window.innerWidth <= 750;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerpAngle = (a, b, t) => {
   let d = (b - a) % (Math.PI * 2);
@@ -93,6 +99,79 @@ const MODEL_URLS = {
   lis: 'models/lis.glb', casualF: 'models/casual-female.glb', soldierF: 'models/soldier-female.glb'
 };
 
+/* Nhân vật chọn được (Champion Select) — chỉ số hiển thị ở màn hình chọn tướng */
+const CHAMPS = {
+  sam: { name: 'Sam', emoji: '🧑‍🦱', role: 'Nhanh nhẹn', speed: 88, stamina: 68, skill: 74,
+    desc: 'Sam chạy nhanh nhất sảnh — hợp với người thích đi thăm nhiều ô kính trong thời gian ngắn.' },
+  matt: { name: 'Matt', emoji: '🧑', role: 'Cân bằng', speed: 76, stamina: 80, skill: 75,
+    desc: 'Matt cân bằng mọi chỉ số — lựa chọn an toàn cho người mới chơi lần đầu.' },
+  shaun: { name: 'Shaun', emoji: '👨', role: 'Bền bỉ', speed: 64, stamina: 95, skill: 70,
+    desc: 'Shaun bền bỉ nhất — đi dạo cả buổi không mệt, hợp với người thích ngắm sảnh.' }
+};
+function updateChampPreview(key) {
+  const c = CHAMPS[key] || CHAMPS.sam;
+  const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
+  set('champPreviewEmoji', c.emoji);
+  set('champPreviewName', c.name.toUpperCase());
+  set('champPreviewTag', c.role + ' • ' + (key === 'sam' ? 'Chạy nhanh nhất sảnh' : key === 'matt' ? 'Cân bằng mọi chỉ số' : 'Bền bỉ nhất sảnh'));
+  set('champDesc', c.desc);
+  set('champPickedName', c.name);
+  const bar = (id, valId, v) => { const b = $(id); if (b) b.style.width = v + '%'; set(valId, v); };
+  bar('statSpeed', 'statSpeedVal', c.speed);
+  bar('statStamina', 'statStaminaVal', c.stamina);
+  bar('statSkill', 'statSkillVal', c.skill);
+  set('playerAvatar', c.emoji);
+}
+
+/* Gợi ý theo ngữ cảnh: mỗi lúc chỉ 1 gợi ý, tự biến mất sau ~3.5s */
+let hintTimer = null;
+function showHint(text, ms) {
+  const el = $('hintBar');
+  if (!el) return;
+  el.textContent = text;
+  el.hidden = false;
+  clearTimeout(hintTimer);
+  hintTimer = setTimeout(() => { el.hidden = true; }, ms || 3500);
+}
+/* Menu phụ (overlay): nhiệm vụ / bảng vàng / túi đồ / số chờ / chia sẻ */
+function openMenu(sectionId) {
+  const ov = $('menuOverlay');
+  if (!ov) return;
+  ov.hidden = false;
+  if (sectionId) {
+    const sec = ov.querySelector('[data-menu-section="' + sectionId + '"]');
+    const panel = ov.querySelector('.menu-panel');
+    if (sec && panel) panel.scrollTop = sec.offsetTop - 10;
+  }
+}
+function closeMenu() { const ov = $('menuOverlay'); if (ov) ov.hidden = true; }
+function toggleMenu() { const ov = $('menuOverlay'); if (ov) ov.hidden ? openMenu() : closeMenu(); }
+
+/* Quick Select Idol: 1 chạm → nhân vật tự chạy tới ô kính → hiện nút VÀO THĂM */
+function selectIdolQuick(idolId) {
+  const d = IDOLS.find((x) => x.id === idolId);
+  if (!d) return;
+  if (!state.started) enterGame();
+  if (state.no3d || !player) { openVisit(idolId, 'card'); return; }
+  const b = booths.find((x) => x.idolId === idolId);
+  if (!b) { toast('⏳ Sảnh 3D chưa sẵn sàng — thử lại sau vài giây nhé!'); return; }
+  state.targetBooth = idolId;
+  state.autoWalkTo = { x: b.x, z: b.frontZ };
+  showHint('🏃 Đang chạy tới ô ' + d.name + '… tới nơi sẽ hiện nút VÀO THĂM.');
+}
+function renderQuickIdolBar() {
+  const bar = $('quickIdolBar');
+  if (!bar) return;
+  bar.innerHTML = '';
+  IDOLS.forEach((d) => {
+    const b = document.createElement('button');
+    b.className = 'quick-idol-chip' + (state.visited.has(d.id) ? ' visited' : '');
+    b.type = 'button';
+    b.textContent = d.emoji + ' ' + d.name;
+    b.addEventListener('click', () => selectIdolQuick(d.id));
+    bar.appendChild(b);
+  });
+}
 const state = {
   points: store.get('points', 0),
   visited: new Set(store.get('visited', [])),
@@ -103,7 +182,7 @@ const state = {
   currentIdol: null, visitSeconds: 180, visitPoints: 0, sentCount: 0,
   timerId: null, gameTimerId: null, gameActive: false, gameScore: 0,
   ticket: null, queueNum: 14, started: false, visitMode: false,
-  autoWalkTo: null, no3d: false, threeReady: false
+  autoWalkTo: null, targetBooth: null, no3d: false, threeReady: false
 };
 function save() {
   store.set('points', state.points);
@@ -131,6 +210,14 @@ function updateHeader() {
   $('streakCount').textContent = state.streak;
   $('rankName').textContent = rankFor(state.points);
   $('pointsTotal').textContent = state.points.toLocaleString('vi-VN');
+  const lv = $('playerLevel');
+  if (lv) lv.textContent = 'Cấp ' + (Math.floor(state.points / 100) + 1);
+  const pn = $('playerNameHud');
+  if (pn) pn.textContent = state.playerName || 'Bạn';
+  const ms = $('menuStreak');
+  if (ms) ms.textContent = state.streak;
+  const mv = $('menuVisited');
+  if (mv) mv.textContent = state.visited.size + '/4';
   updateHudBars();
 }
 let toastTimer = null;
@@ -236,20 +323,22 @@ function webglAvailable() {
   } catch (e) { return false; }
 }
 
-async function boot() {
+/* ================= THREE.JS — KHỞI ĐỘNG NỀN (v4: UI đã gắn listener từ trước,
+   boot 3D chỉ lo vẽ cảnh; lỗi 3D không bao giờ chặn nút bấm) ================= */
+const bootState = { ui: 'pending', three: 'pending', hall: 'pending', player: 'pending', idol: 'pending' };
+async function boot3D() {
   if (document.readyState === 'loading') {
     await new Promise((r) => document.addEventListener('DOMContentLoaded', r, { once: true }));
   }
   // Hiển thị NGAY số liệu đã lưu (điểm / đã thăm / nhiệm vụ) từ localStorage,
   // trước khi 3D khởi động — để top bar không hiện số 0 tĩnh trong HTML rồi
   // mới nhảy số sau khi bấm BẮT ĐẦU (gây hiểu lầm là bấm Bắt đầu đã tính thăm).
-  bootLog('init', 'Đang khởi động game…');
+  bootLog('boot3d', 'Đang khởi động 3D nền…');
   updateHeader(); renderIdols(); renderMissions(); renderLeaderboard();
   // 1) Kiểm tra WebGL TRƯỚC khi tạo renderer — phân biệt rõ nguyên nhân lỗi
   bootLog('webgl-check', 'Đang kiểm tra WebGL…');
   if (!webglAvailable()) {
     enterNo3D('webgl', 'getContext(webgl2/webgl) trả về null');
-    bindInput(); updateHeader(); renderIdols(); renderMissions(); renderLeaderboard();
     return;
   }
   // 2) Tải Three.js LOCAL trong repo (./vendor/), không phụ thuộc CDN — có timeout
@@ -267,7 +356,6 @@ async function boot() {
     loader = new GLTFLoaderClass();
   } catch (err) {
     enterNo3D('three-load', err && err.message ? err.message : String(err));
-    bindInput(); updateHeader(); renderIdols(); renderMissions(); renderLeaderboard();
     return;
   }
   bootLog('scene', 'Đang vẽ sảnh 3D…');
@@ -275,19 +363,18 @@ async function boot() {
     initThree();
   } catch (err) {
     enterNo3D('webgl', err && err.message ? err.message : String(err));
-    bindInput(); updateHeader(); renderIdols(); renderMissions(); renderLeaderboard();
     return;
   }
+  bootState.three = 'ok'; bootState.hall = 'ok';
   state.threeReady = true;
   window.__thamtuStarted = true;
-  bindInput();
   bumpStreak();
   updateHeader(); renderIdols(); renderMissions(); renderLeaderboard();
   bootLog('scene-ready', 'Sảnh đã vẽ xong — đang tải nhân vật…');
   // 3) CHẠY VÒNG LẶP RENDER NGAY — sảnh hiện lên tức thì, không chờ nhân vật.
   tick();
-  // 4) Tải nhân vật ƯU TIÊN (người chơi + 4 idol) — từng file có timeout 20s,
-  // file nào lỗi thì dùng model khác thay thế, không đứng chờ cả lô.
+  // 4) Tải nhân vật ƯU TIÊN (người chơi + 4 idol) — fetch + AbortController 12s/file,
+  // tối đa 2 file/lượt; file nào lỗi thì dùng model khác thay thế, không đứng chờ cả lô.
   let ok = false;
   try {
     ok = await loadPriorityModels();
@@ -300,6 +387,8 @@ async function boot() {
     // vẫn giữ scene sảnh (đã vẽ, camera quay chậm) + logic bản chữ; chỉ không có nhân vật
   } else {
     bootLog('ready', '✅ 3D sẵn sàng — WASD di chuyển, tới gần ô kính bấm E để vào thăm.');
+    bootState.player = 'ok'; bootState.idol = 'ok';
+    setTimeout(() => { const bl = $('bootLog'); if (bl) bl.style.display = 'none'; }, 4000);
   }
   // 5) Tải LAZY phần còn lại (người ngồi chờ ở ô kính + 6 NPC) — chạy nền,
   // rig tạo rải ra từng frame để không nghẽn main thread.
@@ -310,12 +399,34 @@ async function boot() {
 const modelCache = {};
 const normCache = {};
 const pendingLoads = {};
-const MODEL_TIMEOUT_MS = 20000;
+const MODEL_TIMEOUT_MS = 12000; // v4: AbortController 12s hủy request thật (Promise.race không hủy được)
+const LOAD_CONCURRENCY = 2;
+async function fetchGLB(key) {
+  // Tải GLB bằng fetch + AbortController rồi loader.parse — phân biệt được lỗi
+  // HTTP (404/500) với lỗi parse, và hủy thật request khi quá 12s.
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), MODEL_TIMEOUT_MS);
+  try {
+    const res = await fetch(MODEL_URLS[key], { signal: ctrl.signal });
+    if (!res.ok) throw new Error('HTTP ' + res.status + ' khi tải ' + MODEL_URLS[key]);
+    const buf = await res.arrayBuffer();
+    try {
+      return await loader.parseAsync(buf, '');
+    } catch (e) {
+      throw new Error('Lỗi parse GLB ' + MODEL_URLS[key] + ': ' + (e && e.message ? e.message : e));
+    }
+  } catch (e) {
+    if (e && e.name === 'AbortError') throw new Error('Timeout sau ' + (MODEL_TIMEOUT_MS / 1000) + 's: ' + MODEL_URLS[key]);
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 function loadModel(key) {
   // Dùng chung 1 promise cho mỗi file: file về muộn vẫn được cache để dùng sau.
   if (modelCache[key]) return Promise.resolve(modelCache[key]);
   if (!pendingLoads[key]) {
-    pendingLoads[key] = loader.loadAsync(MODEL_URLS[key]).then((gltf) => {
+    pendingLoads[key] = fetchGLB(key).then((gltf) => {
       modelCache[key] = gltf;
       return gltf;
     });
@@ -323,13 +434,18 @@ function loadModel(key) {
   }
   return pendingLoads[key];
 }
-function loadModelWithTimeout(key, ms) {
-  // Race timeout: file chậm quá 20s thì bỏ qua, không đứng chờ cả lô (bản v3
-  // dùng Promise.allSettled không timeout nên 1 file kẹt là boot đứng >12s).
-  return Promise.race([
-    loadModel(key),
-    new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout sau ' + (((ms || MODEL_TIMEOUT_MS)) / 1000) + 's: ' + MODEL_URLS[key])), ms || MODEL_TIMEOUT_MS))
-  ]);
+/* Tải tối đa 2 file cùng lúc, theo từng đợt — không dội 5 request một lúc. */
+async function loadKeysLimited(keys, onOne) {
+  const failed = [];
+  for (let i = 0; i < keys.length; i += LOAD_CONCURRENCY) {
+    const batch = keys.slice(i, i + LOAD_CONCURRENCY);
+    const results = await Promise.allSettled(batch.map((k) => loadModel(k)));
+    results.forEach((r, j) => {
+      if (r.status === 'fulfilled') { if (onOne) onOne(batch[j]); }
+      else failed.push(batch[j] + ': ' + (r.reason && r.reason.message ? r.reason.message : r.reason));
+    });
+  }
+  return failed;
 }
 function findBone(group, names) {
   let found = null;
@@ -372,7 +488,8 @@ function makeRigFromGLTF(key, gltf, opts) {
   }
   group.scale.setScalar(norm.scale);
   inner.position.set(-norm.cx, -norm.minY, -norm.cz);
-  group.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = false; } });
+  // Chỉ player + idol chính đổ bóng (v4) — NPC/người ngồi chờ tắt castShadow để nhẹ máy.
+  group.traverse((m) => { if (m.isMesh) { m.castShadow = !!o.shadow; m.receiveShadow = false; } });
   const mixer = new THREE.AnimationMixer(group);
   const clips = {};
   (gltf.animations || []).forEach((a) => { clips[a.name] = a; });
@@ -532,38 +649,40 @@ function buildHall() {
   });
 }
 
-/* Hàng đợi tạo rig: mỗi frame chỉ tạo tối đa 2 rig để không nghẽn main thread
-   (bản v3 tạo ~31 rig đồng bộ ngay sau khi tải model — gây treo trang khi bấm nút). */
+/* Hàng đợi tạo rig: mỗi frame chỉ tạo rig trong ngân sách ~3ms (mobile 1 rig/frame,
+   desktop 2 rig/frame) để không nghẽn main thread. */
 const rigQueue = [];
-function processRigQueue(maxPerFrame) {
+function processRigQueue(maxPerFrame, budgetMs) {
+  const t0 = performance.now();
+  const budget = budgetMs || 3;
   let n = 0;
-  while (rigQueue.length && n < (maxPerFrame || 2)) {
+  while (rigQueue.length && n < (maxPerFrame || (IS_MOBILE ? 1 : 2))) {
     const job = rigQueue.shift();
     try { job(); } catch (e) { console.warn('[thamtu] tạo rig lỗi:', e); }
     n++;
+    if (performance.now() - t0 > budget) break; // hết ngân sách frame → để frame sau
   }
   return rigQueue.length;
 }
 
-/* Tải ƯU TIÊN: người chơi + 4 idol (5 file). File nào lỗi thì thay bằng model đã tải được. */
+/* Tải ƯU TIÊN theo giai đoạn (v4): P0 chỉ model người chơi → P1 4 idol (tối đa
+   2 file/lượt). File nào lỗi thì thay bằng model đã tải được. */
 async function loadPriorityModels() {
-  const keys = ['sam', 'matt', 'shaun', 'soldierMale', 'knight'];
-  bootLog('models-priority', 'Đang tải nhân vật chính 0/' + keys.length + ' (người chơi + 4 idol)…');
+  const playerKey = state.playerModel || 'sam';
+  const idolKeys = ['matt', 'shaun', 'soldierMale', 'knight'];
+  bootLog('models-priority', 'Đang tải nhân vật chính 0/5 (người chơi trước)…');
   let done = 0;
-  const results = await Promise.allSettled(keys.map((k) => loadModelWithTimeout(k, MODEL_TIMEOUT_MS).then((g) => {
-    done++;
-    bootLog('models-priority', 'Đã tải nhân vật chính ' + done + '/' + keys.length + ' (' + k + ')');
-    return g;
-  })));
+  const bump = () => { done++; bootLog('models-priority', 'Đã tải nhân vật chính ' + done + '/5'); };
   const failed = [];
-  results.forEach((r, i) => { if (r.status === 'rejected') failed.push(keys[i] + ': ' + (r.reason && r.reason.message ? r.reason.message : r.reason)); });
+  failed.push(...await loadKeysLimited([playerKey], bump));
+  failed.push(...await loadKeysLimited(idolKeys, bump));
   if (failed.length) console.warn('[thamtu] model ưu tiên tải lỗi:', failed);
-  const loaded = keys.filter((k) => modelCache[k]);
+  const loaded = ['sam', 'matt', 'shaun', 'soldierMale', 'knight'].filter((k) => modelCache[k]);
   if (!loaded.length) return false;
   const fallbackKey = loaded[0];
   const pick = (k) => (modelCache[k] ? k : fallbackKey);
   // Người chơi: model đã chọn ở màn hình RPG (mặc định Sam)
-  playerRig = makeRigFromGLTF(pick(state.playerModel || 'sam'), modelCache[pick(state.playerModel || 'sam')], { height: 1.76, name: 'player' });
+  playerRig = makeRigFromGLTF(pick(state.playerModel || 'sam'), modelCache[pick(state.playerModel || 'sam')], { height: 1.76, name: 'player', shadow: true });
   playerRig.group.position.set(0, 0, 5);
   attachAccessory(playerRig, 'cap');
   addNameTag(playerRig, state.playerName || 'Bạn');
@@ -573,7 +692,7 @@ async function loadPriorityModels() {
   // 4 idol sau vách kính
   IDOLS.forEach((d) => {
     const key = pick(d.model);
-    const rig = makeRigFromGLTF(key, modelCache[key], { height: d.height, name: d.id });
+    const rig = makeRigFromGLTF(key, modelCache[key], { height: d.height, name: d.id, shadow: true });
     const b = booths.find((x) => x.idolId === d.id);
     rig.group.position.set(b.x, 0, b.z - 1.1);
     rig.group.rotation.y = 0;
@@ -618,9 +737,7 @@ function makeNpcRig(d, i, pick) {
 async function loadLazyModels() {
   const keys = ['lis', 'casualF', 'soldierF'];
   bootLog('models-lazy', 'Đang tải nhân vật phụ (người ngồi chờ + NPC)…');
-  const results = await Promise.allSettled(keys.map((k) => loadModelWithTimeout(k, MODEL_TIMEOUT_MS)));
-  const failed = [];
-  results.forEach((r, i) => { if (r.status === 'rejected') failed.push(keys[i] + ': ' + (r.reason && r.reason.message ? r.reason.message : r.reason)); });
+  const failed = await loadKeysLimited(keys);
   if (failed.length) console.warn('[thamtu] model phụ tải lỗi:', failed);
   const loaded = keys.filter((k) => modelCache[k]);
   const fallbackKey = loaded[0] || Object.keys(modelCache)[0];
@@ -639,8 +756,10 @@ async function loadLazyModels() {
 
 function initThree() {
   const canvas = $('gameCanvas');
-  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  // v4: mobile DPR tối đa 1.25, desktop 1.5; tắt antialias trên mobile;
+  // preserveDrawingBuffer:false (chụp ảnh sẽ render lại riêng rồi mới toDataURL).
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: !IS_MOBILE, preserveDrawingBuffer: false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, IS_MOBILE ? 1.25 : 1.5));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -655,7 +774,7 @@ function initThree() {
   scene.add(new THREE.HemisphereLight(0xcdb8ff, 0x1a0f2e, 0.9));
   const sun = new THREE.DirectionalLight(0xffe9a8, 1.6);
   sun.position.set(8, 12, 6); sun.castShadow = true;
-  sun.shadow.mapSize.set(1024, 1024);
+  sun.shadow.mapSize.set(IS_MOBILE ? 512 : 1024, IS_MOBILE ? 512 : 1024);
   sun.shadow.camera.left = -18; sun.shadow.camera.right = 18;
   sun.shadow.camera.top = 18; sun.shadow.camera.bottom = -18;
   scene.add(sun);
@@ -705,7 +824,16 @@ function updatePlayer(dt) {
   if (state.autoWalkTo) {
     const t = state.autoWalkTo;
     const dx = t.x - player.position.x, dz = t.z - player.position.z;
-    if (Math.hypot(dx, dz) < 0.25) { state.autoWalkTo = null; if (playerRig.anim !== 'idle') setAnim(playerRig, 'idle'); }
+    if (Math.hypot(dx, dz) < 0.25) {
+      state.autoWalkTo = null;
+      if (playerRig.anim !== 'idle') setAnim(playerRig, 'idle');
+      // Tới ô kính đã chọn nhanh → nhắc bấm VÀO THĂM (1 thao tác cuối).
+      if (state.targetBooth) {
+        const d = IDOLS.find((x) => x.id === state.targetBooth);
+        if (d) showHint('📍 Đã tới ô ' + d.name + ' — chạm nút VÀO THĂM để vào thăm!');
+        state.targetBooth = null;
+      }
+    }
     else {
       movePlayerTo(t.x, t.z, dt);
       playerRig.targetYaw = Math.atan2(dx, dz);
@@ -795,31 +923,49 @@ function nearestBooth() {
 }
 function updateNearPrompt() {
   const el = $('nearPrompt');
-  if (!state.started || !player) { el.hidden = true; return; }
-  if (state.visitMode) { el.hidden = true; return; }
+  const eBtn = $('interactBtn');
+  const eLabel = $('interactLabel');
+  const setE = (label, armed) => {
+    if (eLabel) eLabel.textContent = label;
+    if (eBtn) eBtn.classList.toggle('armed', !!armed);
+  };
+  if (!state.started || !player) { el.hidden = true; setE('THĂM', false); return; }
+  if (state.visitMode) { el.hidden = true; setE('THĂM', false); return; }
   const b = nearestBooth();
-  if (!b) { el.hidden = true; return; }
+  if (!b) { el.hidden = true; setE('ĐI TỚI', false); return; }
   el.hidden = false;
-  $('nearPromptText').textContent = b.idolId
-    ? ('Ô ' + IDOLS.find((d) => d.id === b.idolId).name + ' — bấm E để vào thăm')
-    : 'Ô này đang trống — bấm E để ngồi chờ';
+  if (b.idolId) {
+    $('nearPromptText').textContent = 'Ô ' + IDOLS.find((d) => d.id === b.idolId).name + ' — bấm E để vào thăm';
+    setE('VÀO THĂM', true);
+  } else {
+    $('nearPromptText').textContent = 'Ô này đang trống — bấm E để ngồi chờ';
+    setE('THĂM', false);
+  }
   el.dataset.boothId = b.idolId || '';
 }
 function enterGame() {
-  // LƯU Ý (v3.1): nút BẮT ĐẦU chỉ mở màn hình chơi — KHÔNG cộng điểm,
+  // LƯU Ý (v3.1): nút CHƠI NGAY chỉ mở màn hình chơi — KHÔNG cộng điểm,
   // KHÔNG tính "đã thăm" idol nào. "Đã thăm" chỉ tăng trong openVisit()
   // khi người chơi THỰC SỰ vào ô thăm (bấm E gần ô kính / nút "Vào thăm").
   const name = ($('playerNameInput').value || '').trim();
   if (name) state.playerName = name;
   $('startScreen').hidden = true;
   state.started = true;
+  // Hiện HUD MOBA + thanh chọn idol nhanh (v4).
+  ['questTracker', 'minimapBox', 'quickIdolBar', 'bottomHud'].forEach((id) => { const el = $(id); if (el) el.hidden = false; });
+  renderQuickIdolBar();
+  updateChampPreview(state.playerModel || 'sam');
   if (playerRig) swapPlayerModel(state.playerModel || 'sam');
   if (state.no3d) {
-    toast('🎮 Đang chơi bản chữ — kéo xuống dưới chọn idol để vào thăm.');
+    showHint('🎮 Đang chơi bản chữ — chạm 1 idol ở thanh phía trên để vào thăm.');
     return;
   }
-  if (!playerRig) { toast('⏳ Đang tải nhân vật 3D… chờ một chút rồi di chuyển nhé!'); }
-  toast('🎮 Vào sảnh! WASD di chuyển • kéo chuột xoay camera • tới gần ô kính bấm E để vào thăm.');
+  if (!playerRig) { showHint('⏳ Đang tải nhân vật 3D… chờ một chút rồi di chuyển nhé!'); }
+  else {
+    showHint(IS_TOUCH
+      ? '🎮 Kéo joystick để di chuyển, chạm 1 idol phía trên để tự chạy tới ô kính!'
+      : '🎮 WASD di chuyển • tới gần ô kính bấm E để vào thăm. Chạm 1 idol phía trên để tự chạy tới!');
+  }
 }
 
 /* ================= THĂM NUÔI ================= */
@@ -867,7 +1013,8 @@ function openVisit(idolId, source) {
   $('gameDesc').textContent = idol.gameDesc;
   $('gameArea').innerHTML = '<p class="hint">Bấm “Bắt đầu chơi” để chơi mini-game của ' + idol.name + '.</p>';
   renderGifts();
-  $('visitScreen').scrollIntoView({ behavior: 'smooth' });
+  // v4: phòng thăm là overlay trong khung game — KHÔNG scrollIntoView (không cuộn trang mobile).
+  showHint('🎁 Chọn quà bên dưới để tặng ' + idol.name + '!');
   const greetBtn = $('greetIdolBtn');
   if (greetBtn) greetBtn.textContent = '👋 Chào ' + idol.name;
   clearInterval(state.timerId);
@@ -887,9 +1034,8 @@ function endVisit(msg) {
   stopGame();
   if (playerRig && playerRig.anim !== 'idle') setAnim(playerRig, 'idle');
   document.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
-  const lb = $('lobbyScreen');
-  if (lb) { lb.classList.add('active'); lb.scrollIntoView({ behavior: 'smooth' }); }
-  else { const gc = $('gameContainer'); if (gc) gc.scrollIntoView({ behavior: 'smooth' }); }
+  // v4: overlay chỉ ẩn đi, không cuộn trang — người chơi ở lại đúng chỗ trong sảnh.
+  showHint(IS_TOUCH ? 'Chạm 1 idol phía trên để thăm người tiếp theo!' : 'Chọn idol khác ở thanh phía trên để thăm tiếp!');
 }
 function greetIdol() {
   const idol = IDOLS.find((d) => d.id === state.currentIdol);
@@ -1005,22 +1151,19 @@ function checkMission(kind) {
   save(); renderMissions();
 }
 function renderMissions() {
-  const ul = $('missionsList');
-  if (!ul) return;
   const today = todayStr();
   if (!state.missions.date || state.missions.date !== today) state.missions = { date: today, done: {} };
-  ul.innerHTML = '';
+  const html = [];
   MISSIONS.forEach((m) => {
-    const li = document.createElement('li');
     const done = !!state.missions.done[m.id];
-    li.className = done ? 'done' : '';
-    li.innerHTML = (done ? '✅ ' : '🔲 ') + m.text + ' <span class="reward">+' + m.reward + 'đ</span>';
-    ul.appendChild(li);
+    html.push('<li class="' + (done ? 'done' : '') + '">' + (done ? '✅ ' : '🔲 ') + m.text + ' <span class="reward">+' + m.reward + 'đ</span></li>');
   });
   const doneCount = MISSIONS.filter((m) => state.missions.done[m.id]).length;
-  const li = document.createElement('li');
-  li.innerHTML = '🎯 Đã thăm <b>' + state.visited.size + '/4</b> idol • Hoàn thành <b>' + doneCount + '/' + MISSIONS.length + '</b> nhiệm vụ • Reset 00:00';
-  ul.appendChild(li);
+  html.push('<li>🎯 Đã thăm <b>' + state.visited.size + '/4</b> idol • Hoàn thành <b>' + doneCount + '/' + MISSIONS.length + '</b> nhiệm vụ • Reset 00:00</li>');
+  ['missionsList', 'menuMissionsList'].forEach((id) => {
+    const ul = $(id);
+    if (ul) ul.innerHTML = html.join('');
+  });
 }
 function renderIdols() {
   const grid = $('idolGrid');
@@ -1033,36 +1176,26 @@ function renderIdols() {
       '<span class="tag">' + d.tag + '</span><p>' + d.desc + '</p>' +
       '<p class="fine">' + d.status + '</p>' +
       '<button class="btn primary visit-btn">' + (state.visited.has(d.id) ? '✅ Đã thăm — Thăm lại' : '🚪 Vào thăm') + '</button>';
-    card.addEventListener('click', () => {
-      if (!state.started) enterGame();
-      if (state.no3d || !player) { openVisit(d.id, 'card'); return; }
-      const b = booths.find((x) => x.idolId === d.id);
-      if (b) { state.autoWalkTo = { x: b.x, z: b.frontZ }; toast('🏃 Nhân vật đang chạy tới ô ' + d.name + '… tới gần thì bấm E để vào thăm.'); }
-    });
+    card.addEventListener('click', () => selectIdolQuick(d.id));
     grid.appendChild(card);
   });
+  renderQuickIdolBar();
 }
 function renderLeaderboard() {
-  const list = $('leaderboardList');
-  if (!list) return;
   const rows = [
     { name: 'Chị Lan', pts: 860, level: 12 }, { name: 'Ông Sáu', pts: 720, level: 11 },
     { name: 'Bà Tư', pts: 640, level: 10 }, { name: 'Anh Ba', pts: 520, level: 9 },
     { name: 'Bạn', pts: state.points, level: Math.floor(state.points / 100) + 1, you: true }
   ].sort((a, b) => b.pts - a.pts).slice(0, 5);
-  list.innerHTML = '';
-  rows.forEach((r, i) => {
-    const li = document.createElement('li');
-    li.innerHTML = (i === 0 ? '🥇 ' : i === 1 ? '🥈 ' : i === 2 ? '🥉 ' : '🎖️ ') +
-      '<b>' + r.name + '</b> — Cấp ' + r.level + ' • ' + r.pts.toLocaleString('vi-VN') + ' điểm' + (r.you ? ' <span class="reward">← bạn</span>' : '');
-    list.appendChild(li);
+  const html = rows.map((r, i) => '<li>' + (i === 0 ? '🥇 ' : i === 1 ? '🥈 ' : i === 2 ? '🥉 ' : '🎖️ ') +
+    '<b>' + r.name + '</b> — Cấp ' + r.level + ' • ' + r.pts.toLocaleString('vi-VN') + ' điểm' + (r.you ? ' <span class="reward">← bạn</span>' : '') + '</li>').join('');
+  ['leaderboardList', 'menuLeaderboardList'].forEach((id) => {
+    const list = $(id);
+    if (list) list.innerHTML = html;
   });
 }
 function renderInventory() {
-  const grid = $('inventoryGrid');
-  if (!grid) return;
-  grid.innerHTML = '';
-  GIFTS.forEach((g, i) => {
+  const makeSlot = (g, i) => {
     const key = INV_KEYS[i];
     const count = state.inventory[key] || 0;
     const slot = document.createElement('div');
@@ -1072,8 +1205,33 @@ function renderInventory() {
       if (state.visitMode && state.currentIdol) sendGift(g);
       else toast('🎒 Vào thăm idol rồi bấm món đồ để tặng nhé!');
     });
-    grid.appendChild(slot);
+    return slot;
+  };
+  ['inventoryGrid', 'menuInventory'].forEach((id) => {
+    const grid = $(id);
+    if (!grid) return;
+    grid.innerHTML = '';
+    GIFTS.forEach((g, i) => grid.appendChild(makeSlot(g, i)));
   });
+  // Ô đồ mini trên HUD dưới (MOBA inventory) — bấm là tặng ngay khi đang thăm.
+  const hud = $('hudInventory');
+  if (hud) {
+    hud.innerHTML = '';
+    GIFTS.forEach((g, i) => {
+      const key = INV_KEYS[i];
+      const count = state.inventory[key] || 0;
+      const s = document.createElement('button');
+      s.className = 'hud-inv-slot' + (count <= 0 ? ' empty' : '');
+      s.type = 'button';
+      s.title = g.name + ' (+' + g.pts + 'đ) — bấm để tặng idol khi đang thăm';
+      s.innerHTML = '<span class="inv-count">×' + count + '</span>' + g.emoji + '<small>' + g.name + '</small>';
+      s.addEventListener('click', () => {
+        if (state.visitMode && state.currentIdol) sendGift(g);
+        else toast('🎒 Vào thăm idol rồi bấm món đồ để tặng nhé!');
+      });
+      hud.appendChild(s);
+    });
+  }
 }
 function refillInventory() {
   const now = Date.now();
@@ -1171,22 +1329,29 @@ function drawMinimap() {
     ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.stroke();
   }
 }
-/* Thanh máu/XP/vàng + đồng hồ nhiệm vụ */
+/* Thanh máu/XP/vàng + đồng hồ nhiệm vụ — v4: chỉ ghi DOM khi chỉ số đổi
+   (không gọi mỗi frame trong tick() nữa). */
+let hudSig = '';
 function updateHudBars() {
   const energy = state.visitMode ? Math.max(0, Math.round((state.visitSeconds / 180) * 100)) : 100;
-  const ef = $('energyFill'), et = $('energyText');
-  if (ef) ef.style.width = energy + '%';
-  if (et) et.textContent = energy + '%';
   const p = state.points;
   const next = p >= 500 ? 1000 : p >= 200 ? 500 : p >= 80 ? 200 : 80;
   const base = p >= 500 ? 500 : p >= 200 ? 200 : p >= 80 ? 80 : 0;
   const pct = clamp(((p - base) / (next - base)) * 100, 0, 100);
+  const d = new Date();
+  const clockTxt = '🕐 ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ' • reset 00:00';
+  const sig = energy + '|' + p + '|' + next + '|' + pct.toFixed(1) + '|' + clockTxt;
+  if (sig === hudSig) return;
+  hudSig = sig;
+  const ef = $('energyFill'), et = $('energyText');
+  if (ef) ef.style.width = energy + '%';
+  if (et) et.textContent = energy + '%';
   const xf = $('xpFill'), xt = $('xpText'), gc = $('goldCount');
   if (xf) xf.style.width = pct + '%';
   if (xt) xt.textContent = p + '/' + next + ' XP';
   if (gc) gc.textContent = '🪙 ' + p.toLocaleString('vi-VN') + ' vàng';
   const qc = $('questClock');
-  if (qc) { const d = new Date(); qc.textContent = '🕐 ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ' • reset 00:00'; }
+  if (qc) qc.textContent = clockTxt;
 }
 /* Đổi nhân vật người chơi (chọn ở màn hình RPG) */
 function swapPlayerModel(key) {
@@ -1196,7 +1361,7 @@ function swapPlayerModel(key) {
   scene.remove(playerRig.group);
   const idx = allRigs.indexOf(playerRig);
   if (idx >= 0) allRigs.splice(idx, 1);
-  playerRig = makeRigFromGLTF(key, modelCache[key], { height: 1.76, name: 'player' });
+  playerRig = makeRigFromGLTF(key, modelCache[key], { height: 1.76, name: 'player', shadow: true });
   playerRig.group.position.copy(pos);
   playerRig.group.rotation.y = yaw;
   playerRig.targetYaw = yaw;
@@ -1423,6 +1588,9 @@ function takePhoto() {
     return;
   }
   try {
+    // preserveDrawingBuffer:false nên phải render lại rồi toDataURL NGAY trong
+    // cùng 1 tác vụ JS (trước khi trình duyệt composite) mới lấy được ảnh.
+    renderer.render(scene, camera);
     const a = document.createElement('a');
     a.href = renderer.domElement.toDataURL('image/png');
     a.download = 'tham-tu-' + Date.now() + '.png';
@@ -1431,53 +1599,93 @@ function takePhoto() {
   } catch (e) { toast('📸 Không chụp được ảnh: ' + e.message); }
 }
 
-/* ================= INPUT + VÒNG LẶP ================= */
+/* Kỹ năng MOBA (gán chức năng thật, không nút trang trí) */
+function doWave() {
+  if (playerRig) setAnim(playerRig, 'wave', { once: true });
+  let best = null, bestD = 6;
+  if (player) for (const n of npcs) {
+    const d = Math.hypot(n.rig.group.position.x - player.position.x, n.rig.group.position.z - player.position.z);
+    if (d < bestD) { bestD = d; best = n; }
+  }
+  if (best) { setAnim(best.rig, 'wave', { once: true }); showSpeech3d(best.name + ' vẫy tay chào lại bạn! 👋', 2500); }
+  else toast('👋 Bạn vẫy tay… chưa ai ở gần để đáp lại.');
+}
+function doBow() { if (playerRig) setAnim(playerRig, 'bow', { once: true }); toast('🙏 Bạn chắp tay chào.'); }
+function doIdolPerform() {
+  const info = state.currentIdol ? idolRigs[state.currentIdol] : null;
+  if (info && info.rig) { setAnim(info.rig, 'fan', { once: true }); toast('🪭 Idol biểu diễn cho bạn xem!'); }
+  else toast('🪭 Vào thăm idol rồi bấm R để xem idol biểu diễn!');
+}
 function interactNear() {
   if (!state.started) return;
   const b = nearestBooth();
-  if (b && b.idolId) openVisit(b.idolId, 'booth');
-  else if (b) toast('🪟 Ô này đang trống — chọn ô có idol để vào thăm nhé!');
+  if (b && b.idolId) { openVisit(b.idolId, 'booth'); return; }
+  // Chưa đứng gần ô idol nào: bấm E / nút THĂM là tự đi tới ô idol gần nhất
+  // (mobile: nút E hiện "ĐI TỚI") — người mới không cần học WASD trước.
+  if (player && !state.no3d) {
+    let best = null, bestD = Infinity;
+    for (const x of booths) {
+      if (!x.idolId) continue;
+      const d = Math.hypot(player.position.x - x.x, player.position.z - x.frontZ);
+      if (d < bestD) { bestD = d; best = x; }
+    }
+    if (best) {
+      state.targetBooth = best.idolId;
+      state.autoWalkTo = { x: best.x, z: best.frontZ };
+      showHint('🏃 Đang chạy tới ô ' + IDOLS.find((d) => d.id === best.idolId).name + '… tới nơi sẽ hiện nút VÀO THĂM.');
+      return;
+    }
+  }
+  if (b) toast('🪟 Ô này đang trống — chọn ô có idol để vào thăm nhé!');
   else toast('🚶 Đi tới gần ô kính có tên idol rồi bấm E nhé!');
 }
 function bindInput() {
+  // v4 P0: UI gắn listener NGAY khi DOM sẵn sàng, KHÔNG chờ boot 3D.
+  // Guard chống đăng ký 2 lần (boot3D không còn gọi bindInput nữa).
+  if (window.__thamtuUIBound) return;
+  window.__thamtuUIBound = true;
   window.addEventListener('keydown', (e) => {
     keys[e.code] = true;
     if (e.code === 'Space' && e.target && e.target.tagName !== 'INPUT') e.preventDefault();
     if (e.code === 'KeyE') interactNear();
-    if (e.code === 'Escape') hideRpgDialog();
+    if (e.code === 'KeyQ') doWave();
+    if (e.code === 'KeyW') doBow();
+    if (e.code === 'KeyR') doIdolPerform();
+    if (e.code === 'KeyD') takePhoto();
+    if (e.code === 'KeyF') toggleMenu();
+    if (e.code === 'Escape') { hideRpgDialog(); closeMenu(); }
   });
   window.addEventListener('keyup', (e) => { keys[e.code] = false; });
   $('enterGameBtn').addEventListener('click', enterGame);
-  $('playerNameInput').addEventListener('change', (e) => { state.playerName = e.target.value.trim() || 'Bạn'; store.set('playerName', state.playerName); });
-  document.querySelectorAll('.char-btn').forEach((b) => {
+  $('playerNameInput').addEventListener('change', (e) => { state.playerName = e.target.value.trim() || 'Bạn'; store.set('playerName', state.playerName); updateHeader(); });
+  document.querySelectorAll('.champion-option').forEach((b) => {
     b.addEventListener('click', () => {
-      document.querySelectorAll('.char-btn').forEach((x) => x.classList.remove('selected'));
+      document.querySelectorAll('.champion-option').forEach((x) => x.classList.remove('selected'));
       b.classList.add('selected');
       state.playerModel = b.dataset.model;
       store.set('playerModel', state.playerModel);
+      updateChampPreview(state.playerModel);
       if (playerRig) swapPlayerModel(state.playerModel);
     });
   });
   $('nearVisitBtn').addEventListener('click', interactNear);
   $('interactBtn').addEventListener('click', interactNear);
-  $('waveBtn').addEventListener('click', () => {
-    if (playerRig) setAnim(playerRig, 'wave', { once: true });
-    let best = null, bestD = 6;
-    if (player) for (const n of npcs) {
-      const d = Math.hypot(n.rig.group.position.x - player.position.x, n.rig.group.position.z - player.position.z);
-      if (d < bestD) { bestD = d; best = n; }
-    }
-    if (best) { setAnim(best.rig, 'wave', { once: true }); showSpeech3d(best.name + ' vẫy tay chào lại bạn! 👋', 2500); }
-    else toast('👋 Bạn vẫy tay… chưa ai ở gần để đáp lại.');
-  });
-  $('bowBtn').addEventListener('click', () => { if (playerRig) setAnim(playerRig, 'bow', { once: true }); toast('🙏 Bạn chắp tay chào.'); });
+  $('waveBtn').addEventListener('click', doWave);
+  $('bowBtn').addEventListener('click', doBow);
   $('sitBtn').addEventListener('click', () => {
     if (!playerRig) return;
     if (playerRig.anim === 'sit') setAnim(playerRig, 'idle');
     else setAnim(playerRig, 'sit');
   });
   $('photoBtn').addEventListener('click', takePhoto);
-  $('helpBtn').addEventListener('click', () => { document.querySelector('.help-list').scrollIntoView({ behavior: 'smooth' }); });
+  $('skillRBtn').addEventListener('click', doIdolPerform);
+  $('skillFBtn').addEventListener('click', toggleMenu);
+  $('menuBtn').addEventListener('click', toggleMenu);
+  $('menuCloseBtn').addEventListener('click', closeMenu);
+  $('menuQuestBtn').addEventListener('click', () => openMenu('quest'));
+  $('menuBagBtn').addEventListener('click', () => openMenu('bag'));
+  $('menuMainBtn').addEventListener('click', () => openMenu());
+  $('helpBtn').addEventListener('click', () => openMenu());
   $('takeTicketBtn').addEventListener('click', () => {
     state.ticket = 'A-' + String(Math.floor(Math.random() * 900) + 100);
     $('ticketNumber').textContent = state.ticket;
@@ -1493,10 +1701,7 @@ function bindInput() {
     catch (e) { toast('Không sao chép được — copy tay link trên thanh địa chỉ nhé!'); }
   });
   $('greetIdolBtn').addEventListener('click', greetIdol);
-  $('idolFanBtn').addEventListener('click', () => {
-    const info = state.currentIdol ? idolRigs[state.currentIdol] : null;
-    if (info && info.rig) { setAnim(info.rig, 'fan', { once: true }); toast('🪭 Idol biểu diễn cho bạn xem!'); }
-  });
+  $('idolFanBtn').addEventListener('click', doIdolPerform);
   $('endVisitBtn').addEventListener('click', () => { drawCert(); endVisit('👋 Kết thúc buổi thăm. Giấy chứng nhận đã cấp bên dưới!'); });
   $('backToLobbyBtn').addEventListener('click', () => { drawCert(); endVisit(); });
   $('chatSendBtn').addEventListener('click', () => { const v = $('chatInput').value.trim(); if (v) { sendChat(v); $('chatInput').value = ''; } });
@@ -1505,29 +1710,35 @@ function bindInput() {
   $('downloadCertBtn').addEventListener('click', downloadCert);
   $('photoVisitBtn').addEventListener('click', takePhoto);
   $('refillInvBtn').addEventListener('click', refillInventory);
+  $('refillInvBtn2').addEventListener('click', refillInventory);
   $('rpgContinue').addEventListener('click', hideRpgDialog);
   $('reloadBtn').addEventListener('click', () => location.reload());
   const retry = $('retry3dBtn');
   if (retry) retry.addEventListener('click', () => location.reload());
   const dismiss = $('dismiss3dBtn');
   if (dismiss) dismiss.addEventListener('click', () => { $('webglError').hidden = true; toast('📜 Đang chơi bản chữ — chọn idol ở dưới để vào thăm.'); });
-  // Chuột: kéo orbit, lăn zoom, bấm vào idol để chào
+  // Chuột: kéo orbit, lăn zoom, bấm vào idol để chào.
+  // Phân biệt ngón camera bằng pointerId riêng (v4): ngón joystick hay ngón thứ
+  // hai chạm vào màn hình không được làm xoay camera; overlay/menu/start-screen
+  // đang mở thì không bắt đầu kéo camera.
   const gc = $('gameContainer');
-  let dragging = false, lastX = 0, lastY = 0, downX = 0, downY = 0;
+  let dragging = false, camPointerId = null, lastX = 0, lastY = 0, downX = 0, downY = 0;
   gc.addEventListener('pointerdown', (e) => {
-    if (e.target.closest('button') || e.target.closest('input') || e.target.closest('.joystick') || e.target.closest('.rpg-dialog')) return;
-    dragging = true; lastX = e.clientX; lastY = e.clientY; downX = e.clientX; downY = e.clientY;
+    if (dragging) return; // đã có 1 ngón đang xoay camera
+    if (e.target.closest('button') || e.target.closest('input') || e.target.closest('.joystick') || e.target.closest('.rpg-dialog') || e.target.closest('#menuOverlay') || e.target.closest('#visitScreen') || e.target.closest('#startScreen')) return;
+    dragging = true; camPointerId = e.pointerId; lastX = e.clientX; lastY = e.clientY; downX = e.clientX; downY = e.clientY;
     gc.setPointerCapture(e.pointerId);
   });
   gc.addEventListener('pointermove', (e) => {
-    if (!dragging) return;
+    if (!dragging || e.pointerId !== camPointerId) return;
     cam.yaw -= (e.clientX - lastX) * 0.005;
     cam.pitch = clamp(cam.pitch + (e.clientY - lastY) * 0.003, 0.05, 1.1);
     lastX = e.clientX; lastY = e.clientY;
   });
   gc.addEventListener('pointerup', (e) => {
+    if (!dragging || e.pointerId !== camPointerId) return;
     const moved = Math.hypot(e.clientX - downX, e.clientY - downY);
-    dragging = false;
+    dragging = false; camPointerId = null;
     if (moved < 8 && state.threeReady && !state.no3d && state.visitMode && state.currentIdol) {
       const rect = renderer.domElement.getBoundingClientRect();
       pointerNDC.set(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
@@ -1539,32 +1750,42 @@ function bindInput() {
       }
     }
   });
+  gc.addEventListener('pointercancel', (e) => {
+    if (e.pointerId === camPointerId) { dragging = false; camPointerId = null; }
+  });
   gc.addEventListener('wheel', (e) => {
     e.preventDefault();
     cam.dist = clamp(cam.dist + e.deltaY * 0.01, 4, 12);
   }, { passive: false });
-  // Joystick ảo
+  // Joystick ảo — bán kính tính theo kích thước thật của joystick
+  // (maxRadius = 30% chiều rộng), phân biệt ngón joystick bằng pointerId riêng.
   const joyEl = $('joystick'), knob = $('joyKnob');
   const setJoy = (e) => {
     const r = joyEl.getBoundingClientRect();
     const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-    let dx = (e.clientX - cx) / 40, dy = (e.clientY - cy) / 40;
+    const maxR = r.width * 0.30;
+    let dx = (e.clientX - cx) / maxR, dy = (e.clientY - cy) / maxR;
     const len = Math.hypot(dx, dy);
     if (len > 1) { dx /= len; dy /= len; }
     joy.x = dx; joy.y = dy;
-    knob.style.transform = 'translate(' + (dx * 35) + 'px,' + (dy * 35) + 'px)';
+    knob.style.transform = 'translate(' + (dx * maxR) + 'px,' + (dy * maxR) + 'px)';
   };
   joyEl.addEventListener('pointerdown', (e) => { joy.active = true; joy.id = e.pointerId; joyEl.setPointerCapture(e.pointerId); setJoy(e); });
   joyEl.addEventListener('pointermove', (e) => { if (joy.active && e.pointerId === joy.id) setJoy(e); });
   const endJoy = () => { joy.active = false; joy.x = 0; joy.y = 0; knob.style.transform = ''; };
   joyEl.addEventListener('pointerup', endJoy);
   joyEl.addEventListener('pointercancel', endJoy);
+  // Joystick reset về giữa khi mất focus / chuyển tab (không bị kẹt hướng đi).
+  window.addEventListener('blur', endJoy);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) endJoy(); });
   renderQuickAsk();
   renderInventory();
   drawCert();
   drawMinimap();
   updateHudBars();
 }
+let tickRunning = false;
+let minimapAccum = 0;
 let idleYaw = 0;
 function updateCameraIdle(dt) {
   // Khi chỉ lỗi tải model: giữ sảnh 3D sống động bằng camera quay chậm quanh sảnh.
@@ -1575,6 +1796,9 @@ function updateCameraIdle(dt) {
   camera.lookAt(0, 1.2, 0);
 }
 function tick() {
+  // Tab ẩn: dừng render hẳn (không chạy rAF nền) — quay lại tab thì resume.
+  if (document.hidden) { tickRunning = false; return; }
+  tickRunning = true;
   requestAnimationFrame(tick);
   const dt = clock ? Math.min(0.05, clock.getDelta()) : 0.016;
   if (state.threeReady) {
@@ -1600,8 +1824,8 @@ function tick() {
       updateCameraIdle(dt);
       for (const r of allRigs) r.mixer.update(dt);
     }
-    // Tạo rig phụ rải ra từng frame (tối đa 2/frame) để không nghẽn main thread.
-    processRigQueue(2);
+    // Tạo rig phụ theo ngân sách ~3ms/frame (mobile 1 rig/frame) để không nghẽn main thread.
+    processRigQueue(IS_MOBILE ? 1 : 2, 3);
     renderer.render(scene, camera);
     fpsFrames++; fpsTime += dt;
     if (fpsTime >= 1) {
@@ -1610,8 +1834,22 @@ function tick() {
       fpsFrames = 0; fpsTime = 0;
     }
   }
-  drawMinimap();
+  // Minimap chỉ vẽ 10 lần/giây; HUD chỉ ghi DOM khi chỉ số đổi (xem updateHudBars).
+  minimapAccum += dt;
+  if (minimapAccum >= 0.1) { minimapAccum = 0; drawMinimap(); }
   updateHudBars();
 }
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && !tickRunning && state.threeReady) tick();
+});
 
-boot();
+/* ================= KHỞI ĐỘNG v4: UI trước, 3D nền sau =================
+   P0 (lỗi gốc): bindInput() + render UI chạy NGAY khi module load — nút CHƠI NGAY
+   bấm được ngay cả khi Three.js/GLB chưa tải xong. boot3D() chỉ lo vẽ cảnh 3D
+   và chạy nền; lỗi 3D không bao giờ chặn UI nữa. */
+bindInput();
+updateHeader(); renderIdols(); renderMissions(); renderLeaderboard(); renderQuickIdolBar();
+updateChampPreview(state.playerModel || 'sam');
+bootState.ui = 'ok';
+bootLog('init', 'Giao diện đã sẵn sàng — đang tải 3D nền…');
+boot3D();
