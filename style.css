@@ -280,10 +280,18 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 .menu-section p{margin:.3em 0}
 .mobile-menu-bar{display:none}
 
-/* ===== Phòng thăm — tấm đáy trong khung game: phần trên vẫn thấy idol 3D ===== */
+/* ===== Phòng thăm — tấm đáy trong khung game: phần trên vẫn thấy idol 3D =====
+   v5.6: DESKTOP đổi hẳn sang bố cục cột bên (xem khối @media (min-width:751px)
+   ở cuối file): panel thăm thành cột phải ~440px, canvas 3D chiếm phần còn lại
+   bên trái full chiều cao — mặt idol không còn bị tấm đáy che (nguyên nhân gốc
+   test v5.5: tấm đáy 64% che mất mặt idol vì camera aim mặt vào giữa khung).
+   MOBILE giữ tấm đáy, chỉ rút max-height 66% → 52% + camera aim mặt lên dải
+   trên (xem updateCamera). Overlay cho click xuyên qua vùng 3D trong suốt để
+   bấm vào idol 3D chào được (trước đây overlay chặn hết click xuống canvas). */
 .screen{display:none}
 .screen.active{display:block}
-.visit-overlay{position:absolute;inset:0;z-index:90;background:linear-gradient(180deg,rgba(22,33,31,0) 0%,rgba(22,33,31,.45) 30%,rgba(22,33,31,.92) 55%);padding:0}
+.visit-overlay{position:absolute;inset:0;z-index:90;background:linear-gradient(180deg,rgba(22,33,31,0) 0%,rgba(22,33,31,.45) 30%,rgba(22,33,31,.92) 55%);padding:0;pointer-events:none}
+.visit-overlay .visit-room,.visit-overlay .visit-summary{pointer-events:auto}
 .visit-overlay.active{display:flex;flex-direction:column;justify-content:flex-end}
 .visit-room{margin:0 12px 12px;max-height:64%;overflow-y:auto}
 .visit-head{position:sticky;top:0;z-index:2;display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:start;background:var(--panel);margin:-16px -16px 8px;padding:12px 16px 8px;border-bottom:1px solid var(--line)}
@@ -296,6 +304,18 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 .summary-cert{margin:8px 0}
 #summaryCertBtn{width:100%;font-size:1.15rem;padding:14px 20px}
 .summary-actions{margin-top:12px}
+/* v5.6 — CẢNH MỞ ĐẦU (establishing shot): trong 2.5 giây đầu sau khi vào sảnh,
+   panel 2 bên thu gọn để cả 4 ô kính lọt khe giữa (khung game tối đa ~1148px:
+   vé + nhật ký trái ~330px = 29%, bảng gọi số phải ~242px = 21% — ô biên ở
+   25.5%/74.5% bề rộng nên KHÔNG thu gọn thì ô 01 vẫn bị che, test v5.5).
+   Panel trượt ra ngoài chỉ chừa mép 14px + mờ đi; hết cảnh thì trượt lại.
+   Thanh chọn idol nhanh + HUD dưới cũng mờ đi trong lúc quay cảnh. */
+.game-container.estab .ticket-card,
+.game-container.estab .quest-tracker{transform:translateX(calc(-100% + 14px));opacity:.45}
+.game-container.estab .call-board{transform:translateX(calc(100% - 14px));opacity:.45}
+.game-container.estab .quick-idol-bar{opacity:0;pointer-events:none}
+.game-container.estab .bottom-hud{opacity:.35}
+.ticket-card,.quest-tracker,.call-board,.quick-idol-bar,.bottom-hud{transition:transform .45s ease,opacity .45s ease}
 .timer-box{text-align:right}
 .timer-box b{display:block;font-size:2rem;color:var(--gold2);font-variant-numeric:tabular-nums;font-family:var(--font-hud)}
 .visit-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
@@ -447,8 +467,11 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 40px;color:var(--muted);
   .champ-footer{flex-direction:column;gap:10px}
   .ticket-stub{width:100%;justify-content:space-between}
   .champ-play{width:100%}
-  .visit-room{margin:0 8px 8px;max-height:66%}
-  .visit-summary{margin:0 8px 8px;max-height:66%}
+  /* v5.6: tấm đáy phòng thăm rút xuống 52% (trước 66%) để dải 3D phía trên đủ
+     chỗ cho mặt idol — camera thăm mobile aim mặt lên ~20% từ đỉnh (xem
+     updateCamera). Panel vẫn cuộn được, không vỡ bố cục. */
+  .visit-room{margin:0 8px 8px;max-height:52%}
+  .visit-summary{margin:0 8px 8px;max-height:52%}
   .menu-panel{max-height:88%}
 }
 /* Màn hình nhỏ ≤380px: thu nhỏ minimap/joystick/nút */
@@ -486,3 +509,18 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 40px;color:var(--muted);
   .champ-grid{grid-template-columns:180px 1fr 240px}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ===== v5.6 — PHÒNG THĂM DESKTOP: panel thành cột bên phải =====
+   Nguyên nhân gốc (test v5.5): tấm đáy chiếm 64% chiều cao, camera aim mặt idol
+   vào giữa khung (~50%) nên mặt nằm NGAY SAU tấm panel, không bao giờ thấy.
+   Giờ panel là cột phải ~440px (tối đa 46% khung) cuộn được, canvas 3D chiếm
+   phần còn lại bên trái FULL chiều cao — mặt idol thấy trọn vẹn ngay khi mở
+   phòng thăm. Camera thăm frame idol vào giữa dải 3D còn lại (xem updateCamera:
+   lookAt lệch ngang theo bề rộng panel thật). Nền gradient dọc cũ bỏ đi để
+   vùng 3D bên trái hoàn toàn trong (chỉ còn vệt tối nhẹ sát mép panel). */
+@media (min-width:751px){
+  .visit-overlay{background:linear-gradient(90deg,rgba(22,33,31,0) 0%,rgba(22,33,31,0) 70%,rgba(22,33,31,.25) 100%)}
+  .visit-overlay.active{flex-direction:row;justify-content:flex-end;align-items:stretch}
+  .visit-room{margin:12px;width:min(440px,46%);max-height:none;flex:none}
+  .visit-summary{margin:12px;width:min(440px,46%);max-height:none;flex:none}
+}
