@@ -369,7 +369,9 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 .rhythm-ring.hit{transform:scale(1.15);border-color:var(--green)}
 .quiz-opt{display:block;width:100%;text-align:left;margin:8px 0;background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:10px 12px}
 #catchCanvas{width:100%;max-width:420px;height:220px;background:linear-gradient(180deg,#2A453F,#16211F);border-radius:8px;touch-action:none}
-.tap-big{font-size:1.4rem;padding:18px 26px;border-radius:10px;background:linear-gradient(90deg,var(--red),#7A2E1D);color:#FFF6E8;border:none;font-weight:800}
+.tap-big{font-size:1.4rem;padding:18px 26px;border-radius:10px;background:linear-gradient(90deg,var(--red),#7A2E1D);color:#FFF6E8;border:none;font-weight:800;user-select:none;touch-action:manipulation}
+.tap-row{display:flex;justify-content:center}
+.tap-report-row{display:flex;justify-content:center;align-items:center;min-height:52px}
 .report-btn{position:absolute;background:#B91C1C;color:#fff;border:none;border-radius:8px;padding:8px 12px}
 #certCanvas{width:100%;height:auto;border-radius:8px;border:1px solid var(--gold);background:#FFF6E8}
 #summaryCertCanvas{width:100%;height:auto;border-radius:8px;border:1px solid var(--gold);background:#FFF6E8;margin:8px 0}
