@@ -126,3 +126,67 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 40px;color:var(--muted);
   .near-prompt{bottom:150px;font-size:.9rem}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ================= RPG UI v3 ================= */
+.rpg-topbar{border-bottom:3px solid var(--gold);box-shadow:0 2px 18px rgba(255,207,63,.25)}
+.rpg-panel{border:2px solid #6b4a1f;outline:1px solid var(--gold);outline-offset:-7px;background:linear-gradient(180deg,#2a1745,#1d0f33);box-shadow:0 6px 24px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,207,63,.15)}
+.rpg-frame{border:3px solid var(--gold);box-shadow:0 0 0 3px #6b4a1f, 0 0 40px rgba(255,207,63,.35), inset 0 0 30px rgba(255,207,63,.08)}
+.rpg-title{font-size:clamp(2rem,6vw,2.8rem);letter-spacing:2px;text-shadow:0 3px 0 #6b4a1f,0 0 24px rgba(255,207,63,.6);margin:.1em 0}
+.rpg-sub{color:var(--gold);letter-spacing:4px;font-weight:800;font-size:.9rem}
+.rpg-h3{color:var(--gold);letter-spacing:1px;margin-top:14px}
+.rpg-btn{border:2px solid var(--gold);box-shadow:0 4px 0 #6b4a1f,0 6px 16px rgba(0,0,0,.5);text-shadow:0 1px 2px rgba(0,0,0,.5);transition:transform .08s ease, box-shadow .08s ease}
+.rpg-btn:hover{transform:translateY(-2px);box-shadow:0 6px 0 #6b4a1f,0 10px 20px rgba(0,0,0,.5)}
+.rpg-btn:active{transform:translateY(2px);box-shadow:0 2px 0 #6b4a1f}
+.char-select{display:flex;gap:10px;justify-content:center;margin:10px 0}
+.char-btn{flex:1;background:#160b2b;border:2px solid var(--line);border-radius:14px;padding:10px 6px;color:var(--ink);display:flex;flex-direction:column;align-items:center;gap:2px;transition:transform .1s ease,border-color .1s ease}
+.char-btn:hover{transform:translateY(-3px);border-color:var(--cyan)}
+.char-btn.selected{border-color:var(--gold);background:#33205c;box-shadow:0 0 16px rgba(255,207,63,.4)}
+.char-emoji{font-size:2.2rem}
+.char-btn small{color:var(--muted)}
+.rpg-leader-mini{border-top:1px dashed var(--line);padding-top:8px}
+.rpg-hud{background:rgba(10,4,20,.85);border:2px solid #6b4a1f}
+.bar-row{display:flex;justify-content:space-between;align-items:center;font-size:.82rem;margin:2px 0}
+.bar-label{color:var(--muted);font-weight:700}
+.bar{height:14px;border-radius:999px;background:#0f0820;border:1px solid #4a2d78;overflow:hidden;margin-bottom:4px}
+.bar-fill{height:100%;border-radius:999px;transition:width .3s ease}
+.hp-fill{background:linear-gradient(90deg,#e6396b,#ff8a3d)}
+.xp-fill{background:linear-gradient(90deg,#3fe0d0,#7c5cff)}
+.minimap{width:100%;height:auto;border:2px solid var(--gold);border-radius:10px;background:#0f0820;display:block}
+.missions li{border-left:4px solid var(--gold);background:rgba(255,207,63,.08)}
+.missions li.done{border-left-color:var(--green)}
+.missions .reward{color:var(--gold);font-weight:700}
+/* Hộp thoại RPG */
+.rpg-dialog{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);z-index:18;width:min(640px,94%);display:flex;gap:12px;align-items:flex-start;background:linear-gradient(180deg,#2b1847,#1a0d33);border:3px solid var(--gold);border-radius:16px;padding:12px;box-shadow:0 10px 30px rgba(0,0,0,.6)}
+.rpg-avatar{font-size:2.6rem;background:#0f0820;border:2px solid var(--gold);border-radius:12px;width:64px;height:64px;display:flex;align-items:center;justify-content:center;flex:none}
+.rpg-dialog-body{flex:1;min-width:0}
+.rpg-name{color:var(--gold);font-weight:800;font-size:1.05rem;text-shadow:0 1px 2px #000}
+.rpg-text{margin:4px 0 8px;font-weight:600}
+.rpg-choices{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.rpg-choices button{background:#160b2b;color:var(--cyan);border:1px solid var(--line);border-radius:10px;padding:8px 12px;text-align:left;font-weight:600}
+.rpg-choices button:hover{border-color:var(--gold);color:var(--ink)}
+/* Túi đồ */
+.inventory-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.inv-slot{background:#160b2b;border:2px solid #6b4a1f;border-radius:14px;padding:12px 8px;text-align:center;cursor:pointer;position:relative;transition:transform .1s ease,border-color .1s ease}
+.inv-slot:hover{transform:translateY(-3px);border-color:var(--gold)}
+.inv-slot:active{transform:scale(.96)}
+.inv-slot.empty{opacity:.45;cursor:not-allowed}
+.inv-emoji{font-size:2.2rem;line-height:1}
+.inv-slot b{display:block;margin-top:4px}
+.inv-slot small{color:var(--muted)}
+.inv-count{position:absolute;top:6px;right:8px;background:var(--gold);color:#1a0d33;border-radius:999px;padding:0 8px;font-weight:800;font-size:.85rem}
+/* Lỗi 3D: banner nhỏ ở đầu khung, KHÔNG che nút */
+.webgl-error{position:absolute;top:0;left:0;right:0;z-index:20;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;text-align:center;padding:10px 14px;background:rgba(60,20,10,.96);border-bottom:2px solid #ff8a3d;font-size:.9rem}
+.webgl-error b{color:#ffd34d}
+.webgl-error span{color:#ffe9d0}
+/* Bảng vàng kiểu game */
+.leaderboard li{border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:6px;background:linear-gradient(90deg,rgba(255,207,63,.12),transparent)}
+.leaderboard li:first-child{border-color:var(--gold);background:linear-gradient(90deg,rgba(255,207,63,.25),transparent)}
+/* Khung game khi không có 3D */
+.game-container.no3d #gameCanvas{display:none}
+.game-container.no3d{background:linear-gradient(180deg,#241238,#12081f)}
+@media (max-width:900px){
+  .inventory-grid{grid-template-columns:repeat(2,1fr)}
+  .rpg-dialog{bottom:150px}
+  .char-select{flex-direction:row}
+  .minimap{display:none}
+}
