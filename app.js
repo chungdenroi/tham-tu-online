@@ -378,6 +378,13 @@ function showSpeech3d(text, ms) {
 }
 function addPoints(n) {
   state.points += n; state.visitPoints += n; updateHeader();
+  // v5.13: bảng vàng PHẢI vẽ lại mỗi khi điểm đổi — trước đây addPoints chỉ
+  // gọi updateHeader() nên header đã 254 mà bảng vàng vẫn giữ số lúc render
+  // gần nhất (244, từ lúc boot/mở thăm) — test v5.12 bắt đúng lệch này.
+  // addPoints là ĐƯỜNG DUY NHẤT đổi state.points (grep: chỉ dòng này +=),
+  // nên đặt renderLeaderboard() ở đây là đủ cho mọi nguồn điểm (chat, game,
+  // quà, nhiệm vụ).
+  renderLeaderboard();
   const vp = $('visitPoints'); if (vp) vp.textContent = state.visitPoints;
   // v5.7: vẽ lại giấy chứng nhận khi điểm buổi thăm đổi — trước đây cert chỉ
   // vẽ 1 lần lúc mở trang (0 điểm) nên test v5.6 thấy chứng nhận ghi 0 điểm
@@ -684,7 +691,13 @@ const CLIP_PATS = {
    thành khối vàng kem sáng chói — nhuộm về da ấm sáng 0xE8B88A (hơi sáng
    hơn da thân 0xDCA878 để vẫn phân biệt mặt) thì đầu đọc thành một khối da
    liền mạch, hết chói. Đây là sửa màu material như v5.3, KHÔNG đổi model,
-   KHÔNG thêm phụ kiện mặt. */
+   KHÔNG thêm phụ kiện mặt.
+   v5.13: tấm Face về ĐÚNG màu da 0xDCA878 (bằng da thân) — 0xE8B88A sáng/
+   hồng hơn da xung quanh nên tấm mặt đọc thành một khối riêng, sáng hơn
+   hẳn phần da còn lại trên đầu; về cùng màu da thì mặt liền một khối,
+   nét tối (mắt/mũi/miệng gắn thêm) nổi lên trên đó. Chỉ áp dụng cho model
+   có material 'Face' (soldier-male...); sam/matt/shaun chỉ có material
+   'Atlas' nên không bị ảnh hưởng. */
 function fixDarkSkinMaterials(root) {
   root.traverse((m) => {
     if (!m.isMesh) return;
@@ -696,7 +709,8 @@ function fixDarkSkinMaterials(root) {
         if (lum < 0.05) { mt.color.setHex(0xDCA878); mt.needsUpdate = true; }
       } else if (mt.name === 'Face' && !mt.map) {
         // v5.10: tấm mặt trước trắng [1,1,0.94] → da ấm sáng (xem ghi chú trên).
-        mt.color.setHex(0xE8B88A); mt.needsUpdate = true;
+        // v5.13: về đúng màu da 0xDCA878 (bằng da thân) — xem ghi chú trên.
+        mt.color.setHex(0xDCA878); mt.needsUpdate = true;
       }
     });
   });
@@ -881,7 +895,7 @@ function attachFace(rig) {
   hq.invert();
   const dark = new THREE.MeshStandardMaterial({ color: 0x2a1a12, roughness: 0.55 });
   const mouthMat = new THREE.MeshStandardMaterial({ color: 0x7a2e22, roughness: 0.6 });
-  const noseMat = new THREE.MeshStandardMaterial({ color: 0x8a5a30, roughness: 0.7 }); // v5.12: tối hơn (0xc68e5a cũ gần màu da nên mũi chìm)
+  const noseMat = new THREE.MeshStandardMaterial({ color: 0x74492a, roughness: 0.7 }); // v5.13: tối hơn nữa + bớt lồi — v5.12 mũi nhô 0,024m trước mặt sam nên đọc thành khối hồng to, trong khi soldier-male chỉ nhô 0,005m (test v5.12: mũi Trường Con mờ, mũi Khánh Sky khối to)
   // dx/dy: offset world (m) quanh tâm mặt; surfZ: mặt má tại đúng nét đó
   // (unscaled, xem FACE_SURF); protrude: lồi ra theo hướng mặt (m) — nửa
   // sau của nét chìm vào mặt nên không lơ lửng, không chìm hẳn.
@@ -910,9 +924,9 @@ function attachFace(rig) {
     const brow = new THREE.Mesh(new THREE.BoxGeometry(0.085 / s, 0.020 / s, 0.010 / s), dark);
     add(brow, side * 0.055, 0.058, side < 0 ? fs.browL : fs.browR, 0.005);
   });
-  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.024 / s, 8, 8), noseMat);
-  nose.scale.set(0.9, 1.25, 0.6);
-  add(nose, 0, -0.012, fs.nose, 0.010);
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.020 / s, 8, 8), noseMat);
+  nose.scale.set(0.9, 1.1, 0.45); // v5.13: dẹt hơn (đầu mũi chỉ nhô ~0,015m thay vì 0,024m)
+  add(nose, 0, -0.012, fs.nose, 0.006);
   // v5.12 — MIỆNG LÀ HÌNH BẦU DỤC ĐẶC (sphere dẹt), KHÔNG dùng torus nữa:
   // torus v5.11 có 3 lỗi: (1) đáy vòng bị CẰM NHÔ chôn — mặt dưới miệng
   // nhô trước mặt phẳng miệng ~2cm nên đáy nụ cười nằm sau mặt; (2) 2 đầu
@@ -2413,15 +2427,16 @@ function drawMinimap() {
   // #E8C268 (232,194,104) — test v5.4 vẫn đọc tâm đĩa nhạt như trắng dù code
   // đã đúng; vàng đậm trên nền minimap tối không thể đọc nhầm thành trắng.
   // Chấm to hơn r=13, viền mỏng 2px.
-  // v5.12: test v5.11 VẪN đọc 4 chấm là "vàng nhạt gần kem vàng" dù code
-  // đã #C69A50 — ở cỡ hiển thị thật (~12px) vàng #C69A50 (độ sáng ~0,58)
-  // trên nền tối mắt vẫn đọc thành vàng nhạt. Đổi sang đồng đậm #A67C2E
-  // (166,124,46 — cùng họ vàng đồng, tối + bão hòa hơn) + to hơn r=14 +
-  // viền dày 2,5px: không thể đọc nhầm thành kem/trắng ở mọi cỡ hiển thị.
+  // v5.13: test v5.12 VẪN đọc 4 chấm là "vàng nhạt" dù code đã #A67C2E —
+  // đo độ sáng: #A67C2E có luminance 0,50, trên nền minimap gần đen
+  // (#16211F, 0,12) mắt vẫn đọc thành vàng sáng. #C69A50 trước đó còn
+  // sáng hơn (0,62). Muốn đọc thành "vàng đồng ĐẬM" thì phải xuống hẳn
+  // dưới 0,35 và giữ bão hòa tối đa: #7A5200 (122,82,0 — luminance 0,33,
+  // bão hòa 100%), viền nâu đậm giữ nguyên. Không đổi vị trí/cỡ chấm.
   booths.forEach((b) => {
     if (!b.idolId) return;
     const x = px(b.x), y = pz(b.z);
-    ctx.fillStyle = '#A67C2E';
+    ctx.fillStyle = '#7A5200';
     ctx.beginPath(); ctx.arc(x, y, 14, 0, 7); ctx.fill();
     ctx.strokeStyle = '#594538'; ctx.lineWidth = 2.5;
     ctx.beginPath(); ctx.arc(x, y, 14, 0, 7); ctx.stroke();
