@@ -1,193 +1,349 @@
+/* ============ V4 — Fantasy MOBA + Dark Gold (cảm hứng LoL, không sao chép artwork LoL) ============ */
+@font-face{font-family:'Cinzel';font-style:normal;font-weight:700 900;font-display:swap;src:url('fonts/cinzel-700.woff2') format('woff2');}
+@font-face{font-family:'Marcellus';font-style:normal;font-weight:400;font-display:swap;src:url('fonts/marcellus-400.woff2') format('woff2');}
+@font-face{font-family:'Inter';font-style:normal;font-weight:400 800;font-display:swap;src:url('fonts/inter-400.woff2') format('woff2');}
+@font-face{font-family:'Rajdhani';font-style:normal;font-weight:600;font-display:swap;src:url('fonts/rajdhani-600.woff2') format('woff2');}
+@font-face{font-family:'Rajdhani';font-style:normal;font-weight:700;font-display:swap;src:url('fonts/rajdhani-700.woff2') format('woff2');}
+
 :root{
-  --bg:#12081f; --bg2:#1d0f33; --panel:#221238; --panel2:#2b1847;
-  --ink:#f6f1ff; --muted:#c9b8e8; --gold:#ffcf3f; --pink:#ff5da2; --cyan:#3fe0d0;
-  --green:#4ade80; --orange:#ff8a3d; --line:#4a2d78; --radius:18px;
+  /* Dark Gold palette */
+  --bg:#111722; --bg2:#0B1018; --panel:#202C3C; --panel2:#27394B;
+  --ink:#F2EBD9; --muted:#9CAABD; --gold:#C8A96B; --gold2:#D8AE55; --gold-dark:#806b42;
+  --teal:#36B8A0; --line:#39485B; --hp:#C64D58; --xp:#4B91E2;
+  --pink:#ff5da2; --orange:#ff8a3d; --green:#4ade80;
+  --radius:14px;
+  --font-title:'Cinzel','Marcellus',Georgia,serif;
+  --font-body:'Inter',system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  --font-hud:'Rajdhani','Inter',system-ui,sans-serif;
+  /* Hệ z-index thống nhất: world 0, toast 20, minimap/quest 40, HUD 60, dialog 80, modal 100 */
+  --z-world:0; --z-toast:20; --z-quest:40; --z-hud:60; --z-dialog:80; --z-modal:100;
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html{scroll-behavior:smooth}
-body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:radial-gradient(900px 500px at 80% -10%,#3b1a6e 0%,transparent 60%),radial-gradient(700px 420px at 0% 0%,#57203f 0%,transparent 55%),var(--bg);color:var(--ink);line-height:1.55}
-h1,h2,h3{line-height:1.25;margin:.2em 0 .5em}
+body{margin:0;font-family:var(--font-body);background:radial-gradient(900px 500px at 80% -10%,#27394b 0%,transparent 60%),radial-gradient(700px 420px at 0% 0%,#1d2b3d 0%,transparent 55%),var(--bg);color:var(--ink);line-height:1.55}
+h1,h2,h3{line-height:1.25;margin:.2em 0 .5em;font-family:var(--font-title);letter-spacing:.5px}
 h1{font-size:clamp(1.6rem,5vw,2.4rem)}
 h2{font-size:1.25rem}
 h3{font-size:1.05rem}
 p{margin:.4em 0}
-button{font:inherit;cursor:pointer}
+button{font:inherit;cursor:pointer;touch-action:manipulation}
 input{font:inherit}
 em{color:var(--muted);font-style:normal;font-size:.85em}
 .fine{color:var(--muted);font-size:.9rem}
-.neon{color:var(--gold);text-shadow:0 0 18px rgba(255,207,63,.55)}
-.tag3d{display:inline-block;background:var(--gold);color:#1a0d33;border-radius:6px;padding:1px 8px;font-size:.8rem;vertical-align:middle}
-.topbar{position:sticky;top:0;z-index:40;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(18,8,31,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.neon{color:var(--gold2);text-shadow:0 0 18px rgba(216,174,85,.55)}
+.tag3d{display:inline-block;background:var(--gold);color:#111722;border-radius:6px;padding:1px 8px;font-size:.8rem;vertical-align:middle;font-weight:800}
+.topbar{position:sticky;top:0;z-index:40;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(17,23,34,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
 .brand{display:flex;gap:10px;align-items:center}
 .brand .logo{font-size:2rem}
-.brand strong{display:block;font-size:1.15rem;letter-spacing:.5px}
+.brand strong{display:block;font-size:1.15rem;letter-spacing:.5px;font-family:var(--font-title)}
 .brand small{color:var(--muted)}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chip{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:7px 12px;font-size:.9rem}
-.chip.gold{border-color:var(--gold);color:var(--gold)}
+.chip.gold{border-color:var(--gold);color:var(--gold2)}
 .disclaimer{margin:14px auto 0;max-width:1180px;padding:12px 16px;background:#3a140f;border:1px solid #7a2e1d;border-radius:14px;font-size:.92rem}
 main{max-width:1180px;margin:0 auto;padding:16px}
 .panel{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:16px}
 .hint{color:var(--muted);font-size:.92rem}
-.btn{background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:11px 18px;font-weight:700}
-.btn:hover{border-color:var(--cyan)}
-.btn.primary{background:linear-gradient(90deg,var(--pink),var(--orange));border:none;color:#fff}
+.btn{background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:11px 18px;font-weight:700;transition:transform .08s ease,border-color .12s ease,box-shadow .12s ease}
+.btn:hover{border-color:var(--gold);transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.45)}
+.btn:active{transform:translateY(1px) scale(.97)}
+.btn:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.btn.primary{background:linear-gradient(180deg,var(--gold2),#a8842f);border:1px solid #f2e2b8;color:#111722}
+.btn.primary:hover{border-color:#fff;box-shadow:0 6px 20px rgba(216,174,85,.45)}
 .btn.big{font-size:1.15rem;padding:14px 28px}
 .btn.small{padding:7px 12px;font-size:.9rem}
 .btn:disabled{opacity:.5;cursor:not-allowed}
-.btn.round{width:54px;height:54px;border-radius:50%;padding:0;font-size:1.5rem;display:flex;align-items:center;justify-content:center;background:rgba(43,24,71,.85)}
+.btn.round{width:54px;height:54px;border-radius:50%;padding:0;font-size:1.5rem;display:flex;align-items:center;justify-content:center;background:rgba(32,44,60,.9)}
 .btn.round:active{transform:scale(.92)}
-.link-btn{background:none;border:none;color:var(--cyan);text-decoration:underline;padding:0;font-size:inherit}
+.link-btn{background:none;border:none;color:var(--teal);text-decoration:underline;padding:0;font-size:inherit}
 
 /* ===== 3D game ===== */
 .game-wrap{margin-bottom:8px}
-.game-container{position:relative;width:100%;height:min(72vh,640px);min-height:420px;border-radius:var(--radius);overflow:hidden;border:2px solid var(--line);background:#0b0616;touch-action:none}
-#gameCanvas{display:block;width:100%;height:100%;touch-action:none}
-.start-screen{position:absolute;inset:0;z-index:25;display:flex;align-items:center;justify-content:center;padding:16px;background:linear-gradient(180deg,rgba(10,4,20,.55),rgba(10,4,20,.88))}
-.start-card{max-width:560px;text-align:center;background:rgba(34,18,56,.92);border:1px solid var(--gold);border-radius:20px;padding:24px}
-.start-emoji{font-size:3rem}
-.start-card p{color:var(--muted)}
-.name-row{display:block;margin:14px 0;font-weight:700}
-.name-row input{display:block;width:100%;margin-top:8px;background:#0f0820;color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:12px 18px;text-align:center}
-.near-prompt{position:absolute;left:50%;bottom:118px;transform:translateX(-50%);z-index:15;display:flex;gap:10px;align-items:center;background:rgba(0,0,0,.82);border:1px solid var(--gold);border-radius:999px;padding:10px 12px 10px 18px;font-weight:700;white-space:nowrap;max-width:94%}
-.speech3d{position:absolute;left:50%;top:14px;transform:translateX(-50%);z-index:14;max-width:88%;background:#fff;color:#1a0d33;border-radius:16px;padding:10px 16px;font-weight:600;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.5);animation:pop .3s ease}
-@keyframes pop{0%{transform:translateX(-50%) scale(.7)}60%{transform:translateX(-50%) scale(1.06)}100%{transform:translateX(-50%) scale(1)}}
-.hud-left{position:absolute;left:12px;top:12px;z-index:10;display:flex;flex-direction:column;gap:8px;max-width:46%}
-.hud-right{position:absolute;right:12px;top:12px;z-index:10;max-width:44%}
-.hud-box{background:rgba(10,4,20,.78);border:1px solid var(--line);border-radius:12px;padding:8px 12px;font-size:.88rem}
-.missions{list-style:none;padding:0;margin:6px 0 0}
-.missions li{background:rgba(10,4,20,.78);border:1px solid var(--line);border-radius:10px;padding:6px 10px;margin-bottom:6px;font-size:.85rem}
-.missions li.done{opacity:.7;text-decoration:line-through}
-.joystick{position:absolute;left:16px;bottom:52px;z-index:12;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.07);border:2px solid rgba(255,255,255,.25);touch-action:none}
-.joy-knob{position:absolute;left:35px;top:35px;width:50px;height:50px;border-radius:50%;background:rgba(255,207,63,.85);box-shadow:0 4px 12px rgba(0,0,0,.5)}
-.game-buttons{position:absolute;right:14px;bottom:52px;z-index:12;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;max-width:45%}
-.game-toast{position:absolute;left:50%;bottom:170px;transform:translateX(-50%);z-index:16;background:#000d;color:#fff;border:1px solid var(--gold);border-radius:999px;padding:9px 16px;white-space:nowrap;max-width:94%;overflow:hidden;text-overflow:ellipsis}
+.game-container{position:relative;isolation:isolate;width:100%;height:min(72vh,640px);min-height:420px;border-radius:var(--radius);overflow:hidden;border:2px solid var(--line);background:#0b1018;touch-action:none;user-select:none;-webkit-user-select:none}
+#gameCanvas{display:block;width:100%;height:100%;touch-action:none;z-index:var(--z-world)}
+/* Quy tắc pointer-events: chỉ lớp đang mở + nút con nhận click; lớp trang trí/toast/log thì xuyên qua */
+.hud-layer{pointer-events:none}
+.hud-layer button,.hud-layer input,.hud-layer .inv-slot{pointer-events:auto}
+.boot-log{position:absolute;left:12px;top:12px;z-index:var(--z-toast);max-width:72%;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.75rem;color:var(--muted);background:rgba(11,16,24,.72);border:1px solid var(--line);border-radius:8px;padding:4px 8px;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.webgl-error{position:absolute;top:0;left:0;right:0;z-index:var(--z-toast);display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;text-align:center;padding:10px 14px;background:rgba(60,20,10,.96);border-bottom:2px solid var(--orange);font-size:.9rem;pointer-events:none}
+.webgl-error button{pointer-events:auto}
+.webgl-error b{color:#ffd34d}
+.webgl-error span{color:#ffe9d0}
+.game-toast{position:absolute;left:50%;bottom:190px;transform:translateX(-50%);z-index:var(--z-toast);background:#000d;color:#fff;border:1px solid var(--gold);border-radius:999px;padding:9px 16px;white-space:nowrap;max-width:94%;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
 .controls-hint{position:absolute;left:0;right:0;bottom:8px;z-index:9;text-align:center;color:#cfc2ea;font-size:.8rem;text-shadow:0 1px 4px #000;pointer-events:none}
 .controls-hint button{pointer-events:auto}
 
-/* ===== lobby panels ===== */
-.lobby-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;margin-top:16px}
-.idol-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-.idol-card{background:linear-gradient(180deg,var(--panel),#1a0d33);border:1px solid var(--line);border-radius:var(--radius);padding:16px;text-align:center;cursor:pointer;transition:transform .15s ease,border-color .15s ease}
-.idol-card:hover{transform:translateY(-4px);border-color:var(--gold)}
-.idol-card.visited{border-color:var(--green)}
-.idol-emoji{font-size:3.4rem;line-height:1}
-.idol-card h3{margin:.5em 0 .2em}
-.idol-card .tag{display:inline-block;background:#0f0820;border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:.8rem;color:var(--cyan);margin:4px 0}
-.idol-card p{color:var(--muted);font-size:.92rem;min-height:3.2em}
-.idol-card .visit-btn{margin-top:8px;width:100%}
-.leaderboard{margin:0;padding-left:22px}
-.leaderboard li{padding:6px 0;border-bottom:1px dashed var(--line)}
-.share-row{display:flex;flex-wrap:wrap;gap:8px}
-.feedback{color:var(--green);font-weight:700}
-.help-list{margin:0;padding-left:20px}
-.help-list li{margin-bottom:8px}
+/* ===== Champion Select ===== */
+.start-screen{position:absolute;inset:0;z-index:var(--z-modal);display:flex;flex-direction:column;padding:20px 24px;overflow-y:auto;background:radial-gradient(700px 420px at 50% 30%,rgba(39,57,75,.55),transparent 70%),linear-gradient(180deg,rgba(9,14,22,.82),rgba(9,14,22,.94));border-bottom:3px solid var(--gold-dark)}
+.champ-head{text-align:center;margin-bottom:10px}
+.rpg-title{font-family:var(--font-title);font-weight:900;font-size:clamp(1.9rem,5vw,2.6rem);letter-spacing:3px;text-shadow:0 3px 0 #6b4a1f,0 0 24px rgba(216,174,85,.5);margin:.1em 0}
+.rpg-sub{color:var(--gold2);letter-spacing:4px;font-weight:800;font-size:.9rem}
+.champ-grid{display:grid;grid-template-columns:210px 1fr 300px;gap:20px;flex:1;min-height:0;align-items:stretch}
+.champ-list{display:flex;flex-direction:column;gap:10px;overflow-y:auto}
+.champion-option{display:flex;align-items:center;gap:10px;background:rgba(32,44,60,.9);border:2px solid var(--line);border-radius:12px;padding:12px;color:var(--ink);text-align:left;transition:transform .1s ease,border-color .1s ease,box-shadow .1s ease}
+.champion-option:hover{transform:translateY(-3px);border-color:var(--gold2);box-shadow:0 8px 18px rgba(0,0,0,.5)}
+.champion-option.selected{border-color:var(--gold2);background:#2e3d55;box-shadow:0 0 16px rgba(216,174,85,.4)}
+.champion-option .char-emoji{font-size:2.2rem;flex:none}
+.champion-option b{display:block;font-family:var(--font-title)}
+.champion-option small{color:var(--muted)}
+.champ-preview{border:1px dashed rgba(200,169,107,.45);border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;padding:16px;background:rgba(11,16,24,.25)}
+.champ-preview-emoji{font-size:5rem;line-height:1;filter:drop-shadow(0 6px 16px rgba(0,0,0,.6))}
+.champ-preview-name{font-family:var(--font-title);font-weight:900;font-size:2rem;letter-spacing:4px;color:var(--gold2);text-shadow:0 2px 0 #6b4a1f,0 0 20px rgba(216,174,85,.5)}
+.champ-preview-tag{color:var(--ink);font-weight:700}
+.champ-preview-note{max-width:340px}
+.champ-info{background:rgba(32,44,60,.92);border:1px solid var(--line);border-radius:16px;padding:16px;overflow-y:auto}
+.rpg-h3{color:var(--gold2);letter-spacing:1px;margin-top:4px;font-family:var(--font-title)}
+.stat-row{display:flex;align-items:center;gap:8px;margin:8px 0;font-size:.9rem}
+.stat-row span{width:64px;flex:none;color:var(--muted);font-weight:700}
+.stat-bar{flex:1;height:10px;border-radius:999px;background:#0b1018;border:1px solid var(--line);overflow:hidden}
+.stat-fill{height:100%;background:linear-gradient(90deg,var(--teal),var(--gold2));border-radius:999px;transition:width .3s ease}
+.stat-row b{width:28px;text-align:right;font-family:var(--font-hud)}
+.name-row{display:block;margin:14px 0 0;font-weight:700}
+.name-row input{display:block;width:100%;margin-top:8px;background:#0b1018;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:12px 16px;text-align:center}
+.name-row input:focus{outline:2px solid var(--teal);border-color:var(--teal)}
+.champ-footer{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:16px;padding:12px 16px;background:rgba(11,16,24,.85);border:1px solid var(--gold-dark);border-radius:14px}
+.champ-picked{font-size:1.05rem}
+.champ-play{font-size:1.3rem;padding:16px 40px;font-family:var(--font-title);letter-spacing:1px}
+.champ-footnote{text-align:center;margin:10px 0 0}
 
-/* ===== visit room ===== */
+/* ===== HUD: quest tracker + minimap ===== */
+.quest-tracker{position:absolute;left:12px;top:12px;z-index:var(--z-quest);max-width:300px}
+.minimap-box{position:absolute;right:12px;top:12px;z-index:var(--z-quest);width:216px}
+.hud-box{background:rgba(11,16,24,.82);border:1px solid var(--line);border-radius:12px;padding:8px 12px;font-size:.88rem}
+.missions{list-style:none;padding:0;margin:6px 0 0}
+.missions li{background:rgba(11,16,24,.78);border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:10px;padding:6px 10px;margin-bottom:6px;font-size:.85rem}
+.missions li.done{opacity:.7;text-decoration:line-through;border-left-color:var(--green)}
+.missions .reward{color:var(--gold2);font-weight:700}
+.minimap{width:100%;height:auto;border:2px solid var(--gold);border-radius:10px;background:#0b1018;display:block}
+.quick-idol-bar{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:var(--z-quest);display:flex;gap:8px;max-width:min(560px,52%);overflow-x:auto;padding:2px;scrollbar-width:none}
+.quick-idol-bar::-webkit-scrollbar{display:none}
+.quick-idol-chip{flex:none;display:flex;align-items:center;gap:6px;background:rgba(11,16,24,.85);border:1px solid var(--line);border-radius:999px;padding:7px 12px;color:var(--ink);font-weight:700;white-space:nowrap}
+.quick-idol-chip:hover{border-color:var(--gold2)}
+.quick-idol-chip.visited{border-color:var(--green)}
+.hint-bar{position:absolute;left:50%;bottom:200px;transform:translateX(-50%);z-index:25;max-width:92%;background:rgba(11,16,24,.92);border:1px solid var(--gold);border-radius:999px;padding:9px 18px;font-weight:700;text-align:center;pointer-events:none;box-shadow:0 6px 20px rgba(0,0,0,.5)}
+.near-prompt{position:absolute;left:50%;bottom:132px;transform:translateX(-50%);z-index:var(--z-hud);display:flex;gap:10px;align-items:center;background:rgba(0,0,0,.85);border:1px solid var(--gold);border-radius:999px;padding:10px 12px 10px 18px;font-weight:700;white-space:nowrap;max-width:94%}
+.speech3d{position:absolute;left:50%;top:64px;transform:translateX(-50%);z-index:55;max-width:88%;background:#fff;color:#111722;border-radius:16px;padding:10px 16px;font-weight:600;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.5);animation:pop .3s ease;pointer-events:none}
+@keyframes pop{0%{transform:translateX(-50%) scale(.7)}60%{transform:translateX(-50%) scale(1.06)}100%{transform:translateX(-50%) scale(1)}}
+
+/* ===== HUD dưới kiểu MOBA ===== */
+.bottom-hud{position:absolute;left:0;right:0;bottom:0;z-index:var(--z-hud);display:flex;align-items:flex-end;justify-content:space-between;gap:16px;padding:10px 14px 12px;min-height:112px;background:linear-gradient(180deg,transparent,rgba(11,16,24,.94) 55%)}
+.player-status{display:flex;gap:10px;align-items:center;background:rgba(11,16,24,.85);border:1px solid var(--line);border-radius:12px;padding:8px 12px;min-width:250px;max-width:320px}
+.player-avatar{font-size:2.4rem;width:56px;height:56px;flex:none;display:flex;align-items:center;justify-content:center;background:#0b1018;border:2px solid var(--gold);border-radius:12px}
+.player-bars{flex:1;min-width:0}
+.player-line{display:flex;justify-content:space-between;gap:8px;font-family:var(--font-hud);font-size:.95rem}
+.player-line b{white-space:nowrap}
+.bar-row{display:flex;justify-content:space-between;align-items:center;font-size:.82rem;margin:2px 0}
+.bar-label{color:var(--muted);font-weight:700}
+.bar{height:12px;border-radius:999px;background:#0b1018;border:1px solid var(--line);overflow:hidden;margin-bottom:4px}
+.bar-fill{height:100%;border-radius:999px;transition:width .3s ease}
+.hp-fill{background:linear-gradient(90deg,var(--hp),var(--orange))}
+.xp-fill{background:linear-gradient(90deg,var(--teal),var(--xp))}
+.skill-bar{display:flex;gap:8px;align-items:flex-end;justify-content:center}
+.skill-btn{position:relative;width:54px;height:54px;border-radius:12px;border:2px solid #9a8352;background:rgba(32,44,60,.92);color:var(--ink);display:flex;align-items:center;justify-content:center;transition:transform .1s ease,border-color .1s ease}
+.skill-btn:hover{transform:translateY(-5px);border-color:var(--gold2);box-shadow:0 8px 16px rgba(0,0,0,.5)}
+.skill-btn:active{transform:scale(.92)}
+.skill-btn .skill-emoji{font-size:1.5rem}
+.skill-btn .skill-key{position:absolute;right:3px;bottom:2px;font-size:.65rem;font-weight:800;color:var(--gold2);font-family:var(--font-hud)}
+.skill-btn.skill-main{width:72px;height:72px;border-color:var(--gold2);background:linear-gradient(180deg,#3a2f16,#241c0c);box-shadow:0 0 18px rgba(216,174,85,.4)}
+.skill-btn.skill-main .skill-emoji{font-size:1.9rem}
+.skill-btn.skill-main .skill-label{position:absolute;left:0;right:0;bottom:-16px;text-align:center;font-size:.62rem;font-weight:800;letter-spacing:1px;color:var(--gold2)}
+.skill-btn.skill-main.armed{border-color:var(--green);box-shadow:0 0 22px rgba(74,222,128,.6);animation:pulse 1s infinite}
+@keyframes pulse{50%{box-shadow:0 0 30px rgba(74,222,128,.9)}}
+.hud-inventory{display:flex;gap:6px}
+.hud-inv-slot{position:relative;width:52px;height:52px;border-radius:10px;border:2px solid #6b4a1f;background:rgba(22,11,43,.9);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-size:1.3rem}
+.hud-inv-slot:hover{border-color:var(--gold2)}
+.hud-inv-slot.empty{opacity:.45;cursor:not-allowed}
+.hud-inv-slot .inv-count{position:absolute;top:2px;right:4px;background:var(--gold);color:#111722;border-radius:999px;padding:0 6px;font-weight:800;font-size:.75rem}
+.hud-inv-slot small{font-size:.55rem;color:var(--muted)}
+.menu-btn{flex:none}
+.joystick{position:absolute;left:16px;bottom:132px;z-index:var(--z-hud);width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.07);border:2px solid rgba(255,255,255,.25);touch-action:none;pointer-events:auto}
+.joy-knob{position:absolute;left:35px;top:35px;width:50px;height:50px;border-radius:50%;background:rgba(200,169,107,.9);box-shadow:0 4px 12px rgba(0,0,0,.5)}
+
+/* ===== Hộp thoại RPG ===== */
+.rpg-dialog{position:absolute;left:50%;bottom:132px;transform:translateX(-50%);z-index:var(--z-dialog);width:min(640px,94%);display:flex;gap:12px;align-items:flex-start;background:linear-gradient(180deg,#27394b,#1a0d33);border:3px solid var(--gold);border-radius:16px;padding:12px;box-shadow:0 10px 30px rgba(0,0,0,.6)}
+.rpg-avatar{font-size:2.6rem;background:#0b1018;border:2px solid var(--gold);border-radius:12px;width:64px;height:64px;display:flex;align-items:center;justify-content:center;flex:none}
+.rpg-dialog-body{flex:1;min-width:0}
+.rpg-name{color:var(--gold2);font-weight:800;font-size:1.05rem;text-shadow:0 1px 2px #000;font-family:var(--font-title)}
+.rpg-text{margin:4px 0 8px;font-weight:600}
+.rpg-choices{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.rpg-choices button{background:#160b2b;color:var(--teal);border:1px solid var(--line);border-radius:10px;padding:8px 12px;text-align:left;font-weight:600}
+.rpg-choices button:hover{border-color:var(--gold2);color:var(--ink)}
+
+/* ===== Menu phụ (overlay) ===== */
+.menu-overlay{position:absolute;inset:0;z-index:85;display:flex;align-items:center;justify-content:center;background:rgba(11,16,24,.88);padding:16px}
+.menu-panel{width:min(680px,100%);max-height:94%;overflow-y:auto;background:linear-gradient(180deg,#27394b,#1a0d33);border:2px solid var(--gold);border-radius:16px;padding:16px}
+.menu-head{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:8px}
+.menu-head h2{margin:0}
+.menu-sections{display:flex;flex-direction:column;gap:14px}
+.menu-section h3{margin:0 0 8px;color:var(--gold2)}
+.menu-section p{margin:.3em 0}
+.mobile-menu-bar{display:none}
+
+/* ===== Phòng thăm — overlay trong khung game, không cuộn trang ===== */
 .screen{display:none}
 .screen.active{display:block}
-.visit-layout{display:grid;grid-template-columns:1.6fr 1fr;gap:16px;align-items:start}
+.visit-overlay{position:absolute;inset:0;z-index:90;overflow-y:auto;background:linear-gradient(180deg,rgba(11,16,24,.12) 0%,rgba(11,16,24,.9) 36%);padding:0}
+.visit-room{margin:32vh 12px 12px}
 .visit-head{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:start}
 .timer-box{text-align:right}
-.timer-box b{display:block;font-size:2rem;color:var(--gold);font-variant-numeric:tabular-nums}
+.timer-box b{display:block;font-size:2rem;color:var(--gold2);font-variant-numeric:tabular-nums;font-family:var(--font-hud)}
 .visit-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
-.speech{background:#fff;color:#1a0d33;border-radius:16px;padding:12px 16px;max-width:640px;margin:10px auto;font-weight:600;text-align:center}
-.gifts{display:flex;flex-wrap:wrap;gap:8px}
-.gift-btn{background:#160b2b;border:1px solid var(--line);border-radius:12px;padding:10px 12px;color:var(--ink);font-weight:700}
-.gift-btn:hover{border-color:var(--gold)}
-.chat-log{height:170px;overflow-y:auto;background:#0f0820;border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
+.speech{background:#fff;color:#111722;border-radius:16px;padding:12px 16px;max-width:640px;margin:10px auto;font-weight:600;text-align:center}
+.gifts{display:flex;flex-wrap:nowrap;gap:8px;overflow-x:auto;padding-bottom:4px}
+.gift-btn{flex:none;background:#160b2b;border:1px solid var(--line);border-radius:12px;padding:10px 12px;color:var(--ink);font-weight:700}
+.gift-btn:hover{border-color:var(--gold2)}
+.chat-log{height:170px;overflow-y:auto;background:#0b1018;border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
 .chat-msg{margin:6px 0;max-width:88%;padding:8px 12px;border-radius:12px}
 .chat-msg.you{margin-left:auto;background:var(--pink);color:#fff}
-.chat-msg.idol{background:#2b1847}
+.chat-msg.idol{background:#27394b}
 .chat-row{display:flex;gap:8px}
-.chat-row input{flex:1;background:#0f0820;color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:11px 16px;min-width:0}
+.chat-row input{flex:1;background:#0b1018;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:11px 16px;min-width:0}
 .quick-ask{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
-.quick-ask button{background:#160b2b;color:var(--cyan);border:1px solid var(--line);border-radius:999px;padding:7px 12px;font-size:.88rem}
+.quick-ask button{background:#160b2b;color:var(--teal);border:1px solid var(--line);border-radius:999px;padding:7px 12px;font-size:.88rem}
 .game-panel{margin-top:16px}
-.game-area{min-height:180px;background:#0f0820;border:1px solid var(--line);border-radius:12px;padding:14px;text-align:center;position:relative;overflow:hidden}
+.game-area{min-height:180px;background:#0b1018;border:1px solid var(--line);border-radius:12px;padding:14px;text-align:center;position:relative;overflow:hidden}
 .game-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:10px}
 .rhythm-ring{width:120px;height:120px;border:4px solid var(--gold);border-radius:50%;margin:10px auto;display:flex;align-items:center;justify-content:center;font-size:2.4rem;transition:transform .1s}
 .rhythm-ring.hit{transform:scale(1.15);border-color:var(--green)}
 .quiz-opt{display:block;width:100%;text-align:left;margin:8px 0;background:#160b2b;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
-#catchCanvas{width:100%;max-width:420px;height:220px;background:linear-gradient(180deg,#1d2b4d,#12081f);border-radius:10px;touch-action:none}
+#catchCanvas{width:100%;max-width:420px;height:220px;background:linear-gradient(180deg,#1d2b4d,#111722);border-radius:10px;touch-action:none}
 .tap-big{font-size:1.4rem;padding:18px 26px;border-radius:16px;background:linear-gradient(90deg,var(--pink),var(--orange));color:#fff;border:none;font-weight:800}
 .report-btn{position:absolute;background:#b91c1c;color:#fff;border:none;border-radius:10px;padding:8px 12px}
 #certCanvas{width:100%;height:auto;border-radius:12px;border:1px solid var(--gold);background:#fff}
-footer{max-width:1180px;margin:0 auto;padding:20px 16px 40px;color:var(--muted);font-size:.9rem}
-@media (max-width:900px){
-  .lobby-grid,.visit-layout{grid-template-columns:1fr}
-  .idol-grid{grid-template-columns:repeat(2,1fr)}
-  .game-container{height:68vh;min-height:460px}
-  .hud-right{display:none}
-  .hud-left{max-width:60%}
-  .timer-box{text-align:left}
-  .chips{font-size:.85rem}
-  .near-prompt{bottom:150px;font-size:.9rem}
-}
-@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
-/* ================= RPG UI v3 ================= */
-.rpg-topbar{border-bottom:3px solid var(--gold);box-shadow:0 2px 18px rgba(255,207,63,.25)}
-.rpg-panel{border:2px solid #6b4a1f;outline:1px solid var(--gold);outline-offset:-7px;background:linear-gradient(180deg,#2a1745,#1d0f33);box-shadow:0 6px 24px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,207,63,.15)}
-.rpg-frame{border:3px solid var(--gold);box-shadow:0 0 0 3px #6b4a1f, 0 0 40px rgba(255,207,63,.35), inset 0 0 30px rgba(255,207,63,.08)}
-.rpg-title{font-size:clamp(2rem,6vw,2.8rem);letter-spacing:2px;text-shadow:0 3px 0 #6b4a1f,0 0 24px rgba(255,207,63,.6);margin:.1em 0}
-.rpg-sub{color:var(--gold);letter-spacing:4px;font-weight:800;font-size:.9rem}
-.rpg-h3{color:var(--gold);letter-spacing:1px;margin-top:14px}
-.rpg-btn{border:2px solid var(--gold);box-shadow:0 4px 0 #6b4a1f,0 6px 16px rgba(0,0,0,.5);text-shadow:0 1px 2px rgba(0,0,0,.5);transition:transform .08s ease, box-shadow .08s ease}
-.rpg-btn:hover{transform:translateY(-2px);box-shadow:0 6px 0 #6b4a1f,0 10px 20px rgba(0,0,0,.5)}
-.rpg-btn:active{transform:translateY(2px);box-shadow:0 2px 0 #6b4a1f}
-.char-select{display:flex;gap:10px;justify-content:center;margin:10px 0}
-.char-btn{flex:1;background:#160b2b;border:2px solid var(--line);border-radius:14px;padding:10px 6px;color:var(--ink);display:flex;flex-direction:column;align-items:center;gap:2px;transition:transform .1s ease,border-color .1s ease}
-.char-btn:hover{transform:translateY(-3px);border-color:var(--cyan)}
-.char-btn.selected{border-color:var(--gold);background:#33205c;box-shadow:0 0 16px rgba(255,207,63,.4)}
-.char-emoji{font-size:2.2rem}
-.char-btn small{color:var(--muted)}
-.rpg-leader-mini{border-top:1px dashed var(--line);padding-top:8px}
-.rpg-hud{background:rgba(10,4,20,.85);border:2px solid #6b4a1f}
-.bar-row{display:flex;justify-content:space-between;align-items:center;font-size:.82rem;margin:2px 0}
-.bar-label{color:var(--muted);font-weight:700}
-.bar{height:14px;border-radius:999px;background:#0f0820;border:1px solid #4a2d78;overflow:hidden;margin-bottom:4px}
-.bar-fill{height:100%;border-radius:999px;transition:width .3s ease}
-.hp-fill{background:linear-gradient(90deg,#e6396b,#ff8a3d)}
-.xp-fill{background:linear-gradient(90deg,#3fe0d0,#7c5cff)}
-.minimap{width:100%;height:auto;border:2px solid var(--gold);border-radius:10px;background:#0f0820;display:block}
-.missions li{border-left:4px solid var(--gold);background:rgba(255,207,63,.08)}
-.missions li.done{border-left-color:var(--green)}
-.missions .reward{color:var(--gold);font-weight:700}
-/* Hộp thoại RPG */
-.rpg-dialog{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);z-index:18;width:min(640px,94%);display:flex;gap:12px;align-items:flex-start;background:linear-gradient(180deg,#2b1847,#1a0d33);border:3px solid var(--gold);border-radius:16px;padding:12px;box-shadow:0 10px 30px rgba(0,0,0,.6)}
-.rpg-avatar{font-size:2.6rem;background:#0f0820;border:2px solid var(--gold);border-radius:12px;width:64px;height:64px;display:flex;align-items:center;justify-content:center;flex:none}
-.rpg-dialog-body{flex:1;min-width:0}
-.rpg-name{color:var(--gold);font-weight:800;font-size:1.05rem;text-shadow:0 1px 2px #000}
-.rpg-text{margin:4px 0 8px;font-weight:600}
-.rpg-choices{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
-.rpg-choices button{background:#160b2b;color:var(--cyan);border:1px solid var(--line);border-radius:10px;padding:8px 12px;text-align:left;font-weight:600}
-.rpg-choices button:hover{border-color:var(--gold);color:var(--ink)}
-/* Túi đồ */
+/* ===== Lobby panels (desktop) ===== */
+.lobby-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;margin-top:16px}
+.idol-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.idol-card{background:linear-gradient(180deg,var(--panel),#141c2e);border:1px solid var(--line);border-radius:var(--radius);padding:16px;text-align:center;cursor:pointer;transition:transform .15s ease,border-color .15s ease}
+.idol-card:hover{transform:translateY(-4px);border-color:var(--gold2)}
+.idol-card.visited{border-color:var(--green)}
+.idol-emoji{font-size:3.4rem;line-height:1}
+.idol-card h3{margin:.5em 0 .2em}
+.idol-card .tag{display:inline-block;background:#0b1018;border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:.8rem;color:var(--teal);margin:4px 0}
+.idol-card p{color:var(--muted);font-size:.92rem;min-height:3.2em}
+.idol-card .visit-btn{margin-top:8px;width:100%}
+.leaderboard{margin:0;padding-left:22px}
+.leaderboard li{padding:6px 0;border-bottom:1px dashed var(--line)}
+.leaderboard li{border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:6px;background:linear-gradient(90deg,rgba(200,169,107,.12),transparent)}
+.leaderboard li:first-child{border-color:var(--gold);background:linear-gradient(90deg,rgba(200,169,107,.25),transparent)}
+.share-row{display:flex;flex-wrap:wrap;gap:8px}
+.feedback{color:var(--green);font-weight:700}
+.help-list{margin:0;padding-left:20px}
+.help-list li{margin-bottom:8px}
 .inventory-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
 .inv-slot{background:#160b2b;border:2px solid #6b4a1f;border-radius:14px;padding:12px 8px;text-align:center;cursor:pointer;position:relative;transition:transform .1s ease,border-color .1s ease}
-.inv-slot:hover{transform:translateY(-3px);border-color:var(--gold)}
+.inv-slot:hover{transform:translateY(-3px);border-color:var(--gold2)}
 .inv-slot:active{transform:scale(.96)}
 .inv-slot.empty{opacity:.45;cursor:not-allowed}
 .inv-emoji{font-size:2.2rem;line-height:1}
 .inv-slot b{display:block;margin-top:4px}
 .inv-slot small{color:var(--muted)}
-.inv-count{position:absolute;top:6px;right:8px;background:var(--gold);color:#1a0d33;border-radius:999px;padding:0 8px;font-weight:800;font-size:.85rem}
-/* Lỗi 3D: banner nhỏ ở đầu khung, KHÔNG che nút */
-.webgl-error{position:absolute;top:0;left:0;right:0;z-index:20;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;text-align:center;padding:10px 14px;background:rgba(60,20,10,.96);border-bottom:2px solid #ff8a3d;font-size:.9rem}
-.webgl-error b{color:#ffd34d}
-.webgl-error span{color:#ffe9d0}
-/* Dòng log từng bước khởi động 3D (có timestamp) — để test sau đọc được boot kẹt ở đâu */
-.boot-log{position:absolute;left:12px;bottom:46px;z-index:12;max-width:72%;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.75rem;color:#c9b8e8;background:rgba(10,4,20,.72);border:1px solid var(--line);border-radius:8px;padding:4px 8px;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-/* Bảng vàng kiểu game */
-.leaderboard li{border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:6px;background:linear-gradient(90deg,rgba(255,207,63,.12),transparent)}
-.leaderboard li:first-child{border-color:var(--gold);background:linear-gradient(90deg,rgba(255,207,63,.25),transparent)}
-/* Khung game khi không có 3D */
+.inv-count{position:absolute;top:6px;right:8px;background:var(--gold);color:#111722;border-radius:999px;padding:0 8px;font-weight:800;font-size:.85rem}
+.rpg-panel{border:2px solid #6b4a1f;outline:1px solid var(--gold);outline-offset:-7px;background:linear-gradient(180deg,#27394b,#1a0d33);box-shadow:0 6px 24px rgba(0,0,0,.5), inset 0 0 0 1px rgba(200,169,107,.15)}
+.rpg-frame{border:3px solid var(--gold);box-shadow:0 0 0 3px #6b4a1f, 0 0 40px rgba(200,169,107,.35), inset 0 0 30px rgba(200,169,107,.08)}
+.rpg-btn{border:2px solid var(--gold);box-shadow:0 4px 0 #6b4a1f,0 6px 16px rgba(0,0,0,.5);text-shadow:0 1px 2px rgba(0,0,0,.5);transition:transform .08s ease, box-shadow .08s ease}
+.rpg-btn:hover{transform:translateY(-2px);box-shadow:0 6px 0 #6b4a1f,0 10px 20px rgba(0,0,0,.5)}
+.rpg-btn:active{transform:translateY(2px);box-shadow:0 2px 0 #6b4a1f}
+.rpg-topbar{border-bottom:3px solid var(--gold);box-shadow:0 2px 18px rgba(200,169,107,.25)}
+.rpg-hud{background:rgba(11,16,24,.85);border:2px solid #6b4a1f}
 .game-container.no3d #gameCanvas{display:none}
-.game-container.no3d{background:linear-gradient(180deg,#241238,#12081f)}
+.game-container.no3d{background:linear-gradient(180deg,#241238,#111722)}
+footer{max-width:1180px;margin:0 auto;padding:20px 16px 40px;color:var(--muted);font-size:.9rem}
+
+/* ===== Desktop vừa ===== */
 @media (max-width:900px){
-  .inventory-grid{grid-template-columns:repeat(2,1fr)}
-  .rpg-dialog{bottom:150px}
-  .char-select{flex-direction:row}
-  .minimap{display:none}
+  .lobby-grid{grid-template-columns:1fr}
+  .idol-grid{grid-template-columns:repeat(2,1fr)}
+  .game-container{height:68vh;min-height:460px}
+  .timer-box{text-align:left}
+  .chips{font-size:.85rem}
+  .champ-grid{grid-template-columns:180px 1fr 250px}
+  .minimap-box{width:180px}
+  .quest-tracker{max-width:240px}
 }
+
+/* ===== Mobile dọc: game fullscreen 100dvh, layout riêng ===== */
+@media (max-width:750px){
+  html,body{overflow:hidden;height:100%}
+  body{background:var(--bg2)}
+  .topbar,.disclaimer,footer{display:none}
+  main{max-width:none;margin:0;padding:0}
+  main>.panel,main .lobby-grid{display:none}
+  .game-wrap{margin:0}
+  .game-container{position:fixed;inset:0;width:100%;height:100dvh;min-height:0;border:none;border-radius:0;z-index:50}
+  /* Status bar trái trên + minimap phải trên */
+  .quest-tracker{display:none}
+  .minimap-box{top:8px;right:8px;width:104px}
+  .minimap-box .fine{display:none}
+  .minimap-box .hud-box{padding:4px 6px}
+  .quick-idol-bar{top:64px;left:8px;right:120px;transform:none;max-width:none}
+  .speech3d{top:170px}
+  /* HUD dưới thành lớp phủ toàn màn hình để định vị lại từng khối */
+  .bottom-hud{inset:0;min-height:0;background:none;padding:0;display:block}
+  .player-status{position:absolute;top:8px;left:8px;bottom:auto;min-width:0;max-width:52vw;padding:6px 8px}
+  .player-avatar{width:40px;height:40px;font-size:1.7rem}
+  .player-line{font-size:.85rem}
+  .bar{height:9px}
+  .skill-bar{position:absolute;right:8px;bottom:60px;flex-wrap:wrap;justify-content:flex-end;max-width:210px;gap:6px}
+  .skill-btn{width:52px;height:52px}
+  .skill-btn.skill-main{width:72px;height:72px}
+  .hud-inventory{display:none}
+  .menu-btn{display:none}
+  .joystick{left:12px;bottom:60px;width:116px;height:116px}
+  .joy-knob{left:35px;top:35px;width:46px;height:46px}
+  .hint-bar{bottom:210px}
+  .near-prompt{bottom:210px}
+  .rpg-dialog{bottom:220px}
+  .game-toast{bottom:270px}
+  .controls-hint{display:none}
+  .boot-log{max-width:60%}
+  .mobile-menu-bar{display:flex;position:absolute;left:0;right:0;bottom:0;z-index:var(--z-hud);height:calc(44px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);background:rgba(11,16,24,.95);border-top:1px solid var(--line);gap:6px;padding-left:8px;padding-right:8px}
+  .mobile-menu-bar .btn{flex:1;padding:8px 4px;font-size:.9rem}
+  /* Champion Select mobile: preview lên đầu */
+  .start-screen{padding:12px}
+  .champ-grid{grid-template-columns:1fr;gap:12px;overflow-y:auto}
+  .champ-preview{order:-1;min-height:220px}
+  .champ-preview-emoji{font-size:3.6rem}
+  .champ-list{flex-direction:row;overflow-x:auto}
+  .champion-option{flex:1;min-width:100px;flex-direction:column;text-align:center;padding:10px 6px}
+  .champ-footer{flex-direction:column;gap:10px}
+  .champ-play{width:100%}
+  .visit-room{margin:28vh 8px 8px}
+  .menu-panel{max-height:88%}
+}
+/* Màn hình nhỏ ≤380px: thu nhỏ minimap/joystick/nút */
+@media (max-width:380px){
+  .minimap-box{width:88px}
+  .joystick{width:100px;height:100px}
+  .joy-knob{left:29px;top:29px;width:42px;height:42px}
+  .skill-btn{width:46px;height:46px}
+  .skill-btn.skill-main{width:64px;height:64px}
+  .player-status{max-width:48vw}
+  .quick-idol-bar{right:100px}
+}
+/* Màn hình thấp ≤700px */
+@media (max-height:700px) and (min-width:751px){
+  .game-container{min-height:380px}
+  .bottom-hud{min-height:96px}
+  .skill-btn{width:48px;height:48px}
+  .skill-btn.skill-main{width:64px;height:64px}
+}
+/* Xoay ngang ≤900px: bố cục ngang riêng, ẩn menu đáy */
+@media (max-width:900px) and (orientation:landscape){
+  .mobile-menu-bar{display:none}
+  .game-container{position:fixed;inset:0;width:100%;height:100dvh;min-height:0;border:none;border-radius:0;z-index:50}
+  .topbar,.disclaimer,footer{display:none}
+  main{max-width:none;margin:0;padding:0}
+  main>.panel,main .lobby-grid{display:none}
+  .quest-tracker{display:none}
+  .minimap-box{width:120px}
+  .skill-bar{bottom:12px}
+  .joystick{bottom:12px}
+  .player-status{top:8px;left:8px;bottom:auto;position:absolute;min-width:0}
+  .bottom-hud{inset:0;min-height:0;background:none;padding:0;display:block}
+  .hud-inventory{display:none}
+  .menu-btn{display:none}
+  .champ-grid{grid-template-columns:180px 1fr 240px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
