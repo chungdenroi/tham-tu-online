@@ -316,6 +316,16 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 #backToLobbyBtn,#endVisitBtn{position:relative;z-index:3}
 /* Màn tổng kết buổi thăm: cùng dạng tấm đáy với phòng thăm */
 .visit-summary{margin:0 12px 12px;max-height:64%;overflow-y:auto;text-align:center}
+/* v5.11 — TỔNG KẾT KHÔNG CHE HUD SẢNH: panel tổng kết là cột phải full-height
+   trên desktop nên đè lên phần phải của thanh chọn nhanh (chip Khánh Sky) +
+   bảng gọi số (test v5.10) — nhìn thì bấm được mà bấm không ăn. Ẩn 2 HUD đó
+   trong lúc tổng kết mở (hiện lại khi về sảnh/mở phòng mới — xem
+   showVisitSummary/closeVisitToLobby/openVisit). Nút Về sảnh ở ĐẦU bảng để
+   luôn thấy ngay khi bảng mở (nút cuối bảng giữ nguyên). */
+.game-container.show-summary .quick-idol-bar,
+.game-container.show-summary .call-board{display:none}
+.summary-top-actions{margin:8px 0 4px}
+.summary-top-actions .btn{width:100%}
 .summary-list{list-style:none;padding:0;margin:12px 0;text-align:left}
 .summary-list li{display:flex;justify-content:space-between;gap:12px;padding:8px 4px;border-bottom:1px dashed var(--line);font-size:.95rem}
 .summary-list li span{flex:none}
