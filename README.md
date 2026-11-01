@@ -49,7 +49,7 @@ Mở trực tiếp `index.html` bằng file:// sẽ không chạy được (modu
 | Khá Bảnh 🕺 (quạt vàng gắn xương tay phải) | `matt.glb` | như trên |
 | Huấn Hoa Hồng 🌹 (hoa hồng gắn xương ngực) | `shaun.glb` | như trên |
 | Trường Con 🍜 (bát mì gắn xương tay trái, áo tô cam vật liệu Main) | `soldier-male.glb` | Death, Defeat, Idle, Jump, PickUp, Punch, RecieveHit, Roll, Run, Run_Carry, Shoot_OneHanded, SitDown, StandUp, SwordSlash, Victory, Walk, Walk_Carry (17 clip) |
-| Khánh Sky 👑 (vương miện vàng gắn xương đầu, giáp vàng) | `knight-golden-male.glb` | như Soldier (17 clip) |
+| Khánh Sky 👑 (vương miện vàng gắn xương đầu, cao 2.23m) | `sam.glb` (tái dùng — từ v5.4, thay knight) | 20 clip như Sam |
 | NPC / người ngồi sau kính | `lis.glb`, `casual-female.glb`, `soldier-female.glb` (+ clone Sam/Matt/Shaun) | Lis: 20 clip như Sam; Casual/Soldier-F: 17 clip như Soldier |
 
 - Chuẩn hoá nhân vật bằng `Box3.setFromObject()` sau khi load (không đo bbox thô của file):
@@ -64,10 +64,17 @@ Mở trực tiếp `index.html` bằng file:// sẽ không chạy được (modu
 
 ## Nguồn + giấy phép nhân vật
 - **Quaternius qua Cinevva — CC0** (`https://app.cinevva.com/game-assets/free-3d-character-models`):
-  `sam.glb`, `matt.glb`, `shaun.glb`, `lis.glb`, `soldier-male.glb`, `knight-golden-male.glb`,
+  `sam.glb`, `matt.glb`, `shaun.glb`, `lis.glb`, `soldier-male.glb`,
   `casual-female.glb`, `soldier-female.glb` — nhân vật gốc Quaternius, phân phối CC0 qua Cinevva
   (lưu ý: Quaternius hiện công bố giấy phép QAL v1.0 cho tài sản mới — miễn phí dùng cho game
   cá nhân/thương mại/giáo dục, không cần ghi nguồn, không được bán lại tài sản gốc dạng độc lập).
+- **Khánh Sky đổi model từ v5.4:** `knight-golden-male.glb` còn nằm trong `models/` nhưng KHÔNG dùng
+  nữa — mũ giáp hiệp sĩ là hình học Armor của cùng 1 mesh skinned duy nhất, không tách riêng được,
+  không có mặt người bên dưới nên idol này không bao giờ thấy mặt. Từ v5.4 Khánh Sky tái dùng
+  `sam.glb` (mặt người thấy rõ), phân biệt với Sam người chơi bằng vương miện vàng + cao hơn hẳn
+  (1.86×1.2 ≈ 2.23m) + bảng tên + đứng sau ô kính; portrait thẻ idol cũng chụp kèm vương miện.
+  Đã rà các model nam CC0 khác trên Cinevva/Quaternius: cyberpunk = đầu robot không mặt người,
+  toon soldier = đội mũ + cầm súng to, zombie = mặt zombie, knight bạc = mũ kín — không có model nào hợp.
 - **Three.js 0.160.0 (MIT)** trong `vendor/`: `three.module.js` + `GLTFLoader.js` +
   `SkeletonUtils.js` + `BufferGeometryUtils.js` (tải từ jsDelivr, lưu local, importmap trỏ file local).
 - **Nguồn đã thử nhưng TẢI KHÔNG ĐƯỢC từ VM này, không dùng:** Ready Player Me mẫu công khai
